@@ -11,9 +11,6 @@ PCCERT_CONTEXT CreateCertificate();
 // We take a best guess at a certificate to be used as the SSL certificate for this server 
 HRESULT CreateCredentials(LPCTSTR pszSubjectName, PCredHandle phCreds, boolean fMachineStore)
 {
-	SCHANNEL_CRED   SchannelCred;
-	TimeStamp       tsExpiry;
-	SECURITY_STATUS Status;
 	HCERTSTORE  hMyCertStore = NULL;
 	TCHAR pszFriendlyNameString[128];
 	TCHAR	pszNameString[128];
@@ -135,12 +132,16 @@ HRESULT CreateCredentials(LPCTSTR pszSubjectName, PCredHandle phCreds, boolean f
 	}
 
 	// Build Schannel credential structure.
-	ZeroMemory(&SchannelCred, sizeof(SchannelCred));
+   SCHANNEL_CRED   SchannelCred = {0};
 	SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
 	SchannelCred.cCreds = 1;
 	SchannelCred.paCred = &pCertContext;
 	SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_SERVER;
-	// Get a handle to the SSPI credential
+	SchannelCred.dwFlags = SCH_USE_STRONG_CRYPTO;
+
+   // Get a handle to the SSPI credential
+	TimeStamp       tsExpiry;
+	SECURITY_STATUS Status;
 	Status = CSSLServer::SSPI()->AcquireCredentialsHandle(
 		NULL,                   // Name of principal
 		UNISP_NAME,           // Name of package
