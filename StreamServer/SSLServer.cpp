@@ -1,0 +1,651 @@
+#include "stdafx.h"
+#include "SSLServer.h"
+#include "SSLHelper.h"
+
+// Global value to optimize access since it is set only once
+PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
+// Cached server credentials (a handle to a certificate), usually these do not change 
+// because the server name does not change, but occasionally they may change due to SNI
+CredHandle CSSLServer::g_ServerCreds = { 0 };
+CString CSSLServer::g_ServerName = CString();
+
+// defined in another source file (Listener.cpp)
+CString GetHostName(void);
+
+// The CSSLServer class, this declares an SSL server side implementation that requires
+// some means to send messages to a client (a CPassiveSock).
+CSSLServer::CSSLServer(CPassiveSock * SocketStream)
+	:readBufferBytes(0)
+	,readPtr(readBuffer)
+	,m_SocketStream(SocketStream)
+	,m_LastError(0)
+{
+	m_hContext.dwLower = m_hContext.dwUpper = ((ULONG_PTR) ((INT_PTR)-1)); // Invalidate it
+}
+
+CSSLServer::~CSSLServer(void)
+{
+	if (m_hContext.dwUpper != ((ULONG_PTR) ((INT_PTR)-1)))
+		g_pSSPI->DeleteSecurityContext(&m_hContext);
+}
+
+// Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
+// to change implementation later
+PSecurityFunctionTable CSSLServer::SSPI(void){return g_pSSPI;}
+
+// Return an ISocketStream interface to the SSL connection to anyone that needs one
+ISocketStream * CSSLServer::getSocketStream(void)
+{
+	return m_SocketStream; // for now, return 'this' later, once we can do SSL
+}
+
+// Set up the connection, including SSL handshake, certificate selection/validation
+HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
+{
+	HRESULT hr = S_OK;
+	SECURITY_STATUS scRet;
+
+	if (!g_pSSPI)
+	{
+		hr = InitializeClass();
+		if FAILED(hr)
+			return hr;
+	}
+	
+	if (lpBuf && (Len>0))
+	{  // preload the IO buffer with whatever we already read
+		readBufferBytes = Len;
+		memcpy_s(readBuffer, sizeof(readBuffer), lpBuf, Len);
+	}
+	else
+		readBufferBytes = 0;
+	// Perform SSL handshake
+	if(!SSPINegotiateLoop())
+	{
+		DebugMsg("Couldn't connect");
+		std::cout << "SSL handshake failed, are you running as administrator?" << std::endl;
+		int le = GetLastError();
+		return le == 0 ? E_FAIL : HRESULT_FROM_WIN32(le);
+	}
+
+	// Find out how big the header and trailer will be:
+
+	scRet = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_STREAM_SIZES, &Sizes);
+
+	if(scRet != SEC_E_OK)
+	{
+		DebugMsg("Couldn't get Sizes");
+		return E_FAIL;
+	}
+
+	// Get the client supplied certificate in order to decide whether it is acceptable
+
+	PCERT_CONTEXT pCertContext = NULL;
+
+	hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
+
+	if (FAILED(hr))
+	{
+		DebugMsg("Couldn't get client certificate, hr=%#x", hr);
+	}
+	else
+	{
+		DebugMsg("Client Certificate returned");
+		if (debug)
+		ShowCertInfo(pCertContext, _T("Server Received Client Certificate"));
+		CertFreeCertificateContext(pCertContext);
+	}
+
+	return S_OK;
+}
+
+// Establish SSPI pointer
+HRESULT CSSLServer::InitializeClass(void)
+{
+   g_pSSPI = InitSecurityInterface();
+
+   if(g_pSSPI == NULL)
+   {
+		int err = ::GetLastError();
+		if (err == 0)
+			return E_FAIL;
+		else
+			return HRESULT_FROM_WIN32(err);
+   }
+   return S_OK;
+}
+
+// Return the last error value for this CSSLServer
+int CSSLServer::GetLastError(void)
+{
+	if (m_LastError)
+		return m_LastError;
+	else
+		return m_SocketStream->GetLastError();
+}
+
+// Receive an encrypted message, decrypt it, and return the resulting plaintext
+int CSSLServer::Recv(void * const lpBuf, const int Len)
+{
+	INT err;
+	INT i;
+	SecBufferDesc   Message;
+	SecBuffer       Buffers[4];
+	SECURITY_STATUS scRet;
+
+	//
+	// Initialize security buffer structs, basically, these point to places to put encrypted data,
+	// for SSL there's a header, some encrypted data, then a trailer. All three get put in the same buffer
+	// (ReadBuffer) and then decrypted. So one SecBuffer points to the header, one to the data, and one to the trailer.
+
+	//
+
+	Message.ulVersion = SECBUFFER_VERSION;
+	Message.cBuffers = 4;
+	Message.pBuffers = Buffers;
+
+	Buffers[0].BufferType = SECBUFFER_EMPTY;
+	Buffers[1].BufferType = SECBUFFER_EMPTY;
+	Buffers[2].BufferType = SECBUFFER_EMPTY;
+	Buffers[3].BufferType = SECBUFFER_EMPTY;
+
+	if (readBufferBytes == 0)
+		scRet = SEC_E_INCOMPLETE_MESSAGE;
+	else
+	{	// There is already data in the buffer, so process it first
+		DebugMsg(" ");
+		DebugMsg("Using the saved %d bytes from client", readBufferBytes);
+		PrintHexDump(readBufferBytes, readPtr);
+		Buffers[0].pvBuffer = readPtr;
+		Buffers[0].cbBuffer = readBufferBytes;
+		Buffers[0].BufferType = SECBUFFER_DATA;
+		scRet = g_pSSPI->DecryptMessage(&m_hContext, &Message, 0, NULL);
+	}
+
+	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
+	{
+		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0]));
+		m_LastError = 0; // Means use the one from m_SocketStream
+		if ((err == SOCKET_ERROR) || (err == 0))
+		{
+			if(WSA_IO_PENDING == m_SocketStream->GetLastError())
+				DebugMsg("Recv timed out");
+			else if (WSAECONNRESET == m_SocketStream->GetLastError())
+				DebugMsg("Recv failed, the socket was closed by the other host");
+			else
+				DebugMsg("Recv failed: %ld", m_SocketStream->GetLastError());
+			return SOCKET_ERROR;
+		}
+		DebugMsg(" ");
+		DebugMsg("Received %d (request) bytes from client", err);
+		PrintHexDump(err, (CHAR*)readPtr + readBufferBytes);
+		readBufferBytes += err;
+
+		Buffers[0].pvBuffer = readPtr;
+		Buffers[0].cbBuffer = readBufferBytes;
+		Buffers[0].BufferType = SECBUFFER_DATA;
+
+		Buffers[1].BufferType = SECBUFFER_EMPTY;
+		Buffers[2].BufferType = SECBUFFER_EMPTY;
+		Buffers[3].BufferType = SECBUFFER_EMPTY;
+
+		scRet = g_pSSPI->DecryptMessage(&m_hContext, &Message, 0, NULL);
+	}
+	
+
+	if(scRet == SEC_E_OK)
+		DebugMsg("Decrypted message from client.");
+	else
+	{
+		DebugMsg("Couldn't decrypt, error %lx", scRet);
+		m_LastError = scRet;
+		return SOCKET_ERROR;
+	}
+
+	// Locate the data buffer because the decrypted data is placed there. It's almost certainly
+	// the second buffer (index 1) and we start there, but search all but the first just in case...
+	PSecBuffer pDataBuffer(NULL);
+
+	for(i = 1; i < 4; i++)
+	{
+		if(Buffers[i].BufferType == SECBUFFER_DATA)
+		{
+			pDataBuffer = &Buffers[i];
+			break;
+		}
+	}
+
+	if(!pDataBuffer)
+	{
+		DebugMsg("No data returned");
+		m_LastError = WSASYSCALLFAILURE;
+		return SOCKET_ERROR;
+	}
+	DebugMsg(" ");
+	DebugMsg("Decrypted message has %d bytes", pDataBuffer->cbBuffer);
+	PrintHexDump(pDataBuffer->cbBuffer, pDataBuffer->pvBuffer);
+
+	// Move the data to the output stream
+
+	if (Len >= int(pDataBuffer->cbBuffer)) 
+		memcpy_s(lpBuf, Len, pDataBuffer->pvBuffer, pDataBuffer->cbBuffer);
+	else
+	{	// More bytes were decoded than the caller requested, so return an error
+		m_LastError = WSAEMSGSIZE;
+		return SOCKET_ERROR;
+	}
+
+	// See if there was any extra data read beyond what was needed for the message we are handling
+	// TCP can sometime merge multiple messages into a single one, if there is, it will amost 
+	// certainly be in the fourth buffer (index 3), but search all but the first, just in case.
+	PSecBuffer pExtraDataBuffer(NULL);
+
+	for(i = 1; i < 4; i++)
+	{
+		if(Buffers[i].BufferType == SECBUFFER_EXTRA)
+		{
+			pExtraDataBuffer = &Buffers[i];
+			break;
+		}
+	}
+
+	if(pExtraDataBuffer)
+	{	// More data was read than is needed, this happens sometimes with TCP
+		DebugMsg(" ");
+		DebugMsg("Some extra ciphertext was read (%d bytes)", pExtraDataBuffer->cbBuffer);
+		// Remember where the data is for next time
+		readBufferBytes = pExtraDataBuffer->cbBuffer;
+		readPtr = pExtraDataBuffer->pvBuffer;
+	}
+	else
+	{
+		DebugMsg("No extra ciphertext was read");
+		readBufferBytes = 0;
+		readPtr = readBuffer;
+	}
+	
+	return pDataBuffer->cbBuffer;
+}
+
+// Send an encrypted message containing an encrypted version of 
+// whatever plaintext data the caller provides
+int CSSLServer::Send(const void * const lpBuf, const int Len)
+{
+	INT err;
+
+	SecBufferDesc   Message;
+	SecBuffer       Buffers[4];
+	SECURITY_STATUS scRet;
+
+	//
+	// Initialize security buffer structs
+	//
+
+	Message.ulVersion = SECBUFFER_VERSION;
+	Message.cBuffers = 4;
+	Message.pBuffers = Buffers;
+
+	Buffers[0].BufferType = SECBUFFER_EMPTY;
+	Buffers[1].BufferType = SECBUFFER_EMPTY;
+	Buffers[2].BufferType = SECBUFFER_EMPTY;
+	Buffers[3].BufferType = SECBUFFER_EMPTY;
+
+	// Put the message in the right place in the buffer
+	memcpy_s(writeBuffer + Sizes.cbHeader, sizeof(writeBuffer) - Sizes.cbHeader - Sizes.cbTrailer, lpBuf, Len);
+
+	//
+	// Line up the buffers so that the header, trailer and content will be
+	// all positioned in the right place to be sent across the TCP connection as one message.
+	//
+
+	Buffers[0].pvBuffer = writeBuffer;
+	Buffers[0].cbBuffer = Sizes.cbHeader;
+	Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
+
+	Buffers[1].pvBuffer = writeBuffer + Sizes.cbHeader;
+	Buffers[1].cbBuffer = Len;
+	Buffers[1].BufferType = SECBUFFER_DATA;
+
+	Buffers[2].pvBuffer = writeBuffer + Sizes.cbHeader + Len;
+	Buffers[2].cbBuffer = Sizes.cbTrailer;
+	Buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
+
+	Buffers[3].BufferType = SECBUFFER_EMPTY;
+
+	scRet = g_pSSPI->EncryptMessage(&m_hContext, 0, &Message, 0);
+
+	DebugMsg(" ");
+	DebugMsg("Plaintext message has %d bytes", Len);
+	PrintHexDump(Len, lpBuf);
+
+	if (FAILED(scRet))
+	{
+		DebugMsg("EncryptMessage failed with %#x", scRet );
+		m_LastError = scRet;
+		return SOCKET_ERROR;
+	}
+
+	err = m_SocketStream->Send(writeBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	m_LastError = 0;
+
+	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	PrintHexDump(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
+	if (err == SOCKET_ERROR)
+	{
+		DebugMsg( "Send failed: %ld", m_SocketStream->GetLastError());
+		return SOCKET_ERROR;
+	}
+	return Len;
+}
+
+// Negotiate a connection with the client, sending and receiving messages until the
+// negotiation succeeds or fails
+bool CSSLServer::SSPINegotiateLoop(void)
+{
+	TimeStamp            tsExpiry;
+	SECURITY_STATUS      scRet;
+	SecBufferDesc        InBuffer;
+	SecBufferDesc        OutBuffer;
+	SecBuffer            InBuffers[2];
+	SecBuffer            OutBuffers[1];
+	DWORD                err = 0;
+	DWORD                dwSSPIOutFlags = 0;
+	bool						ContextHandleValid = (m_hContext.dwUpper != ((ULONG_PTR) ((INT_PTR)-1))); 
+
+	DWORD dwSSPIFlags =   
+		ASC_REQ_SEQUENCE_DETECT  |
+		ASC_REQ_REPLAY_DETECT    |
+		ASC_REQ_CONFIDENTIALITY  |
+		ASC_REQ_EXTENDED_ERROR   |
+		ASC_REQ_ALLOCATE_MEMORY  |
+		ASC_REQ_MUTUAL_AUTH      |
+		ASC_REQ_STREAM;
+
+	//
+	//  set OutBuffer for InitializeSecurityContext call
+	//
+
+	OutBuffer.cBuffers = 1;
+	OutBuffer.pBuffers = OutBuffers;
+	OutBuffer.ulVersion = SECBUFFER_VERSION;
+
+	DebugMsg("Started SSPINegotiateLoop with %d bytes already received from client.", readBufferBytes);
+
+	scRet = SEC_E_INCOMPLETE_MESSAGE;
+
+	// Main loop, keep going around this until the handshake is completed or fails
+	while( scRet == SEC_I_CONTINUE_NEEDED || scRet == SEC_E_INCOMPLETE_MESSAGE || scRet == SEC_I_INCOMPLETE_CREDENTIALS) 
+	{
+		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
+		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
+			err = m_SocketStream->Recv(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			m_LastError = 0;
+			if (err == SOCKET_ERROR || err == 0)
+			{
+				if(WSA_IO_PENDING == m_SocketStream->GetLastError())
+					DebugMsg("Recv timed out");
+				else if (WSAECONNRESET == m_SocketStream->GetLastError())
+					DebugMsg("Recv failed, the socket was closed by the other host");
+				else
+					DebugMsg("Recv failed: %d", m_SocketStream->GetLastError() );
+				return false;
+			}
+			else
+			{
+				readBufferBytes += err;
+				DebugMsg(" ");
+				if (err==readBufferBytes)
+					DebugMsg("Received %d handshake bytes from client", err);
+				else
+					DebugMsg("Received %d handshake bytes from client, total is now %d ", err, readBufferBytes);
+            CSSLHelper SSLHelper((const byte*)readBuffer, readBufferBytes);
+            SSLHelper.TraceHandshake();
+            if (SSLHelper.IsClientInitialize())
+            {  // Figure out what certificate we might want to use, either using SNI or the local host name
+               CString serverName = SSLHelper.GetSNI();
+               if ((!g_ServerCreds.dwLower && !g_ServerCreds.dwUpper) // No certificate handle stored
+                  || (serverName.Compare(g_ServerName) != 0)) // Requested names are different
+               {  // 
+                  if ((g_ServerCreds.dwLower || g_ServerCreds.dwUpper)) // Certificate handle stored
+                     g_pSSPI->FreeCredentialsHandle(&g_ServerCreds);
+                  if (serverName.IsEmpty()) // There was no hostname supplied by SNI
+                     serverName = GetHostName();
+                  auto hr = CreateCredentials((LPCTSTR)serverName, &g_ServerCreds, true); // False means look in 'My' store, true look in machine store
+                  g_ServerName = (hr == S_OK) ? serverName : CString();
+               }
+            }
+			}
+		}
+
+		//
+		// InBuffers[1] is used for storing extra data that SSPI/SCHANNEL doesn't process on this run around the loop.
+		//
+        // Set up the input buffers. Buffer 0 is used to pass in data
+        // received from the server. Schannel will consume some or all
+        // of this. Leftover data (if any) will be placed in buffer 1 and
+        // given a buffer type of SECBUFFER_EXTRA.
+        //
+
+		InBuffers[0].pvBuffer = readBuffer;
+		InBuffers[0].cbBuffer = readBufferBytes;
+		InBuffers[0].BufferType = SECBUFFER_TOKEN;
+
+		InBuffers[1].pvBuffer   = NULL;
+		InBuffers[1].cbBuffer   = 0;
+		InBuffers[1].BufferType = SECBUFFER_EMPTY;
+
+		InBuffer.cBuffers        = 2;
+		InBuffer.pBuffers        = InBuffers;
+		InBuffer.ulVersion       = SECBUFFER_VERSION;
+
+		//
+        // Set up the output buffers. These are initialized to NULL
+        // so as to make it less likely we'll attempt to free random
+        // garbage later.
+		//
+
+		OutBuffers[0].pvBuffer   = NULL;
+		OutBuffers[0].BufferType = SECBUFFER_TOKEN;
+		OutBuffers[0].cbBuffer   = 0;
+
+		scRet = g_pSSPI->AcceptSecurityContext(
+			&g_ServerCreds,								// Which certificate to use, already established
+			ContextHandleValid?&m_hContext:NULL,	// The context handle if we have one, ask to make one if this is first call
+			&InBuffer,										// Input buffer list
+			dwSSPIFlags,									// What we require of the connection
+			0,													// Data representation, not used 
+			ContextHandleValid?NULL:&m_hContext,	// If we don't yet have a context handle, it is returned here
+			&OutBuffer,										// [out] The output buffer, for messages to be sent to the other end
+			&dwSSPIOutFlags,								// [out] The flags associated with the negotiated connection
+			&tsExpiry);										// [out] Receives context expiration time
+
+		ContextHandleValid = true;
+
+		if ( scRet == SEC_E_OK || scRet == SEC_I_CONTINUE_NEEDED
+			|| (FAILED(scRet) && (0 != (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR))))
+		{
+			if  (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL )
+			{
+				// Send response to client if there is one
+				err = m_SocketStream->CPassiveSock::Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				m_LastError = 0;
+				if (err == SOCKET_ERROR || err == 0)
+				{
+					DebugMsg("Send handshake to client failed: %d", m_SocketStream->GetLastError() );
+					g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
+					return false;
+				}
+				else
+				{
+					DebugMsg(" ");
+					DebugMsg("Send %d handshake bytes to client", OutBuffers[0].cbBuffer);
+					PrintHexDump(OutBuffers[0].cbBuffer, OutBuffers[0].pvBuffer);
+				}
+
+				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
+				OutBuffers[0].pvBuffer = NULL;
+			}
+		}
+
+		// At this point, we've read and checked a message (giving scRet) and maybe sent a response (giving err)
+		if ( scRet == SEC_E_OK )
+		{	// The termination case, the handshake worked and is completed
+			if ( InBuffers[1].BufferType == SECBUFFER_EXTRA )
+			{
+				readPtr = readBuffer + (readBufferBytes - InBuffers[1].cbBuffer);
+				readBufferBytes = InBuffers[1].cbBuffer;
+				DebugMsg("Handshake worked, but received %d extra bytes", readBufferBytes);
+			}
+			else
+			{
+				readBufferBytes = 0;
+				readPtr = readBuffer;
+				DebugMsg("Handshake worked, no extra bytes received");
+			}
+			m_LastError = 0;
+			return true; // The normal exit
+		}
+		else if (scRet == SEC_E_INCOMPLETE_MESSAGE)
+		{
+			DebugMsg("AcceptSecurityContext got a partial message and is requesting more be read");
+		}
+		else if (scRet == SEC_E_INCOMPLETE_CREDENTIALS)
+		{
+			DebugMsg("AcceptSecurityContext got SEC_E_INCOMPLETE_CREDENTIALS, it shouldn't but we'll treat it like a partial message");
+		}
+		else if (FAILED(scRet))
+		{
+			if (scRet == SEC_E_INVALID_TOKEN)
+				DebugMsg("AcceptSecurityContext detected an invalid token, maybe the client rejected our certificate");
+			else
+				DebugMsg("AcceptSecurityContext Failed with error code %lx", scRet);
+			m_LastError = scRet;
+			return false;
+		}
+		else
+		{  // We won't be appending to the message data already in the buffer, so store a reference to any extra data in case it is useful
+			if ( InBuffers[1].BufferType == SECBUFFER_EXTRA )
+			{
+				readPtr = readBuffer + (readBufferBytes - InBuffers[1].cbBuffer);
+				readBufferBytes = InBuffers[1].cbBuffer;
+				DebugMsg("Handshake working so far but received %d extra bytes we can't handle", readBufferBytes);
+				m_LastError = WSASYSCALLFAILURE;
+				return false;
+			}
+			else
+			{
+				readPtr = readBuffer;
+				readBufferBytes = 0; // prepare for next receive
+				DebugMsg("Handshake working so far, more packets required");
+			}
+		}
+	} // while loop
+
+	// Somthing is wrong, we exited the loop abnormally
+	DebugMsg("Unexpected scRet value %lx", scRet);
+	m_LastError = scRet;
+	return false;
+}
+
+// In theory a connection may switch in and out of SSL mode.
+// This stops SSL, but it has not been tested
+HRESULT CSSLServer::Disconnect(void)
+{
+	DWORD           dwType;
+	PBYTE           pbMessage;
+	DWORD           cbMessage;
+	DWORD           cbData;
+
+	SecBufferDesc   OutBuffer;
+	SecBuffer       OutBuffers[1];
+	DWORD           dwSSPIFlags;
+	DWORD           dwSSPIOutFlags;
+	TimeStamp       tsExpiry;
+	DWORD           Status;
+
+	//
+	// Notify schannel that we are about to close the connection.
+	//
+
+	dwType = SCHANNEL_SHUTDOWN;
+
+	OutBuffers[0].pvBuffer   = &dwType;
+	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
+	OutBuffers[0].cbBuffer   = sizeof(dwType);
+
+	OutBuffer.cBuffers  = 1;
+	OutBuffer.pBuffers  = OutBuffers;
+	OutBuffer.ulVersion = SECBUFFER_VERSION;
+
+	Status = g_pSSPI->ApplyControlToken(&m_hContext, &OutBuffer);
+
+	if(FAILED(Status)) 
+	{
+		DebugMsg("**** Error 0x%x returned by ApplyControlToken", Status);
+		return Status;
+	}
+
+	//
+	// Build an SSL close notify message.
+	//
+
+	dwSSPIFlags =   
+		ASC_REQ_SEQUENCE_DETECT     |
+		ASC_REQ_REPLAY_DETECT       |
+		ASC_REQ_CONFIDENTIALITY     |
+		ASC_REQ_EXTENDED_ERROR      |
+		ASC_REQ_ALLOCATE_MEMORY     |
+		ASC_REQ_STREAM;
+
+	OutBuffers[0].pvBuffer   = NULL;
+	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
+	OutBuffers[0].cbBuffer   = 0;
+
+	OutBuffer.cBuffers  = 1;
+	OutBuffer.pBuffers  = OutBuffers;
+	OutBuffer.ulVersion = SECBUFFER_VERSION;
+
+	Status = g_pSSPI->AcceptSecurityContext(
+		&g_ServerCreds,			// Which certificate to use, already established
+		&m_hContext,				// The context handle if we have one, ask to make one if this is first call
+		NULL,							// Input buffer list
+		dwSSPIFlags,				// What we require of the connection
+		0,								// Data representation, not used 
+		NULL,							// Returned context handle, not used, because we already have one
+		&OutBuffer,					// [out] The output buffer, for messages to be sent to the other end
+		&dwSSPIOutFlags,			// [out] The flags associated with the negotiated connection
+		&tsExpiry);					// [out] Receives context expiration time
+
+	if(FAILED(Status)) 
+	{
+		DebugMsg("**** Error 0x%x returned by AcceptSecurityContext", Status);
+		return Status;
+	}
+
+	pbMessage = (PBYTE)OutBuffers[0].pvBuffer;
+	cbMessage = OutBuffers[0].cbBuffer;
+
+
+	//
+	// Send the close notify message to the client.
+	//
+
+	if(pbMessage != NULL && cbMessage != 0)
+	{
+		cbData = m_SocketStream->Send(pbMessage, cbMessage);
+		if(cbData == SOCKET_ERROR || cbData == 0)
+		{
+			Status = m_SocketStream->GetLastError();
+			DebugMsg("**** Error %d sending close notify", Status);
+			return HRESULT_FROM_WIN32(Status);
+		}
+
+		DebugMsg(" ");
+		DebugMsg("%d bytes of data sent to notify SCHANNEL_SHUTDOWN", cbData);
+		PrintHexDump(cbData, pbMessage);
+	}
+	m_SocketStream->Disconnect();
+	return S_OK;	 
+}
+
+// End of CSSLServer declarations
