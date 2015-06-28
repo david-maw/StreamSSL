@@ -90,8 +90,8 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 			LastError = WSAGetLastError();
 			DebugMsg("**** WsaConnectByName Error %d connecting to \"%S\" (%S)", 
 				LastError,
-				ATL::CT2W(HostName), 
-				ATL::CT2W(PortName));
+				HostName, 
+				PortName);
 			closesocket(ActualSocket);
 			return false;       
 		}
