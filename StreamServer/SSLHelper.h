@@ -9,6 +9,11 @@
 #define SCH_USE_STRONG_CRYPTO                        0x00400000
 #endif
 
+// handy functions declared in this file
+HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
+HRESULT CertTrusted(PCCERT_CONTEXT pCertContext);
+SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore = false);
+
 class CSSLHelper
 {
 private:
@@ -32,8 +37,3 @@ public:
    // Get SNI provided hostname
    CString GetSNI();
 };
-// handy functions declared in this file
-HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
-HRESULT CreateCredentials(LPCTSTR pszSubjectName, PCredHandle phCreds, boolean fMachineStore = false);
-
-

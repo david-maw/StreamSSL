@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
 #include <wintrust.h>
@@ -20,8 +21,11 @@ public:
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
 	HRESULT Initialize(const void * const lpBuf = NULL, const int Len = 0);
+   std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
+   std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
-	static PSecurityFunctionTable g_pSSPI;
+   SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext);
+   static PSecurityFunctionTable g_pSSPI;
 	static CredHandle g_ServerCreds;
    static CString g_ServerName;
 	CPassiveSock * m_SocketStream;

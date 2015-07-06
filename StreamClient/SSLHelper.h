@@ -9,8 +9,10 @@
 #ifndef SCH_USE_STRONG_CRYPTO // Needs KB 2868725 which is only in Windows 7+
 #define SCH_USE_STRONG_CRYPTO                        0x00400000
 #endif
+
 // handy functions declared in this file
-HRESULT CreateCredentials(LPCTSTR pszSubjectName, PCredHandle phCreds); // forward declaration
-HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title); // forward declaration
-HRESULT CertNameMatches(PCCERT_CONTEXT pCertContext, LPCTSTR ServerName);
+HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext);
+HRESULT CertNameMatches(PCCERT_CONTEXT pCertContext, LPCTSTR ServerName);
+SECURITY_STATUS CertFindClient(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName = NULL);
+SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo);

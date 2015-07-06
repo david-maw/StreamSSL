@@ -22,6 +22,8 @@ CTransport::CTransport(SOCKET s,  CListener * Listener): // constructor requires
 	SocketStream = PassiveSock;
 	PassiveSock->SetTimeoutSeconds(60);
 	SSLServer = new CSSLServer(PassiveSock);
+   SSLServer->SelectServerCert = Listener->SelectServerCert;
+   SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
 	HRESULT hr = SSLServer->Initialize();
 	if SUCCEEDED(hr)
 	{
@@ -41,6 +43,8 @@ CTransport::CTransport(SOCKET s,  CListener * Listener): // constructor requires
 			m_Listener->LogWarning(_T("Could not access certificate store, is this program running with administrative privileges?"));
 		else if (hr == SEC_E_UNKNOWN_CREDENTIALS)
 			m_Listener->LogWarning(_T("Credentials unknown, is this program running with administrative privileges?"));
+      else if (hr == SEC_E_CERT_UNKNOWN)
+			m_Listener->LogWarning(_T("The returned client certificate was unacceptable"));
 		else
 		{
 			CString s;
