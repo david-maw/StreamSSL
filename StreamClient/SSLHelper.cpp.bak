@@ -4,7 +4,7 @@
 
 // Miscellaneous functions in support of SSL
 
-// Select, and return a handle to a client certificate
+// Select, and return a handle to an appropriate certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
 SECURITY_STATUS CertFindClient(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName)
 {
@@ -31,6 +31,7 @@ SECURITY_STATUS CertFindClient(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszS
    if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
       CertFreeCertificateContext(pCertContext);
    pCertContext = NULL;
+   //return S_FALSE; // testing
 
    char * serverauth = szOID_PKIX_KP_CLIENT_AUTH;
    CERT_ENHKEY_USAGE eku;
@@ -40,7 +41,7 @@ SECURITY_STATUS CertFindClient(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszS
    // Find a client certificate. Note that this code just searches for a 
    // certificate that has the required enhanced key usage for server authentication
    // it then selects the best one (ideally one that contains the client name somewhere
-   // in the subject name).
+   // in the subject name.
 
    while (NULL != (pCertContextCurrent = CertFindCertificateInStore(hMyCertStore,
       X509_ASN_ENCODING,

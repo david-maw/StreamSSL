@@ -6,9 +6,6 @@
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLClient::g_pSSPI = NULL;
 
-// Cached client credentials (a handle to a certificate), usually these do not change 
-CredHandle CSSLClient::g_ClientCreds;
-
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)
@@ -32,19 +29,28 @@ CSSLClient::~CSSLClient(void)
 PSecurityFunctionTable CSSLClient::SSPI(void){return g_pSSPI;}
 
 // Set up the connection, including SSL handshake, certificate selection/validation
+// lpBuf and Len let you provide any data that's already been read
 HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, const int Len)
 {
 	HRESULT hr = S_OK;
 	ServerCertNameMatches = false;
 	ServerCertTrusted = false;
 
-	if ((!g_pSSPI) || (!g_ClientCreds.dwLower && !g_ClientCreds.dwUpper))
+	if (!g_pSSPI)
 	{
 		hr = InitializeClass();
 		if FAILED(hr)
 			return hr;
 	}
-	
+   PCCERT_CONTEXT pCertContext = NULL;
+   if (SelectClientCertificate)
+      hr = SelectClientCertificate(pCertContext, NULL);
+   if FAILED(hr) return hr;
+   hr = CreateCredentialsFromCertificate(&m_ClientCreds, pCertContext);
+   if (pCertContext != NULL)
+      CertFreeCertificateContext(pCertContext);
+   if FAILED(hr) return hr;
+
 	if (lpBuf && (Len>0))
 	{  // preload the IO buffer with whatever we already read
 		readBufferBytes = Len;
@@ -70,28 +76,6 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 		return hr;
 	}
 
-	// Get the server supplied certificate in order to decide whether it is acceptable
-	
-	PCERT_CONTEXT pCertContext = NULL;
-
-	hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
-
-	if(FAILED(hr))
-	{
-		DebugMsg("Couldn't get server certificate, hr=%#x", hr);
-	}
-	else
-	{
-		DebugMsg("Server Certificate returned");
-		if (debug)
-		ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
-		hr = CertNameMatches(pCertContext, ATL::CW2T(ServerName));
-		ServerCertNameMatches = hr == S_OK;
-		hr = CertTrusted(pCertContext);
-		ServerCertTrusted = hr == S_OK;
-		CertFreeCertificateContext(pCertContext);
-	}
-
 	return S_OK;
 }
 
@@ -108,7 +92,7 @@ HRESULT CSSLClient::InitializeClass(void)
 		else
 			return HRESULT_FROM_WIN32(err);
    }
-	return CreateCredentials(NULL, &g_ClientCreds);
+   return S_OK;
 }
 
 // Return the last error value for this CSSLClient
@@ -414,7 +398,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
     dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT   |
                   ISC_REQ_REPLAY_DETECT     |
                   ISC_REQ_CONFIDENTIALITY   |
-                  ISC_RET_EXTENDED_ERROR    |
+                  ISC_REQ_EXTENDED_ERROR    |
                   ISC_REQ_ALLOCATE_MEMORY   |
 						ISC_REQ_MANUAL_CRED_VALIDATION | // We'll check the certificate ourselves
                   ISC_REQ_STREAM;
@@ -432,7 +416,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
     OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	 scRet = g_pSSPI->InitializeSecurityContext(
-		 &g_ClientCreds,
+		 &m_ClientCreds,
 		 NULL,
 		 ServerName,
 		 dwSSPIFlags,
@@ -519,7 +503,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
 
                 DebugMsg("%d bytes of handshake data received", cbData);
 
-                if(false)
+                if(debug)
                 {
                     PrintHexDump(cbData, readBuffer + cbIoBuffer);
                     DebugMsg("\n");
@@ -571,7 +555,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
         // Call InitializeSecurityContext.
         //
 
-        scRet = g_pSSPI->InitializeSecurityContext(&g_ClientCreds,
+        scRet = g_pSSPI->InitializeSecurityContext(&m_ClientCreds,
                                           &m_hContext,
                                           NULL,
                                           dwSSPIFlags,
@@ -594,7 +578,35 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
            scRet == SEC_I_CONTINUE_NEEDED   ||
            FAILED(scRet) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR))
         {
-            if(OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
+           // Get the server supplied certificate in order to decide whether it is acceptable
+
+           PCERT_CONTEXT pServerCertContext = NULL;
+
+           HRESULT hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pServerCertContext);
+
+           if (FAILED(hr))
+           {
+              if (hr == SEC_E_INVALID_HANDLE)
+                 DebugMsg("QueryContextAttributes for cert returned SEC_E_INVALID_HANDLE, which is normal");
+              else
+                 DebugMsg("Couldn't get server certificate, hr=%#x", hr);
+           }
+           else
+           {
+              DebugMsg("Server Certificate returned");
+              hr = CertNameMatches(pServerCertContext, ATL::CW2T(ServerName));
+              ServerCertNameMatches = hr == S_OK;
+              hr = CertTrusted(pServerCertContext);
+              ServerCertTrusted = hr == S_OK;
+              bool IsServerCertAcceptable = ServerCertAcceptable == nullptr;
+              if (!IsServerCertAcceptable)
+                 IsServerCertAcceptable = ServerCertAcceptable(pServerCertContext, ServerCertTrusted, ServerCertNameMatches);
+              CertFreeCertificateContext(pServerCertContext);
+              if (!IsServerCertAcceptable)
+                 return SEC_E_UNKNOWN_CREDENTIALS;
+           }
+
+           if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
             {
 					cbData = this->m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
                 if(cbData == SOCKET_ERROR || cbData == 0)
@@ -692,7 +704,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
         if(scRet == SEC_I_INCOMPLETE_CREDENTIALS)
         {
             //
-            // Busted. The server has requested client authentication and
+            // The server has requested client authentication and
             // the credential we supplied didn't contain an acceptable 
 			   // client certificate.
             //
@@ -706,13 +718,27 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
             // we will attempt to connect anonymously (using our current
             // credentials).
             //
-            
-			  GetNewClientCredentials();
+
+            // 
+            // Note the a server will NOT send an issuer list if it has the registry key
+            // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL
+            // has a DWORD value called SendTrustedIssuerList set to 0
+            //
+
+			   scRet = GetNewClientCredentials();
 
             // Go around again.
-            fDoRead = FALSE;
-            scRet = SEC_I_CONTINUE_NEEDED;
-            continue;
+            if (scRet == SEC_E_OK)
+            {
+               fDoRead = FALSE;
+               scRet = SEC_I_CONTINUE_NEEDED;
+               continue;
+            }
+            else
+            {
+               DebugMsg("**** Error %08x returned by GetNewClientCredentials", scRet);
+               break;
+            }
         }
 
 
@@ -847,23 +873,21 @@ bool CSSLClient::getServerCertTrusted()
 	return ServerCertTrusted;
 }
 
-/*****************************************************************************/
-
-void CSSLClient::GetNewClientCredentials()
+SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 {
     CredHandle hCreds;
     SecPkgContext_IssuerListInfoEx IssuerListInfo;
-    PCCERT_CHAIN_CONTEXT pChainContext;
-    CERT_CHAIN_FIND_BY_ISSUER_PARA FindByIssuerPara;
-    PCCERT_CONTEXT  pCertContext;
-    TimeStamp       tsExpiry;
     SECURITY_STATUS Status;
-	HCERTSTORE  hMyCertStore = NULL;
 
-	hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+    // Destroy the cached credentials.
+    g_pSSPI->FreeCredentialsHandle(&m_ClientCreds);
 
     //
     // Read list of trusted issuers from schannel.
+    // 
+    // Note the a server will NOT send an issuer list if it has the registry key
+    // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL
+    // has a DWORD value called SendTrustedIssuerList set to 0
     //
 
     Status = g_pSSPI->QueryContextAttributes(&m_hContext,
@@ -871,88 +895,86 @@ void CSSLClient::GetNewClientCredentials()
                                     (PVOID)&IssuerListInfo);
     if(Status != SEC_E_OK)
     {
-        DebugMsg("Error 0x%x querying issuer list info", Status);
-        return;
+        DebugMsg("Error 0x%08x querying issuer list info", Status);
+        return Status;
     }
 
-    //
-    // Enumerate the client certificates.
-    //
+    DebugMsg("Issuer list information returned, issuers = %d", IssuerListInfo.cIssuers);
 
-    ZeroMemory(&FindByIssuerPara, sizeof(FindByIssuerPara));
-
-    FindByIssuerPara.cbSize = sizeof(FindByIssuerPara);
-    FindByIssuerPara.pszUsageIdentifier = szOID_PKIX_KP_CLIENT_AUTH;
-    FindByIssuerPara.dwKeySpec = 0;
-    FindByIssuerPara.cIssuer   = IssuerListInfo.cIssuers;
-    FindByIssuerPara.rgIssuer  = IssuerListInfo.aIssuers;
-
-    pChainContext = NULL;
-
-    while(TRUE)
+    // Now go ask for the client credentials
+    PCCERT_CONTEXT pCertContext = NULL;
+    if (SelectClientCertificate)
+       Status = SelectClientCertificate(pCertContext, &IssuerListInfo);
+    if(FAILED(Status))
     {
-        // Find a certificate chain.
-        pChainContext = CertFindChainInStore(hMyCertStore,
-                                             X509_ASN_ENCODING,
-                                             0,
-                                             CERT_CHAIN_FIND_BY_ISSUER,
-                                             &FindByIssuerPara,
-                                             pChainContext);
-        if(pChainContext == NULL)
-        {
-            DebugMsg("Error 0x%x finding cert chain", GetLastError());
-            break;
-        }
-        DebugMsg("certificate chain found");
-
-        // Get pointer to leaf certificate context.
-        pCertContext = pChainContext->rgpChain[0]->rgpElement[0]->pCertContext;
-
-        // Create schannel credential.
-		  SCHANNEL_CRED   SchannelCred = { 0 };
-        SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
-        SchannelCred.cCreds = 1;
-        SchannelCred.paCred = &pCertContext;
-
-        Status = g_pSSPI->AcquireCredentialsHandle(
-                            NULL,                   // Name of principal
-                            UNISP_NAME,           // Name of package
-                            SECPKG_CRED_OUTBOUND,   // Flags indicating use
-                            NULL,                   // Pointer to logon ID
-                            &SchannelCred,          // Package specific data
-                            NULL,                   // Pointer to GetKey() func
-                            NULL,                   // Value to pass to GetKey()
-                            &hCreds,                // (out) Cred Handle
-                            &tsExpiry);             // (out) Lifetime (optional)
-        if(Status != SEC_E_OK)
-        {
-            DebugMsg("**** Error 0x%x returned by AcquireCredentialsHandle", Status);
-            continue;
-        }
-        DebugMsg("new schannel credential created");
-
-        // Destroy the old credentials.
-		  g_pSSPI->FreeCredentialsHandle(&g_ClientCreds);
-
-        g_ClientCreds = hCreds;
-
-        //
-        // As you can see, this sample code maintains a single credential
-        // handle, replacing it as necessary. This is a little unusual.
-        //
-        // Many applications maintain a global credential handle that's
-        // anonymous (that is, it doesn't contain a client certificate),
-        // which is used to connect to all servers. If a particular server
-        // should require client authentication, then a new credential 
-        // is created for use when connecting to that server. The global
-        // anonymous credential is retained for future connections to
-        // other servers.
-        //
-        // Maintaining a single anonymous credential that's used whenever
-        // possible is most efficient, since creating new credentials all
-        // the time is rather expensive.
-        //
-
-        break;
+        DebugMsg("Error 0x%08x selecting client certificate", Status);
+        return Status;
     }
+
+    if (!pCertContext)
+       DebugMsg("No suitable client certificate is available to return to the server");
+    
+    Status = CreateCredentialsFromCertificate(&hCreds, pCertContext);
+
+    if (SUCCEEDED(Status) && SecIsValidHandle(&hCreds))
+    {
+        // Store the new ones
+        m_ClientCreds = hCreds;
+    }
+
+    return Status;
+
+    //
+    // Many applications maintain a global credential handle that's
+    // anonymous (that is, it doesn't contain a client certificate),
+    // which is used to connect to all servers. If a particular server
+    // should require client authentication, then a new credential 
+    // is created for use when connecting to that server. The global
+    // anonymous credential is retained for future connections to
+    // other servers.
+    //
+    // Maintaining a single anonymous credential that's used whenever
+    // possible is most efficient, since creating new credentials all
+    // the time is rather expensive.
+    //
+}
+
+SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
+{
+   // Build Schannel credential structure.
+   SCHANNEL_CRED   SchannelCred = { 0 };
+   SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
+   if (pCertContext)
+   {
+      SchannelCred.cCreds = 1;
+      SchannelCred.paCred = &pCertContext;
+   }
+   SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT;
+   SchannelCred.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
+
+   SECURITY_STATUS Status;
+   TimeStamp       tsExpiry;
+   // Get a handle to the SSPI credential
+   Status = g_pSSPI->AcquireCredentialsHandle(
+      NULL,                   // Name of principal
+      UNISP_NAME,             // Name of package
+      SECPKG_CRED_OUTBOUND,   // Flags indicating use
+      NULL,                   // Pointer to logon ID
+      &SchannelCred,          // Package specific data
+      NULL,                   // Pointer to GetKey() func
+      NULL,                   // Value to pass to GetKey()
+      phCreds,                // (out) Cred Handle
+      &tsExpiry);             // (out) Lifetime (optional)
+
+   if (Status != SEC_E_OK)
+   {
+      DWORD dw = ::GetLastError();
+      if (Status == SEC_E_UNKNOWN_CREDENTIALS)
+         DebugMsg("**** Error: 'Unknown Credentials' returned by AcquireCredentialsHandle. LastError=%d", dw);
+      else
+         DebugMsg("**** Error 0x%x returned by AcquireCredentialsHandle. LastError=%d.", Status, dw);
+      return Status;
+   }
+
+   return SEC_E_OK;
 }

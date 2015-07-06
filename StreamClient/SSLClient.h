@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <functional>
 #include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
 #include <wintrust.h>
@@ -18,8 +19,8 @@ public:
 	CSSLClient(CActiveSock *);
 	~CSSLClient(void);
 private:
-	static PSecurityFunctionTable g_pSSPI;
-	static CredHandle g_ClientCreds;
+   static PSecurityFunctionTable g_pSSPI;
+	CredHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
 	static HRESULT InitializeClass(void);
@@ -36,7 +37,8 @@ private:
 	void * readPtr;
 	CtxtHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes;
-	void GetNewClientCredentials();
+   static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
+   SECURITY_STATUS GetNewClientCredentials();
 	bool ServerCertNameMatches;
 	bool ServerCertTrusted;
 
@@ -50,9 +52,11 @@ public:
 	HRESULT Disconnect(void);
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
-	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = NULL, const int Len = 0);
+    HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = NULL, const int Len = 0);
 	// Attributes
-	bool getServerCertNameMatches();
+    std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
+    std::function<SECURITY_STATUS (PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo)> SelectClientCertificate;
+    bool getServerCertNameMatches();
 	bool getServerCertTrusted();
 };
 

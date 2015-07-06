@@ -7,167 +7,212 @@
 // defined in another source file (CreateCertificate.cpp)
 PCCERT_CONTEXT CreateCertificate();
 
-// Create credentials (a handle to a certificate) by selecting an appropriate certificate
-// We take a best guess at a certificate to be used as the SSL certificate for this server 
-HRESULT CreateCredentials(LPCTSTR pszSubjectName, PCredHandle phCreds, boolean fMachineStore)
+// Select, and return a handle to a server certificate located by name
+// Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
+SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
-	HCERTSTORE  hMyCertStore = NULL;
-	TCHAR pszFriendlyNameString[128];
-	TCHAR	pszNameString[128];
+   HCERTSTORE  hMyCertStore = NULL;
+   TCHAR pszFriendlyNameString[128];
+   TCHAR	pszNameString[128];
 
-	if (pszSubjectName == NULL || _tcslen(pszSubjectName) == 0)
-	{
-		DebugMsg("**** No subject name specified!");
-		return E_POINTER;
-	}
+   if (pszSubjectName == NULL || _tcslen(pszSubjectName) == 0)
+   {
+      DebugMsg("**** No subject name specified!");
+      return E_POINTER;
+   }
 
-	if (fMachineStore)
-	{	// Open the local machine certificate store.
-		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-			X509_ASN_ENCODING,
-			NULL,
-			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-			L"MY");
-	}
-	else // Open the store for this user
-		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+   if (fUserStore)
+      hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+   else
+   {	// Open the local machine certificate store.
+      hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+         X509_ASN_ENCODING,
+         NULL,
+         CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+         L"MY");
+   }
 
-	if (!hMyCertStore)
-	{
-		int err = GetLastError();
+   if (!hMyCertStore)
+   {
+      int err = GetLastError();
 
-		if (err == ERROR_ACCESS_DENIED)
-			DebugMsg("**** CertOpenStore failed with 'access denied'");
-		else
-			DebugMsg("**** Error %d returned by CertOpenStore", err);
-		return HRESULT_FROM_WIN32(err);
-	}
+      if (err == ERROR_ACCESS_DENIED)
+         DebugMsg("**** CertOpenStore failed with 'access denied'");
+      else
+         DebugMsg("**** Error %d returned by CertOpenStore", err);
+      return HRESULT_FROM_WIN32(err);
+   }
 
-	char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
-	CERT_ENHKEY_USAGE eku;
-	PCCERT_CONTEXT  pCertContext = NULL, pCertContextSaved = NULL;
-	eku.cUsageIdentifier = 1;
-	eku.rgpszUsageIdentifier = &serverauth;
-	// Find a server certificate. Note that this code just searches for a 
-	// certificate that has the required enhanced key usage for server authentication
-   // it then selects the best one (ideall one that contains the server name somewhere
-   // in the subject name.
+   if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+      CertFreeCertificateContext(pCertContext);
+   pCertContext = NULL;
 
-	while (NULL != (pCertContext = CertFindCertificateInStore(hMyCertStore,
-		X509_ASN_ENCODING,
-		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
-		CERT_FIND_ENHKEY_USAGE,
-		&eku,
-		pCertContext)))
-	{
-		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
-		{
-			DebugMsg("CertGetNameString failed getting friendly name.");
-			continue;
-		}
-		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", ATL::CT2W(pszFriendlyNameString));
-		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
-			DebugMsg("CertGetNameString failed getting subject name.");
-		else if (_tcscmp(pszNameString, pszSubjectName))
-			DebugMsg("Certificate has wrong subject name.");
-		else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
-		{
-			if (!pCertContextSaved)
-			{
-				DebugMsg("A self-signed certificate was found and saved in case it is needed.");
-				pCertContextSaved = CertDuplicateCertificateContext(pCertContext);
-			}
-		}
-		else
-		{
-			DebugMsg("Certificate is acceptable.");
-			if (pCertContextSaved)	// We have a saved self signed certificate context we no longer need, so free it
-				CertFreeCertificateContext(pCertContextSaved);
-			pCertContextSaved = NULL;
-			break;
-		}
-	}
+   char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
+   CERT_ENHKEY_USAGE eku;
+   PCCERT_CONTEXT pCertContextSaved = NULL;
+   eku.cUsageIdentifier = 1;
+   eku.rgpszUsageIdentifier = &serverauth;
+   // Find a server certificate. Note that this code just searches for a 
+   // certificate that has the required enhanced key usage for server authentication
+   // it then selects the best one (ideally one that contains the server name
+   // in the subject name).
 
-	if (pCertContextSaved && !pCertContext)
-	{	// We have a saved self-signed certificate and nothing better 
-		DebugMsg("A self-signed certificate was the best we had.");
-		pCertContext = pCertContextSaved;
-		pCertContextSaved = NULL;
-	}
+   while (NULL != (pCertContext = CertFindCertificateInStore(hMyCertStore,
+      X509_ASN_ENCODING,
+      CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
+      CERT_FIND_ENHKEY_USAGE,
+      &eku,
+      pCertContext)))
+   {
+      //ShowCertInfo(pCertContext);
+      if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+      {
+         DebugMsg("CertGetNameString failed getting friendly name.");
+         continue;
+      }
+      DebugMsg("Certificate '%S' is allowed to be used for server authentication.", ATL::CT2W(pszFriendlyNameString));
+      if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
+         DebugMsg("CertGetNameString failed getting subject name.");
+      else if (_tcscmp(pszNameString, pszSubjectName))
+         DebugMsg("Certificate has wrong subject name.");
+      else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
+      {
+         if (!pCertContextSaved)
+         {
+            DebugMsg("A self-signed certificate was found and saved in case it is needed.");
+            pCertContextSaved = CertDuplicateCertificateContext(pCertContext);
+         }
+      }
+      else
+      {
+         DebugMsg("Certificate is acceptable.");
+         if (pCertContextSaved)	// We have a saved self signed certificate context we no longer need, so free it
+            CertFreeCertificateContext(pCertContextSaved);
+         pCertContextSaved = NULL;
+         break;
+      }
+   }
 
-	if (!pCertContext)
-	{
-		DWORD LastError = GetLastError();
-		if (LastError == CRYPT_E_NOT_FOUND)
-		{
-			DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-			pCertContext = CreateCertificate();
-			if (!pCertContext)
-			{
-				LastError = GetLastError();
-				DebugMsg("**** Error 0x%x returned by CreateCertificate", LastError);
-				std::cout << "Could not create certificate, are you running as administrator?" << std::endl;
-				return HRESULT_FROM_WIN32(LastError);
-			}
-		}
-		else
-		{
-			DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
-			return HRESULT_FROM_WIN32(LastError);
-		}
-	}
+   if (pCertContextSaved && !pCertContext)
+   {	// We have a saved self-signed certificate and nothing better 
+      DebugMsg("A self-signed certificate was the best we had.");
+      pCertContext = pCertContextSaved;
+      pCertContextSaved = NULL;
+   }
 
-	if (!pCertContext)
-	{
-		DWORD LastError = GetLastError();
-		if (LastError == CRYPT_E_NOT_FOUND)
-		{
-			DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-			pCertContext = CreateCertificate();
-		}
-		else
-			DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
-		return HRESULT_FROM_WIN32(LastError);
-	}
+   if (!pCertContext)
+   {
+      DWORD LastError = GetLastError();
+      if (LastError == CRYPT_E_NOT_FOUND)
+      {
+         DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
+         pCertContext = CreateCertificate();
+         if (!pCertContext)
+         {
+            LastError = GetLastError();
+            DebugMsg("**** Error 0x%x returned by CreateCertificate", LastError);
+            std::cout << "Could not create certificate, are you running as administrator?" << std::endl;
+            return HRESULT_FROM_WIN32(LastError);
+         }
+      }
+      else
+      {
+         DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
+         return HRESULT_FROM_WIN32(LastError);
+      }
+   }
 
-	// Build Schannel credential structure.
-   SCHANNEL_CRED   SchannelCred = {0};
-	SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
-	SchannelCred.cCreds = 1;
-	SchannelCred.paCred = &pCertContext;
-	SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_SERVER;
-	SchannelCred.dwFlags = SCH_USE_STRONG_CRYPTO;
+   if (!pCertContext)
+   {
+      DWORD LastError = GetLastError();
+      if (LastError == CRYPT_E_NOT_FOUND)
+      {
+         DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
+         pCertContext = CreateCertificate();
+      }
+      else
+         DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
+      return HRESULT_FROM_WIN32(LastError);
+   }
 
-   // Get a handle to the SSPI credential
-	TimeStamp       tsExpiry;
-	SECURITY_STATUS Status;
-	Status = CSSLServer::SSPI()->AcquireCredentialsHandle(
-		NULL,                   // Name of principal
-		UNISP_NAME,           // Name of package
-		SECPKG_CRED_INBOUND,    // Flags indicating use
-		NULL,                   // Pointer to logon ID
-		&SchannelCred,          // Package specific data
-		NULL,                   // Pointer to GetKey() func
-		NULL,                   // Value to pass to GetKey()
-		phCreds,                // (out) Cred Handle
-		&tsExpiry);             // (out) Lifetime (optional)
+   return SEC_E_OK;
+}
 
-	if (Status != SEC_E_OK)
-	{
-		DWORD dw = GetLastError();
-		if (Status == SEC_E_UNKNOWN_CREDENTIALS)
-			DebugMsg("**** Error: 'Unknown Credentials' returned by AcquireCredentialsHandle. Be sure app has administrator rights. LastError=%d", dw);
-		else
-			DebugMsg("**** Error 0x%x returned by AcquireCredentialsHandle. LastError=%d.", Status, dw);
-		return Status;
-	}
+// Return an indication of whether a certificate is trusted by asking Windows to validate the
+// trust chain (basically asking is the certificate issuer trusted)
+HRESULT CertTrusted(PCCERT_CONTEXT pCertContext)
+{
+   HTTPSPolicyCallbackData  polHttps;
+   CERT_CHAIN_POLICY_PARA   PolicyPara;
+   CERT_CHAIN_POLICY_STATUS PolicyStatus;
+   CERT_CHAIN_PARA          ChainPara;
+   PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
+   HRESULT                  Status;
+   LPSTR rgszUsages[] = { szOID_PKIX_KP_SERVER_AUTH,
+      szOID_SERVER_GATED_CRYPTO,
+      szOID_SGC_NETSCAPE };
+   DWORD cUsages = _countof(rgszUsages);
 
-	// Free the certificate context. Schannel has already made its own copy.
-	if (pCertContext)
-		CertFreeCertificateContext(pCertContext);
+   // Build certificate chain.
+   ZeroMemory(&ChainPara, sizeof(ChainPara));
+   ChainPara.cbSize = sizeof(ChainPara);
+   ChainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
+   ChainPara.RequestedUsage.Usage.cUsageIdentifier = cUsages;
+   ChainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
 
-	return SEC_E_OK;
+   if (!CertGetCertificateChain(NULL,
+      pCertContext,
+      NULL,
+      pCertContext->hCertStore,
+      &ChainPara,
+      0,
+      NULL,
+      &pChainContext))
+   {
+      Status = GetLastError();
+      DebugMsg("Error %#x returned by CertGetCertificateChain!", Status);
+      goto cleanup;
+   }
+
+
+   // Validate certificate chain.
+   ZeroMemory(&polHttps, sizeof(HTTPSPolicyCallbackData));
+   polHttps.cbStruct = sizeof(HTTPSPolicyCallbackData);
+   polHttps.dwAuthType = AUTHTYPE_SERVER;
+   polHttps.fdwChecks = 0;    // dwCertFlags;
+   polHttps.pwszServerName = NULL; // ServerName - checked elsewhere
+
+   ZeroMemory(&PolicyPara, sizeof(PolicyPara));
+   PolicyPara.cbSize = sizeof(PolicyPara);
+   PolicyPara.pvExtraPolicyPara = &polHttps;
+
+   ZeroMemory(&PolicyStatus, sizeof(PolicyStatus));
+   PolicyStatus.cbSize = sizeof(PolicyStatus);
+
+   if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
+      pChainContext,
+      &PolicyPara,
+      &PolicyStatus))
+   {
+      Status = HRESULT_FROM_WIN32(GetLastError());
+      DebugMsg("Error %#x returned by CertVerifyCertificateChainPolicy!", Status);
+      goto cleanup;
+   }
+
+   if (PolicyStatus.dwError)
+   {
+      Status = S_FALSE;
+      //DisplayWinVerifyTrustError(PolicyStatus.dwError); 
+      goto cleanup;
+   }
+
+   Status = SEC_E_OK;
+
+cleanup:
+   if (pChainContext)
+      CertFreeCertificateChain(pChainContext);
+
+   return Status;
 }
 
 // Display a UI with the certificate info and also write it to the debug output
