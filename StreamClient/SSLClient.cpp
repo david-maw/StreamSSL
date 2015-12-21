@@ -45,7 +45,8 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
    PCCERT_CONTEXT pCertContext = NULL;
    if (SelectClientCertificate)
       hr = SelectClientCertificate(pCertContext, NULL);
-   if FAILED(hr) return hr;
+   // If a certificate is required, it will be requested later 
+   if FAILED(hr) pCertContext = NULL;
    hr = CreateCredentialsFromCertificate(&m_ClientCreds, pCertContext);
    if (pCertContext != NULL)
       CertFreeCertificateContext(pCertContext);
