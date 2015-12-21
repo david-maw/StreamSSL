@@ -47,12 +47,13 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 // This will get called once, or twice, the first call with pIssuerListInfo NULL, which can 
 // return any certificate it likes, or none at all. If it returns one, that will be sent to the server.
 // If that call did not return a certificate, the procedure may be called again if the server requests a 
-// client certificate, whatever is returned (including null) is sent to the server which gets to decide
-// whether or not it is acceptable.
+// client certificate, whatever is returned on the first call (including null) is sent to the server which gets to decide
+// whether or not it is acceptable. If there is a second call (with pIssuerListInfo non-NULL) you MUST return
+// a certificate or the handshale will fail.
 
 SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo)
 {
-   SECURITY_STATUS Status = SEC_E_OK;
+   SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
    if (pIssuerListInfo)
       Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
    // Comment out the next 2 lines to wait until you have an explicit call from the server 
@@ -60,13 +61,18 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
    //if (FAILED(Status) || !pCertContext)
    //   Status = CertFindClient(pCertContext);
    if (pIssuerListInfo)
-      cout << "Client certificate requested with issuer list";
+   {
+      if (pIssuerListInfo->cIssuers == 0)
+         cout << "Client certificate required, issuer list is empty";
+      else
+         cout << "Client certificate required, issuer list provided";
+   }
    else
-      cout << "Client certificate requested without issuer list";
+      cout << "Optional client certificate requested (without issuer list)";
    if (pCertContext)
       wcout << ", selected name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling
    else
-      cout << ", none found." << endl;
+      cout << ", no certificate found." << endl;
    if (false && debug && pCertContext)
       ShowCertInfo(pCertContext, _T("Client certificate being returned"));
    return Status;
@@ -94,8 +100,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		pSSLClient = new CSSLClient(pActiveSock);
       pSSLClient->ServerCertAcceptable = CertAcceptable;
       pSSLClient->SelectClientCertificate = SelectClientCertificate;
-      b = SUCCEEDED(pSSLClient->Initialize(ATL::CT2W(HostName)));
-		if (b)
+      HRESULT hr = pSSLClient->Initialize(ATL::CT2W(HostName));
+		if (SUCCEEDED(hr))
 		{
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
