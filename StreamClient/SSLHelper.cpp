@@ -2,7 +2,45 @@
 #include "SSLHelper.h"
 #include "SSLClient.h"
 
+
 // Miscellaneous functions in support of SSL
+
+// Utility function to get the hostname of the host I am running on
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname)
+{
+   DWORD NameLength = 0;
+   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+   if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+   {
+      CString ComputerName;
+      if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+      {
+         ComputerName.ReleaseBuffer();
+         return ComputerName;
+      }
+   }
+   return CString();
+}
+
+// Utility function to return the user name I'm runng under
+CString GetUserName(void)
+{
+   DWORD NameLength = 0;
+   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+   if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+   {
+      CString UserName;
+      if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+      {
+         UserName.ReleaseBuffer();
+         return UserName;
+      }
+   }
+   return CString();
+}
+
+// defined in another source file (CreateCertificate.cpp)
+PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
 
 // Select, and return a handle to a client certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
