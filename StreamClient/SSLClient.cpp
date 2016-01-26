@@ -44,7 +44,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 	}
    PCCERT_CONTEXT pCertContext = NULL;
    if (SelectClientCertificate)
-      hr = SelectClientCertificate(pCertContext, NULL);
+      hr = SelectClientCertificate(pCertContext, NULL, false);
    // If a certificate is required, it will be requested later 
    if FAILED(hr) pCertContext = NULL;
    hr = CreateCredentialsFromCertificate(&m_ClientCreds, pCertContext);
@@ -905,7 +905,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
     // Now go ask for the client credentials
     PCCERT_CONTEXT pCertContext = NULL;
     if (SelectClientCertificate)
-       Status = SelectClientCertificate(pCertContext, &IssuerListInfo);
+       Status = SelectClientCertificate(pCertContext, &IssuerListInfo, true);
     if(FAILED(Status))
     {
         DebugMsg("Error 0x%08x selecting client certificate", Status);
