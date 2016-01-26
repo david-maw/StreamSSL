@@ -8,17 +8,9 @@
 #include <atlconv.h>
 #include <string>
 #include <iostream>
-#include <iomanip>
 #include "SSLHelper.h"
 
 using namespace std;
-
-// defined in another source file (CreateCertificate.cpp)
-PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
-
-// Defined in SSLHelper.cpp
-CString GetHostName(COMPUTER_NAME_FORMAT = ComputerNameDnsHostname);
-CString GetUserName(void);
 
 // Given a pointer to a certificate context, return the certificate name (the friendly name if there is one, the subject name otherwise).
 
@@ -52,54 +44,31 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
    return true; // Any certificate will do
 }
 
-// This will get called once, or twice, the first call with "Required" false, which can return any
-// certificate it likes, or none at all. If it returns one, that will be sent to the server.
-// If that call did not return an acceptable certificate, the procedure may be called again if the server requests a 
+// This will get called once, or twice, the first call with pIssuerListInfo NULL, which can 
+// return any certificate it likes, or none at all. If it returns one, that will be sent to the server.
+// If that call did not return a certificate, the procedure may be called again if the server requests a 
 // client certificate, whatever is returned on the first call (including null) is sent to the server which gets to decide
-// whether or not it is acceptable. If there is a second call (which will have "Required" true and may have 
-// pIssuerListInfo non-NULL) it MUST return a certificate or the handshale will fail.
+// whether or not it is acceptable. If there is a second call (with pIssuerListInfo non-NULL) you MUST return
+// a certificate or the handshale will fail.
 
-SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)
+SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo)
 {
    SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
-
-   if (Required)
+   if (pIssuerListInfo)
+      Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
+   // Comment out the next 2 lines to wait until you have an explicit call from the server 
+   // requesting a client certificate and providing pIssuerListInfo
+   //if (FAILED(Status) || !pCertContext)
+   //   Status = CertFindClient(pCertContext);
+   if (pIssuerListInfo)
    {
-      // A client certificate must be returned or the handshake will fail
-      if (pIssuerListInfo && pIssuerListInfo->cIssuers == 0)
+      if (pIssuerListInfo->cIssuers == 0)
          cout << "Client certificate required, issuer list is empty";
       else
-      {
          cout << "Client certificate required, issuer list provided";
-         Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
-         if (!pCertContext)
-            cout << " but no certificates matched";
-      }
-      if (!pCertContext)
-         Status = CertFindClient(pCertContext); // Select any valid certificate, regardless of issuer
-      // If a search for a required client certificate failed, just make one
-      if (!pCertContext)
-      {
-         cout << ", none found, creating one";
-         pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName());
-         if (pCertContext)
-            Status = S_OK;
-         else
-         {
-            DWORD LastError = GetLastError();
-            cout << endl << "**** Error 0x" << std::hex << std::setw(8) << std::setfill('0') << LastError << " in CreateCertificate" << endl 
-               << "Client certificate";
-            Status = HRESULT_FROM_WIN32(LastError);
-         }
-      }
    }
    else
-   {
       cout << "Optional client certificate requested (without issuer list)";
-      // Enable the next line to preemptively guess at an appropriate certificate 
-      if (false && FAILED(Status))
-         Status = CertFindClient(pCertContext); // Select any valid certificate
-   }
    if (pCertContext)
       wcout << ", selected name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling
    else
@@ -111,7 +80,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-   CString HostName(GetHostName());
+	CString HostName("localhost");
    if (argc >= 2)
       HostName.SetString(argv[1]);
 	int Port = 41000;

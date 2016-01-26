@@ -55,7 +55,7 @@ public:
     HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = NULL, const int Len = 0);
 	// Attributes
     std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
-    std::function<SECURITY_STATUS (PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
+    std::function<SECURITY_STATUS (PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo)> SelectClientCertificate;
     bool getServerCertNameMatches();
 	bool getServerCertTrusted();
 };
