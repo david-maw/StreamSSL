@@ -94,6 +94,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ActiveSock.cpp" />
+    <ClCompile Include="CreateCertificate.cpp" />
     <ClCompile Include="SSLClient.cpp" />
     <ClCompile Include="SSLHelper.cpp" />
     <ClCompile Include="stdafx.cpp" />
