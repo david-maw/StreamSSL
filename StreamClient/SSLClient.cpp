@@ -314,7 +314,10 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 // whatever plaintext data the caller provides
 int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 {
-	INT err;
+   if (!lpBuf || Len > MaxMsgSize)
+      return SOCKET_ERROR;
+   
+   INT err;
 
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];

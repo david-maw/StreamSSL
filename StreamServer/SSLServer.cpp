@@ -253,7 +253,10 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 // whatever plaintext data the caller provides
 int CSSLServer::Send(const void * const lpBuf, const int Len)
 {
-	INT err;
+   if (!lpBuf || Len > MaxMsgSize)
+      return SOCKET_ERROR;
+   
+   INT err;
 
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];
