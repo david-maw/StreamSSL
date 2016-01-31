@@ -9,9 +9,6 @@ PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
 CredHandle CSSLServer::g_ServerCreds = { 0 };
 CString CSSLServer::g_ServerName = CString();
 
-// defined in another source file (Listener.cpp)
-CString GetHostName(void);
-
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means to send messages to a client (a CPassiveSock).
 CSSLServer::CSSLServer(CPassiveSock * SocketStream)

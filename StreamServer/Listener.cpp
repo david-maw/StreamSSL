@@ -5,37 +5,7 @@
 #include <atlconv.h>
 #include <WS2tcpip.h>
 #include "Transport.h"
-
-// Handy utility function to get the hostname of the host I am running on
-CString GetHostName(void)
-{
-	struct addrinfo hints, *info; 
-	int gai_result; 
- 
-	char hostname[1024]; 
-	hostname[1023] = '\0'; 
-	gethostname(hostname, 1023); 
- 
-	memset(&hints, 0, sizeof hints); 
-	hints.ai_family = AF_UNSPEC; /*either IPV4 or IPV6*/ 
-	hints.ai_socktype = SOCK_STREAM; 
-	hints.ai_flags = AI_CANONNAME; 
- 
-	if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0)
-	{ 
-		 fprintf(stderr, "getaddrinfo: %S\n", ATL::CT2W(gai_strerror(gai_result))); 
-		 exit(1); 
-	} 
- 
-	if (info == NULL)
-        return hostname;
-    else
-    {
-        CString s(info->ai_canonname);
-        freeaddrinfo(info);
-        return s;
-    }
-}
+#include "SSLHelper.h"
 
 // CListerner object, listens for connections on one thread, and initiates a worker
 // thread each time a client connects.

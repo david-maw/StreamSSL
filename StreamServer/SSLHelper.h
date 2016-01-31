@@ -13,6 +13,8 @@
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext);
 SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore = false);
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname);
+CString GetUserName(void);
 
 class CSSLHelper
 {

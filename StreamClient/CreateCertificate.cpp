@@ -5,7 +5,7 @@
 // based on a sample found at:
 // http://blogs.msdn.com/b/alejacma/archive/2009/03/16/how-to-create-a-self-signed-certificate-with-cryptoapi-c.aspx
 // Create a self-signed certificate and store it in the machine personal store
-PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL)
+PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR FriendlyName, LPCWSTR Description)
 {
 	// CREATE KEY PAIR FOR SELF-SIGNED CERTIFICATE
 

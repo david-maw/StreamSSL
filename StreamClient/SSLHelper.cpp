@@ -6,7 +6,7 @@
 // Miscellaneous functions in support of SSL
 
 // Utility function to get the hostname of the host I am running on
-CString GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname)
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
 {
    DWORD NameLength = 0;
    //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);

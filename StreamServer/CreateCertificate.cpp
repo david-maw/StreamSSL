@@ -4,18 +4,19 @@
 // based on a sample found at:
 // http://blogs.msdn.com/b/alejacma/archive/2009/03/16/how-to-create-a-self-signed-certificate-with-cryptoapi-c.aspx
 // Create a self-signed certificate and store it in the machine personal store
-PCCERT_CONTEXT CreateCertificate()
+PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR FriendlyName, LPCWSTR Description)
 {
-	// CREATE KEY PAIR FOR SELF-SIGNED CERTIFICATE IN MACHINE PROFILE
+	// CREATE KEY PAIR FOR SELF-SIGNED CERTIFICATE
 
 	HCRYPTPROV hCryptProv = NULL;
 	HCRYPTKEY hKey = NULL;
 	WCHAR * KeyContainerName = L"SSLTestKeyContainer";
-	__try
+   DWORD KeyFlags = MachineCert ? CRYPT_MACHINE_KEYSET : 0;
+	try
 	{
 		// Acquire key container
 		DebugMsg(("CryptAcquireContext of existing key container... "));
-		if (!CryptAcquireContextW(&hCryptProv, KeyContainerName, NULL, PROV_RSA_FULL, CRYPT_MACHINE_KEYSET))
+		if (!CryptAcquireContextW(&hCryptProv, KeyContainerName, NULL, PROV_RSA_FULL, KeyFlags))
 		{
 			int err = GetLastError();
 
@@ -26,7 +27,7 @@ PCCERT_CONTEXT CreateCertificate()
 
 			// Try to create a new key container
 			DebugMsg(("CryptAcquireContext create new container... "));
-			if (!CryptAcquireContextW(&hCryptProv, KeyContainerName, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET | CRYPT_MACHINE_KEYSET))
+			if (!CryptAcquireContextW(&hCryptProv, KeyContainerName, NULL, PROV_RSA_FULL, KeyFlags | CRYPT_NEWKEYSET))
 			{
 				int err = GetLastError();
 
@@ -61,8 +62,8 @@ PCCERT_CONTEXT CreateCertificate()
 			DebugMsg("Success");
 		}
 	}
-	__finally
-	{
+   catch (...) {}
+
 		// Clean up  
 
 		if (hKey)
@@ -77,7 +78,6 @@ PCCERT_CONTEXT CreateCertificate()
 			CryptReleaseContext(hCryptProv, 0);
 			DebugMsg("Success");
 		}
-	}
 
 	// CREATE SELF-SIGNED CERTIFICATE AND ADD IT TO PERSONAL STORE IN MACHINE PROFILE
 
@@ -87,14 +87,18 @@ PCCERT_CONTEXT CreateCertificate()
 	HCRYPTPROV_OR_NCRYPT_KEY_HANDLE hCryptProvOrNCryptKey = NULL;
 	BOOL fCallerFreeProvOrNCryptKey = FALSE;
 
-	__try
+	try
 	{
 		// Encode certificate Subject
-		LPCTSTR pszX500 = _T("CN=localhost");
+      CString X500(L"CN=");
+      if (Subject)
+         X500 += Subject;
+      else
+         X500 += L"localuser";
 		DWORD cbEncoded = 0;
 		// Find out how many bytes are needed to encode the certificate
 		DebugMsg(("CertStrToName... "));
-		if (!CertStrToName(X509_ASN_ENCODING, pszX500, CERT_X500_NAME_STR, NULL, pbEncoded, &cbEncoded, NULL))
+		if (!CertStrToName(X509_ASN_ENCODING, LPCWSTR(X500), CERT_X500_NAME_STR, NULL, pbEncoded, &cbEncoded, NULL))
 		{
 			// Error
 			DebugMsg("Error 0x%x", GetLastError());
@@ -118,7 +122,7 @@ PCCERT_CONTEXT CreateCertificate()
 		}
 		// Encode the certificate
 		DebugMsg(("CertStrToName... "));
-		if (!CertStrToName(X509_ASN_ENCODING, pszX500, CERT_X500_NAME_STR, NULL, pbEncoded, &cbEncoded, NULL))
+		if (!CertStrToName(X509_ASN_ENCODING, LPCWSTR(X500), CERT_X500_NAME_STR, NULL, pbEncoded, &cbEncoded, NULL))
 		{
 			// Error
 			DebugMsg("Error 0x%x", GetLastError());
@@ -141,7 +145,7 @@ PCCERT_CONTEXT CreateCertificate()
 		KeyProvInfo.pwszContainerName = KeyContainerName; // The key we made earlier
 		KeyProvInfo.pwszProvName = NULL;
 		KeyProvInfo.dwProvType = PROV_RSA_FULL;
-		KeyProvInfo.dwFlags = CRYPT_MACHINE_KEYSET;
+		KeyProvInfo.dwFlags = KeyFlags;
 		KeyProvInfo.cProvParam = 0;
 		KeyProvInfo.rgProvParam = NULL;
 		KeyProvInfo.dwKeySpec = AT_SIGNATURE;
@@ -170,9 +174,10 @@ PCCERT_CONTEXT CreateCertificate()
 			DebugMsg("Success");
 		}
 
-      // Specify the allowed usage of the certificate (server authentication)
+      // Specify the allowed usage of the certificate (client or server authentication)
 		DebugMsg(("CertAddEnhancedKeyUsageIdentifier"));
-      if (CertAddEnhancedKeyUsageIdentifier(pCertContext, szOID_PKIX_KP_SERVER_AUTH))
+      LPCSTR szOID = MachineCert ? szOID_PKIX_KP_SERVER_AUTH : szOID_PKIX_KP_CLIENT_AUTH;
+      if (CertAddEnhancedKeyUsageIdentifier(pCertContext, szOID))
 		{
 			DebugMsg("Success");
 		}
@@ -187,7 +192,10 @@ PCCERT_CONTEXT CreateCertificate()
       CRYPT_DATA_BLOB cdblob;
 
       // Give the certificate a friendly name
-      cdblob.pbData = (BYTE*)L"SSLStream Testing";
+      if (FriendlyName)
+         cdblob.pbData = (BYTE*)FriendlyName;
+      else
+         cdblob.pbData = (BYTE*)L"SSLStream";
       cdblob.cbData = (wcslen((LPWSTR) cdblob.pbData) + 1) * sizeof(WCHAR);
 		DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
       if (CertSetCertificateContextProperty(pCertContext, CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
@@ -202,7 +210,12 @@ PCCERT_CONTEXT CreateCertificate()
 		}
 
       // Give the certificate a description
-      cdblob.pbData = (BYTE*)L"SSL Stream Server Test";
+      if (Description)
+         cdblob.pbData = (BYTE*)Description;
+      else if (MachineCert)
+         cdblob.pbData = (BYTE*)L"SSLStream Server Test";
+      else
+         cdblob.pbData = (BYTE*)L"SSLStream Client Test";
       cdblob.cbData = (wcslen((LPWSTR) cdblob.pbData) + 1) * sizeof(WCHAR);
 		DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
       if (CertSetCertificateContextProperty(pCertContext, CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
@@ -216,9 +229,10 @@ PCCERT_CONTEXT CreateCertificate()
 			return 0;
 		}
 
-		// Open Personal cert store in machine profile
+		// Open Personal cert store in machine or user profile
 		DebugMsg(("CertOpenStore to open root store... "));
-		hStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0, CERT_SYSTEM_STORE_LOCAL_MACHINE, L"My");
+		hStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0, 
+         MachineCert ? CERT_SYSTEM_STORE_LOCAL_MACHINE : CERT_SYSTEM_STORE_CURRENT_USER, L"My");
 		if (!hStore)
 		{
 			// Error
@@ -262,8 +276,8 @@ PCCERT_CONTEXT CreateCertificate()
 			DebugMsg("Success, private key acquired");
 		}
 	}
-	__finally
-	{
+   catch (...){}
+
 		// Clean up
 
 		if (pbEncoded != NULL) {
@@ -284,7 +298,6 @@ PCCERT_CONTEXT CreateCertificate()
 			DebugMsg(("CertCloseStore... "));
 			CertCloseStore(hStore, 0);
 			DebugMsg("Success");
-		}
 	}
 	return pCertContext;
 }

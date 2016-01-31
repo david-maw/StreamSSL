@@ -4,8 +4,42 @@
 
 // Miscellaneous functions in support of SSL
 
+// Utility function to get the hostname of the host I am running on
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
+{
+   DWORD NameLength = 0;
+   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+   if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+   {
+      CString ComputerName;
+      if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+      {
+         ComputerName.ReleaseBuffer();
+         return ComputerName;
+      }
+   }
+   return CString();
+}
+
+// Utility function to return the user name I'm runng under
+CString GetUserName(void)
+{
+   DWORD NameLength = 0;
+   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+   if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+   {
+      CString UserName;
+      if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+      {
+         UserName.ReleaseBuffer();
+         return UserName;
+      }
+   }
+   return CString();
+}
+
 // defined in another source file (CreateCertificate.cpp)
-PCCERT_CONTEXT CreateCertificate();
+PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
@@ -106,7 +140,7 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
       if (LastError == CRYPT_E_NOT_FOUND)
       {
          DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-         pCertContext = CreateCertificate();
+         pCertContext = CreateCertificate(true, pszSubjectName);
          if (!pCertContext)
          {
             LastError = GetLastError();
@@ -120,19 +154,6 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
          DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
          return HRESULT_FROM_WIN32(LastError);
       }
-   }
-
-   if (!pCertContext)
-   {
-      DWORD LastError = GetLastError();
-      if (LastError == CRYPT_E_NOT_FOUND)
-      {
-         DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-         pCertContext = CreateCertificate();
-      }
-      else
-         DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
-      return HRESULT_FROM_WIN32(LastError);
    }
 
    return SEC_E_OK;
