@@ -169,7 +169,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext)
    CERT_CHAIN_PARA          ChainPara;
    PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
    HRESULT                  Status;
-   LPSTR rgszUsages[] = { szOID_PKIX_KP_SERVER_AUTH,
+   LPSTR rgszUsages[] = { szOID_PKIX_KP_CLIENT_AUTH,
       szOID_SERVER_GATED_CRYPTO,
       szOID_SGC_NETSCAPE };
    DWORD cUsages = _countof(rgszUsages);

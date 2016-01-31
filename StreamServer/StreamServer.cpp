@@ -31,7 +31,7 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
       cout << "A trusted";
    else
       cout << "An untrusted";
-   wcout << " client certificate was returned for " << (LPCWSTR)GetCertName(pCertContext) << endl;
+   wcout << " client certificate was returned for \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
    return NULL != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
 }
 
