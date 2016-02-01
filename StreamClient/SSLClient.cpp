@@ -6,6 +6,7 @@
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLClient::g_pSSPI = NULL;
 
+
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)
@@ -43,11 +44,13 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 			return hr;
 	}
    PCCERT_CONTEXT pCertContext = NULL;
+	CertContextHandle hCertContext;
    if (SelectClientCertificate)
-      hr = SelectClientCertificate(pCertContext, NULL, false);
+		hr = SelectClientCertificate(pCertContext, NULL, false);
    // If a certificate is required, it will be requested later 
    if FAILED(hr) pCertContext = NULL;
-   hr = CreateCredentialsFromCertificate(&m_ClientCreds, pCertContext);
+	hCertContext.reset(pCertContext);
+   hr = CreateCredentialsFromCertificate(&m_ClientCreds.get(), hCertContext.get());
    if (pCertContext != NULL)
       CertFreeCertificateContext(pCertContext);
    if FAILED(hr) return hr;
@@ -420,7 +423,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
     OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	 scRet = g_pSSPI->InitializeSecurityContext(
-		 &m_ClientCreds,
+		 &m_ClientCreds.get(),
 		 NULL,
 		 ServerName,
 		 dwSSPIFlags,
@@ -559,7 +562,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
         // Call InitializeSecurityContext.
         //
 
-        scRet = g_pSSPI->InitializeSecurityContext(&m_ClientCreds,
+        scRet = g_pSSPI->InitializeSecurityContext(&m_ClientCreds.get(),
                                           &m_hContext,
                                           NULL,
                                           dwSSPIFlags,
@@ -879,12 +882,9 @@ bool CSSLClient::getServerCertTrusted()
 
 SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 {
-    CredHandle hCreds;
+    CredentialHandle hCreds;
     SecPkgContext_IssuerListInfoEx IssuerListInfo;
     SECURITY_STATUS Status;
-
-    // Destroy the cached credentials.
-    g_pSSPI->FreeCredentialsHandle(&m_ClientCreds);
 
     //
     // Read list of trusted issuers from schannel.
@@ -907,6 +907,8 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 
     // Now go ask for the client credentials
     PCCERT_CONTEXT pCertContext = NULL;
+	 CertContextHandle hCertContext;
+
     if (SelectClientCertificate)
        Status = SelectClientCertificate(pCertContext, &IssuerListInfo, true);
     if(FAILED(Status))
@@ -914,13 +916,13 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
         DebugMsg("Error 0x%08x selecting client certificate", Status);
         return Status;
     }
-
-    if (!pCertContext)
+	 hCertContext.reset(pCertContext);
+    if (!hCertContext)
        DebugMsg("No suitable client certificate is available to return to the server");
     
-    Status = CreateCredentialsFromCertificate(&hCreds, pCertContext);
+    Status = CreateCredentialsFromCertificate(&hCreds.get(), hCertContext.get());
 
-    if (SUCCEEDED(Status) && SecIsValidHandle(&hCreds))
+    if (SUCCEEDED(Status) && hCreds)
     {
         // Store the new ones
         m_ClientCreds = hCreds;

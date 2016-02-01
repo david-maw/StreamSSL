@@ -10,6 +10,7 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
+#include "Handle.h"
 
 class CActiveSock; // forward declaration
 
@@ -18,9 +19,9 @@ class CSSLClient
 public:
 	CSSLClient(CActiveSock *);
 	~CSSLClient(void);
-private:
    static PSecurityFunctionTable g_pSSPI;
-	CredHandle m_ClientCreds;
+private:
+	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
 	static HRESULT InitializeClass(void);

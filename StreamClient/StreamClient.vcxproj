@@ -26,12 +26,12 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v110</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -86,6 +86,7 @@
   <ItemGroup>
     <ClInclude Include="ActiveSock.h" />
     <ClInclude Include="EventWrapper.h" />
+    <ClInclude Include="Handle.h" />
     <ClInclude Include="ISocketStream.h" />
     <ClInclude Include="SSLClient.h" />
     <ClInclude Include="SSLHelper.h" />
