@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
-#include "SSLClient.h"
 
 
 // Miscellaneous functions in support of SSL

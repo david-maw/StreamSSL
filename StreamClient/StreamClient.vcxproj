@@ -26,7 +26,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -88,6 +88,7 @@
     <ClInclude Include="EventWrapper.h" />
     <ClInclude Include="Handle.h" />
     <ClInclude Include="ISocketStream.h" />
+    <ClInclude Include="SecurityHandle.h" />
     <ClInclude Include="SSLClient.h" />
     <ClInclude Include="SSLHelper.h" />
     <ClInclude Include="stdafx.h" />
@@ -96,6 +97,7 @@
   <ItemGroup>
     <ClCompile Include="ActiveSock.cpp" />
     <ClCompile Include="CreateCertificate.cpp" />
+    <ClCompile Include="SecurityHandle.cpp" />
     <ClCompile Include="SSLClient.cpp" />
     <ClCompile Include="SSLHelper.cpp" />
     <ClCompile Include="stdafx.cpp" />

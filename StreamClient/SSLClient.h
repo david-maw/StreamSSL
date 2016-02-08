@@ -10,7 +10,8 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
-#include "Handle.h"
+#include "SecurityHandle.h"
+
 
 class CActiveSock; // forward declaration
 
@@ -36,7 +37,7 @@ private:
 	CHAR * plainTextPtr;
    DWORD plainTextBytes;
 	void * readPtr;
-	CtxtHandle m_hContext;
+   SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes;
    static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
    SECURITY_STATUS GetNewClientCredentials();
