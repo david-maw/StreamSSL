@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
-
+#include <algorithm>
+#include <WinDNS.h>
+#pragma comment(lib, "Dnsapi.lib")
 
 // Miscellaneous functions in support of SSL
 
@@ -40,6 +42,74 @@ CString GetUserName(void)
 
 // defined in another source file (CreateCertificate.cpp)
 PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
+
+bool HostNameMatches(CString HostName, PCWSTR pDNSName)
+{
+   CString DNSName(pDNSName);
+   if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
+      return true;
+   else if (DNSName.Find(L'*') < 0) // The DNSName is a hostname, but did not match
+      return false;
+   else // The DNSName is wildcarded
+   {
+      int suffixLen = HostName.GetLength() - HostName.Find(L'.'); // The length of the fixed part
+      if (DNSName.GetLength() > suffixLen + 2) // the hostname domain part must be longer than the DNSName
+         return false;
+      else if (DNSName.GetLength() - DNSName.Find(L'.') != suffixLen) // The two suffix lengths must match
+         return false;
+      else if (HostName.Right(suffixLen) != DNSName.Right(suffixLen))
+         return false;
+      else // at this point, the decision is whether the last hostname node matches the wildcard
+      {
+         DNSName = DNSName.SpanExcluding(L".");
+         CString HostShortName = HostName.SpanExcluding(L".");
+         return (S_OK == PathMatchSpecEx(HostShortName, DNSName, PMSF_NORMAL));
+      }
+   }
+}
+
+// See http://etutorials.org/Programming/secure+programming/Chapter+10.+Public+Key+Infrastructure/10.8+Adding+Hostname+Checking+to+Certificate+Verification/
+// for a pre C++11 version of this algorithm
+bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
+   /* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
+   auto szOID = szOID_SUBJECT_ALT_NAME2;
+   auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+      pCertContext->pCertInfo->rgExtension);
+   if (!pExtension)
+   {
+      szOID = szOID_SUBJECT_ALT_NAME;
+      pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+         pCertContext->pCertInfo->rgExtension);
+   }
+   CString HostName(hostname);
+
+   // Extract the SAN information (list of names) 
+   DWORD cbStructInfo = -1;
+   if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
+      pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
+   {
+      auto pvS = std::make_unique<byte[]>(cbStructInfo);
+      CryptDecodeObject(X509_ASN_ENCODING, szOID, pExtension->Value.pbData,
+         pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
+      auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
+
+      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [HostName](_CERT_ALT_NAME_ENTRY Entry)
+      {
+         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && HostNameMatches(HostName, Entry.pwszDNSName);
+      }
+      );
+      return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
+   }
+
+   /* No SubjectAltName extension -- check CommonName */
+   auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
+   if (!dwCommonNameLength) // No CN found
+      return false;
+   CString CommonName;
+   CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
+   CommonName.ReleaseBufferSetLength(dwCommonNameLength);
+   return HostNameMatches(HostName, CommonName);
+}
 
 // Select, and return a handle to a client certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
@@ -314,50 +384,6 @@ cleanup:
 		CertFreeCertificateChain(pChainContext);
 
 	return Status;
-}
-
-// Does the name on the certificate match the name we provide
-static HRESULT NamesMatch(LPCWSTR CertName, LPCWSTR ServerName)
-{
-	HRESULT hr = S_FALSE;
-	// First, do a case insensitive compare, if the string are the same, we're done
-	if (_wcsnicmp(CertName, ServerName, 256) == 0)
-		return S_OK;
-	// The strings were not the same, so see if the Servername was just the first node of the CertName
-	CString Cert(CertName), Server(ServerName);
-	// If the server name had a period in it, just give up
-	if (Server.Find(L".") >= 0)
-		return S_FALSE;
-	// The cert name must be longer than the server name, or there's no hope 
-	if (Server.GetLength() >= Cert.GetLength())
-		return S_FALSE;
-	// See if the cert name begins with the server name and a period, if so, call it a match
-	Server += L".";
-	Cert = Cert.Left(Server.GetLength());
-	if (Cert.CompareNoCase(Server) == 0)
-		return S_OK;
-	return S_FALSE;
-}
-
-HRESULT CertNameMatches(PCCERT_CONTEXT pCertContext, LPCWSTR ServerName)
-{
-	WCHAR pszNameString[256];
-
-	if (CertGetNameString(
-		pCertContext,
-		CERT_NAME_SIMPLE_DISPLAY_TYPE,
-		0,
-		NULL,
-		pszNameString,
-		128))
-	{
-		DebugMsg(L"Certificate name=%s", pszNameString);
-		return NamesMatch(pszNameString, ServerName);
-	}
-	else
-		DebugMsg("CertGetName failed.");
-
-	return E_FAIL;
 }
 
 // Display a UI with the certificate info and also write it to the debug output

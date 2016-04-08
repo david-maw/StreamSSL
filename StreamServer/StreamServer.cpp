@@ -21,7 +21,7 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubje
 {
    SECURITY_STATUS status = CertFindServerByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
    if (pCertContext)
-      wcout << "Server certificate requested for " << pszSubjectName << ", found " << (LPCWSTR)GetCertName(pCertContext) << endl;
+      wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
    return status;
 }
 

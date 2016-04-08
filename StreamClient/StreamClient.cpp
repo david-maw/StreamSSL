@@ -37,12 +37,12 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
       cout << "A trusted";
    else
       cout << "An untrusted";
-   wcout << " server certificate was returned for ";
+   wcout << " server certificate was returned with a name ";
    if (matchingName)
-      cout << "the expected";
+      cout << "match";
    else
-      cout << "an unexpected";
-   wcout << " name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling
+      cout << "mismatch";
+   wcout << " called \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl; // wcout for WCHAR* handling
    if (false && debug && pCertContext)
       ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
    return true; // Any certificate will do
@@ -107,7 +107,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-   CString HostName(GetHostName());
+   CString HostName(GetHostName(ComputerNameDnsFullyQualified));
    if (argc >= 2)
       HostName.SetString(argv[1]);
 	int Port = 41000;

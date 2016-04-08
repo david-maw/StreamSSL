@@ -419,7 +419,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
                      status = CreateCredentialsFromCertificate(&g_ServerCreds, pCertContext);
                   if (FAILED(status))
                   {
-                     DebugMsg("Failed handling client initialization, error = 0x%08x", status);
+                     DebugMsg("Failed handling server initialization, error = 0x%08x", status);
                      scRet = SEC_E_INTERNAL_ERROR;
                      break;
                   }

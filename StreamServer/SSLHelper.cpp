@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
+#include <memory>
+#include <algorithm>
 #include "SSLServer.h"
+#pragma comment(lib, "Dnsapi.lib")
 
 // Miscellaneous functions in support of SSL
 
@@ -40,6 +43,74 @@ CString GetUserName(void)
 
 // defined in another source file (CreateCertificate.cpp)
 PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
+
+bool HostNameMatches(CString HostName, PCWSTR pDNSName)
+{
+   CString DNSName(pDNSName);
+   if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
+      return true;
+   else if (DNSName.Find(L'*') < 0) // The DNSName is a hostname, but did not match
+      return false;
+   else // The DNSName is wildcarded
+   {
+      int suffixLen = HostName.GetLength() - HostName.Find(L'.'); // The length of the fixed part
+      if (DNSName.GetLength() > suffixLen + 2) // the hostname domain part must be longer than the DNSName
+         return false;
+      else if (DNSName.GetLength() - DNSName.Find(L'.') != suffixLen) // The two suffix lengths must match
+         return false;
+      else if (HostName.Right(suffixLen) != DNSName.Right(suffixLen))
+         return false;
+      else // at this point, the decision is whether the last hostname node matches the wildcard
+      {
+         DNSName = DNSName.SpanExcluding(L".");
+         CString HostShortName = HostName.SpanExcluding(L".");
+         return (S_OK == PathMatchSpecEx(HostShortName, DNSName, PMSF_NORMAL));
+      }
+   } 
+}
+
+// See http://etutorials.org/Programming/secure+programming/Chapter+10.+Public+Key+Infrastructure/10.8+Adding+Hostname+Checking+to+Certificate+Verification/
+// for a pre C++11 version of this algorithm
+bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
+   /* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
+   auto szOID = szOID_SUBJECT_ALT_NAME2;
+   auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+      pCertContext->pCertInfo->rgExtension);
+   if (!pExtension) 
+   {
+      szOID = szOID_SUBJECT_ALT_NAME;
+      pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+         pCertContext->pCertInfo->rgExtension);
+   }
+   CString HostName(hostname);
+
+   // Extract the SAN information (list of names) 
+   DWORD cbStructInfo = -1;
+   if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
+      pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
+   {
+      auto pvS = std::make_unique<byte[]>(cbStructInfo);
+      CryptDecodeObject(X509_ASN_ENCODING, szOID, pExtension->Value.pbData,
+         pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
+      auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
+
+      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [HostName](_CERT_ALT_NAME_ENTRY Entry)
+      {
+         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && HostNameMatches(HostName, Entry.pwszDNSName);
+      }
+      );
+      return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
+   }
+
+   /* No SubjectAltName extension -- check CommonName */
+   auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
+   if (!dwCommonNameLength) // No CN found
+      return false;
+   CString CommonName;
+   CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
+   CommonName.ReleaseBufferSetLength(dwCommonNameLength);
+   return HostNameMatches(HostName, CommonName);
+}
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
@@ -107,7 +178,7 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
       DebugMsg("Certificate '%S' is allowed to be used for server authentication.", ATL::CT2W(pszFriendlyNameString));
       if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
          DebugMsg("CertGetNameString failed getting subject name.");
-      else if (_tcscmp(pszNameString, pszSubjectName))
+      else if (!MatchCertHostName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
          DebugMsg("Certificate has wrong subject name.");
       else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
       {
@@ -468,7 +539,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 	return S_OK;
 }
 
-// General purpose helper class for SSL, decodes buffers for disgnosts, handles SNI
+// General purpose helper class for SSL, decodes buffers for diagnostics, handles SNI
 
 CSSLHelper::CSSLHelper(const byte * BufPtr, const int BufBytes):
 contentType(0),
