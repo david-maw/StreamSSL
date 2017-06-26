@@ -69,6 +69,7 @@ ipch/
 *.sdf
 *.cachefile
 
+
 # Visual Studio profiler
 *.psess
 *.vsp
@@ -188,3 +189,7 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
+
+# Zip files 
+*.zip
+/StreamSSL.VC.db
