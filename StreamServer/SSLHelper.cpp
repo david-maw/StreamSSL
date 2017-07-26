@@ -2,6 +2,7 @@
 #include "SSLHelper.h"
 #include <memory>
 #include <algorithm>
+#include <vector>
 #include "SSLServer.h"
 #pragma comment(lib, "Dnsapi.lib")
 
@@ -175,7 +176,7 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
          DebugMsg("CertGetNameString failed getting friendly name.");
          continue;
       }
-      DebugMsg("Certificate '%S' is allowed to be used for server authentication.", ATL::CT2W(pszFriendlyNameString));
+      DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
       if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
          DebugMsg("CertGetNameString failed getting subject name.");
       else if (!MatchCertHostName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
@@ -228,6 +229,122 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
    }
 
    return SEC_E_OK;
+}
+
+// Utility functions to help with certificates
+
+int hex_char_to_int(char c) {
+	int result = -1;
+	if (('0' <= c) && (c <= '9')) {
+		result = c - '0';
+	}
+	else if (('A' <= c) && (c <= 'F')) {
+		result = 10 + c - 'A';
+	}
+	else if (('a' <= c) && (c <= 'f')) {
+		result = 10 + c - 'a';
+	}
+	return result;
+}
+
+std::vector<byte> hexToBinary(const char * const str)
+{
+	std::vector<byte> boutput(20);
+	int nibbleValue = -1;
+	byte byteValue = 0;
+	auto it = boutput.begin();
+	const char * p = str;
+	bool highOrder = false;
+
+	while (*p != 0 && str - p < 40 && it != boutput.end())
+	{
+		nibbleValue = hex_char_to_int(*p++);
+		if (nibbleValue >= 0)
+		{
+			highOrder = !highOrder;
+			if (highOrder)
+			{
+				byteValue = nibbleValue << 4;
+			}
+			else
+			{
+				*it = static_cast<byte>(byteValue | nibbleValue);
+				it++;
+			}
+		}
+	}
+	return boutput;
+}
+
+SECURITY_STATUS CertFindServerBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
+{
+	// Find a specific certificate based on its signature
+	// The parameter is the SHA1 signatureof the certificate you want the server to use in string form, which the certificate manager will show you as the "thumbprint" field
+	auto b = hexToBinary(signature);
+
+	if (b.size() != 20)
+	{
+		DebugMsg("Certificate signature length should be exactly 20 bytes. \n");
+		return SEC_E_INVALID_PARAMETER;
+	}
+	HCERTSTORE hMyCertStore;
+	if (fUserStore)
+		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+	else
+	{	// Open the local machine certificate store.
+		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+			X509_ASN_ENCODING,
+			NULL,
+			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+			L"MY");
+	}
+
+	if (!hMyCertStore)
+	{
+		int err = GetLastError();
+
+		if (err == ERROR_ACCESS_DENIED)
+			DebugMsg("**** CertOpenStore failed with 'access denied'");
+		else
+			DebugMsg("**** Error %d returned by CertOpenStore", err);
+		return HRESULT_FROM_WIN32(err);
+	}
+
+	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+		CertFreeCertificateContext(pCertContext);
+	pCertContext = NULL;
+
+	CRYPT_HASH_BLOB certhash;
+	certhash.cbData = b.size();
+	certhash.pbData = &b[0];
+
+	PCCERT_CONTEXT  pDesiredCert = NULL;
+	// Now search the selected store for the certificate
+	if (pCertContext = CertFindCertificateInStore(
+		hMyCertStore,
+		X509_ASN_ENCODING,             // Use X509_ASN_ENCODING
+		0,                            // No dwFlags needed 
+		CERT_FIND_SHA1_HASH, // Find a certificate with a SHA1 hash that matches the next parameter
+		&certhash,
+		NULL))                        // NULL for the first call to the
+	{
+		TCHAR pszFriendlyNameString[128];
+		//ShowCertInfo(pCertContext);
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+		{
+			DebugMsg("CertGetNameString failed getting friendly name.");
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
+		if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
+    		DebugMsg("A self-signed certificate was found.");
+	}
+	else
+	{
+		DebugMsg("Could not find the desired certificate.\n");
+		return SEC_E_CERT_UNKNOWN;
+	}
+	return SEC_E_OK;
 }
 
 // Return an indication of whether a certificate is trusted by asking Windows to validate the
@@ -336,7 +453,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		pszNameString,
 		128))
 	{
-		DebugMsg("Certificate for %S", ATL::CT2W(pszNameString));
+		DebugMsg("Certificate for %S", (LPWSTR)ATL::CT2W(pszNameString));
 	}
 	else
 		DebugMsg("CertGetName failed.");

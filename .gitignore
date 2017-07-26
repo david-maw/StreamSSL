@@ -193,3 +193,4 @@ ModelManifest.xml
 # Zip files 
 *.zip
 /StreamSSL.VC.db
+/.vs5/

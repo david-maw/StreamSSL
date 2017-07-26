@@ -19,7 +19,11 @@ CString GetCertName(PCCERT_CONTEXT pCertContext)
 
 SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)
 {
-   SECURITY_STATUS status = CertFindServerByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
+	SECURITY_STATUS status;
+	status = CertFindServerBySignature(pCertContext, 
+	   "a9 f4 6e bf 4e 1d 6d 67 2d 2b 39 14 ee ee 58 97 d1 d7 e9 d0", true);  // "true" looks in user store, "false", or nothing looks in machine store
+   if (!pCertContext) // If we don't already have a certificate, try and select a likely looking one
+	   status = CertFindServerByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
    if (pCertContext)
       wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
    return status;
@@ -44,7 +48,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
    Listener->SelectServerCert = SelectServerCert;
    Listener->ClientCertAcceptable = ClientCertAcceptable;
 	Listener->Initialize(Port);
-	cout << "Starting to listen on port " << Port << endl;
+	cout << "Starting to listen on port " << Port << ", will find certificate for first connection." << endl;
 	Listener->BeginListening([](ISocketStream * const StreamSock){
 		// This is the code to be executed each time a socket is opened
 		CString s;
