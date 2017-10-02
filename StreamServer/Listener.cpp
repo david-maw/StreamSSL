@@ -1,10 +1,6 @@
 #include "stdafx.h"
 #include "Listener.h"
-#include <process.h>
-#include <strsafe.h>
 #include <atlconv.h>
-#include <WS2tcpip.h>
-#include "Transport.h"
 #include "SSLHelper.h"
 
 // CListerner object, listens for connections on one thread, and initiates a worker
@@ -21,7 +17,6 @@ CListener::CListener()
 		m_hSocketEvents[i] = NULL;
 	}
 }
-
 
 CListener::~CListener(void)
 {

@@ -1,6 +1,6 @@
 #include "stdafx.h"
+#include "Utilities.h"
 #include <atlconv.h>
-#include <strsafe.h>
 
 // General purpose functions
 

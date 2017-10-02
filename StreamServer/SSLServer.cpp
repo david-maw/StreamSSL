@@ -413,7 +413,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
                      }
                   }
                   else
-                     status = CertFindServerByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
+                     status = CertFindServerCertificateByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
                   g_ServerName = (SUCCEEDED(status)) ? serverName : CString();
                   if (SUCCEEDED(status))
                      status = CreateCredentialsFromCertificate(&g_ServerCreds, pCertContext);

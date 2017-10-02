@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "Transport.h"
-#include "SSLServer.h"
-#include "Listener.h"
 
 #ifdef _DEBUG
 #undef THIS_FILE

@@ -11,29 +11,39 @@ const bool debug = true;
 const bool debug = false;
 #endif
 
+#define _AFXDLL
+#include <afxwin.h>
+#include <afxmt.h>
+
+// Windows SDK
+#ifndef VC_EXTRALEAN
+#define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
+#endif
+#include <WS2tcpip.h>
+#define SECURITY_WIN32
+#include <security.h>
+#include <strsafe.h>
+
+// Microsoft ToolKits
 #include <tchar.h>
 
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
 #endif
 
-#define _AFXDLL
-#include <afxwin.h>
-#include <afxmt.h>
 
+// Standard C++
+#include <functional>
 #include <iostream>
+#include <memory>
 
-#define Stringize( L )			#L
-#define MakeString( M, L )		M(L)
-#define $Line					\
-	MakeString(Stringize, __LINE__)
-#define Reminder				\
-	__FILE__ "(" $Line ") : Reminder: "
-// usage #pragma message(Reminder "your message here")
+// Application
+#include "ISocketStream.h"
+#include "Listener.h"
+#include "PassiveSock.h"
+#include "SSLServer.h"
+#include "Transport.h"
+#include "Utilities.h"
 
-void PrintHexDump(DWORD length, const void * const buf);
-void PrintHexDump(DWORD length, const void * const buf, const bool verbose);
-void SetThreadName(char* threadName);
-void SetThreadName(char* threadName, DWORD dwThreadID);
-void DebugMsg(const char* pszFormat, ...);
-bool IsUserAdmin();
+#pragma comment(lib, "Dnsapi.lib")
+#pragma comment(lib, "secur32.lib")

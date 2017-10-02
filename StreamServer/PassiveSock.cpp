@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include <process.h>
-#include "PassiveSock.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

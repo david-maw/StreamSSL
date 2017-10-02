@@ -1,12 +1,13 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
-#include <memory>
 #include <algorithm>
 #include <vector>
-#include "SSLServer.h"
 #pragma comment(lib, "Dnsapi.lib")
 
 // Miscellaneous functions in support of SSL
+
+// defined in another source file (CreateCertificate.cpp)
+PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
 
 // Utility function to get the hostname of the host I am running on
 CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
@@ -42,10 +43,7 @@ CString GetUserName(void)
    return CString();
 }
 
-// defined in another source file (CreateCertificate.cpp)
-PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
-
-bool HostNameMatches(CString HostName, PCWSTR pDNSName)
+bool DnsNameMatches(CString HostName, PCWSTR pDNSName)
 {
    CString DNSName(pDNSName);
    if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
@@ -72,7 +70,7 @@ bool HostNameMatches(CString HostName, PCWSTR pDNSName)
 
 // See http://etutorials.org/Programming/secure+programming/Chapter+10.+Public+Key+Infrastructure/10.8+Adding+Hostname+Checking+to+Certificate+Verification/
 // for a pre C++11 version of this algorithm
-bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
+bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) {
    /* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
    auto szOID = szOID_SUBJECT_ALT_NAME2;
    auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
@@ -83,7 +81,7 @@ bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
       pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
          pCertContext->pCertInfo->rgExtension);
    }
-   CString HostName(hostname);
+   CString RequiredName(pszRequiredName);
 
    // Extract the SAN information (list of names) 
    DWORD cbStructInfo = -1;
@@ -95,9 +93,9 @@ bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
          pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
       auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
 
-      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [HostName](_CERT_ALT_NAME_ENTRY Entry)
+      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [RequiredName](_CERT_ALT_NAME_ENTRY Entry)
       {
-         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && HostNameMatches(HostName, Entry.pwszDNSName);
+         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && DnsNameMatches(RequiredName, Entry.pwszDNSName);
       }
       );
       return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
@@ -110,12 +108,12 @@ bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
    CString CommonName;
    CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
    CommonName.ReleaseBufferSetLength(dwCommonNameLength);
-   return HostNameMatches(HostName, CommonName);
+   return DnsNameMatches(RequiredName, CommonName);
 }
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
-SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
    HCERTSTORE  hMyCertStore = NULL;
    TCHAR pszFriendlyNameString[128];
@@ -179,7 +177,7 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
       DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
       if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
          DebugMsg("CertGetNameString failed getting subject name.");
-      else if (!MatchCertHostName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
+      else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
          DebugMsg("Certificate has wrong subject name.");
       else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
       {
@@ -276,7 +274,7 @@ std::vector<byte> hexToBinary(const char * const str)
 	return boutput;
 }
 
-SECURITY_STATUS CertFindServerBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
+SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
 {
 	// Find a specific certificate based on its signature
 	// The parameter is the SHA1 signatureof the certificate you want the server to use in string form, which the certificate manager will show you as the "thumbprint" field
@@ -654,6 +652,18 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		free(pvData);
 	}
 	return S_OK;
+}
+
+// Helper function to return the friendly name of a certificate so it can be showed to a human 
+CString GetCertName(PCCERT_CONTEXT pCertContext)
+{
+   CString certName;
+   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
+   certName.ReleaseBuffer();
+   if (good)
+      return certName;
+   else
+      return L"<unknown>";
 }
 
 // General purpose helper class for SSL, decodes buffers for diagnostics, handles SNI

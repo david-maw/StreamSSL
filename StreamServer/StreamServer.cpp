@@ -1,34 +1,25 @@
 #include "stdafx.h"
-#include "Listener.h"
-#include "ISocketStream.h"
 #include "SSLHelper.h"
-#include <memory>
 
 using namespace std;
 
-CString GetCertName(PCCERT_CONTEXT pCertContext)
-{
-   CString certName;
-   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength()-1);
-   certName.ReleaseBuffer();
-   if (good)
-      return certName;
-   else
-      return L"<unknown>";
-}
-
+// This method is called when the first client tries to connect in order to allow a certificate to be selected to send to the client
+// It has to wait for the client connect request because the client tells the server what identity it expects it to present
+// This is called SNI (Server Name Indication) and it is a relatively new SSL feature
 SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)
 {
 	SECURITY_STATUS status;
-	status = CertFindServerBySignature(pCertContext, 
+	status = CertFindCertificateBySignature(pCertContext, 
 	   "a9 f4 6e bf 4e 1d 6d 67 2d 2b 39 14 ee ee 58 97 d1 d7 e9 d0", true);  // "true" looks in user store, "false", or nothing looks in machine store
    if (!pCertContext) // If we don't already have a certificate, try and select a likely looking one
-	   status = CertFindServerByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
+	   status = CertFindServerCertificateByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
    if (pCertContext)
       wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
    return status;
 }
 
+
+// This methood is called when a client connection is offered, it returns an indication of whether the certificate (or lack of one) is acceptable 
 bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 {
    if (trusted)

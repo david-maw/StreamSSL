@@ -1,9 +1,4 @@
 #pragma once
-
-#include <comdef.h>
-#include "PassiveSock.h"
-#include "ISocketStream.h"
-
 class CPrtMsg;
 class CListener;
 class CSSLServer;

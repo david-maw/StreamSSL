@@ -94,6 +94,7 @@
     <ClInclude Include="SSLHelper.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Transport.h" />
+    <ClInclude Include="Utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CreateCertificate.cpp" />
