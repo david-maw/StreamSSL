@@ -12,5 +12,6 @@ void PrintHexDump(DWORD length, const void * const buf);
 void PrintHexDump(DWORD length, const void * const buf, const bool verbose);
 void SetThreadName(char* threadName);
 void SetThreadName(char* threadName, DWORD dwThreadID);
-void DebugMsg(const char* pszFormat, ...);
+void DebugMsg(const WCHAR* pszFormat, ...);
+void DebugMsg(const CHAR* pszFormat, ...); 
 bool IsUserAdmin();
