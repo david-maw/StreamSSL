@@ -592,7 +592,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
            else
            {
               DebugMsg("Server Certificate returned");
-              ServerCertNameMatches = MatchCertHostName(get(hServerCertContext), ATL::CW2T(ServerName));
+              ServerCertNameMatches = MatchCertificateName(get(hServerCertContext), ATL::CW2T(ServerName));
               hr = CertTrusted(get(hServerCertContext));
               ServerCertTrusted = hr == S_OK;
               bool IsServerCertAcceptable = ServerCertAcceptable == nullptr;

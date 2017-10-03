@@ -1,4 +1,4 @@
-// StreamClient.cpp : Defines the entry point for the console application.
+// StreamClient.cpp : This is a sample calling program that uses the SSL client side capabilities.
 //
 
 #include "stdafx.h"
@@ -13,22 +13,6 @@
 
 using namespace std;
 
-// defined in another source file (CreateCertificate.cpp)
-PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
-
-// Given a pointer to a certificate context, return the certificate name (the friendly name if there is one, the subject name otherwise).
-
-CString GetCertName(PCCERT_CONTEXT pCertContext)
-{
-   CString certName;
-   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
-   certName.ReleaseBuffer();
-   if (good)
-      return certName;
-   else
-      return L"<unknown>";
-}
-
 // Function to evaluate the certificate returned from the server
 // if you want to keep it around call CertDuplicateCertificateContext, then CertFreeCertificateContext to free it
 bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)
@@ -37,12 +21,11 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
       cout << "A trusted";
    else
       cout << "An untrusted";
-   wcout << " server certificate was returned with a name ";
+   wcout << " server certificate called \"" << (LPCWSTR)GetCertName(pCertContext) << "\" was returned with a name "; // wcout for WCHAR* handling
    if (matchingName)
-      cout << "match";
+      cout << "match" << endl;
    else
-      cout << "mismatch";
-   wcout << " called \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl; // wcout for WCHAR* handling
+      cout << "mismatch" << endl;
    if (false && debug && pCertContext)
       ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
    return true; // Any certificate will do
@@ -72,7 +55,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
             cout << " but no certificates matched";
       }
       if (!pCertContext)
-         Status = CertFindClient(pCertContext); // Select any valid certificate, regardless of issuer
+         Status = CertFindClientCertificate(pCertContext); // Select any valid certificate, regardless of issuer
       // If a search for a required client certificate failed, just make one
       if (!pCertContext)
       {
@@ -94,7 +77,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
       cout << "Optional client certificate requested (without issuer list)";
       // Enable the next line to preemptively guess at an appropriate certificate 
       if (false && FAILED(Status))
-         Status = CertFindClient(pCertContext); // Select any valid certificate
+         Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
    }
    if (pCertContext)
       wcout << ", selected name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling

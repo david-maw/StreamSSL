@@ -1,29 +1,73 @@
 #include "stdafx.h"
 #include "Utilities.h"
-#include <strsafe.h>
+
+// General purpose functions
+
+//
+// Usage: SetThreadName ("MainThread"[, threadID]);
+//
+const DWORD MS_VC_EXCEPTION = 0x406D1388;
+
+#pragma pack(push,8)
+typedef struct tagTHREADNAME_INFO
+{
+   DWORD dwType; // Must be 0x1000.
+   LPCSTR szName; // Pointer to name (in user addr space).
+   DWORD dwThreadID; // Thread ID (MAXDWORD=caller thread).
+   DWORD dwFlags; // Reserved for future use, must be zero.
+} THREADNAME_INFO;
+#pragma pack(pop)
+
+void SetThreadName(char* threadName)
+{
+   SetThreadName(threadName, MAXDWORD);
+}
+
+void SetThreadName(char* threadName, DWORD dwThreadID)
+{
+   THREADNAME_INFO info;
+   info.dwType = 0x1000;
+   info.szName = threadName;
+   info.dwThreadID = dwThreadID;
+   info.dwFlags = 0;
+
+   __try
+   {
+      RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+   }
+   __except (EXCEPTION_EXECUTE_HANDLER)
+   {
+   }
+}
 
 void DebugMsg(const CHAR* pszFormat, ...)
 {
-    CHAR buf[1024];
-    StringCchPrintfA(buf, sizeof(buf)/sizeof(CHAR), "(%lu): ", GetCurrentThreadId());
-		va_list arglist;
-		va_start(arglist, pszFormat);
-		StringCchVPrintfA(&buf[strlen(buf)], sizeof(buf)/sizeof(CHAR), pszFormat, arglist);
-		va_end(arglist);
-    StringCchCatA(buf, sizeof(buf)/sizeof(CHAR), "\n");
-	OutputDebugStringA(buf);
+   if (debug)
+   {
+      CHAR buf[1024];
+      StringCchPrintfA(buf, sizeof(buf) / sizeof(CHAR), "(%lu): ", GetCurrentThreadId());
+      va_list arglist;
+      va_start(arglist, pszFormat);
+      StringCchVPrintfA(&buf[strlen(buf)], sizeof(buf) / sizeof(CHAR), pszFormat, arglist);
+      va_end(arglist);
+      StringCchCatA(buf, sizeof(buf) / sizeof(CHAR), "\n");
+      OutputDebugStringA(buf);
+   }
 }
 
 void DebugMsg(const WCHAR* pszFormat, ...)
 {
-    WCHAR buf[1024];
-    StringCchPrintfW(buf, sizeof(buf)/sizeof(WCHAR), L"(%lu): ", GetCurrentThreadId());
-		va_list arglist;
-		va_start(arglist, pszFormat);
-		StringCchVPrintfW(&buf[wcslen(buf)], sizeof(buf)/sizeof(WCHAR), pszFormat, arglist);
-		va_end(arglist);
-    StringCchCatW(buf, sizeof(buf)/sizeof(WCHAR), L"\n");
-    OutputDebugStringW(buf);
+   if (debug)
+   {
+      WCHAR buf[1024];
+      StringCchPrintfW(buf, sizeof(buf) / sizeof(WCHAR), L"(%lu): ", GetCurrentThreadId());
+      va_list arglist;
+      va_start(arglist, pszFormat);
+      StringCchVPrintfW(&buf[wcslen(buf)], sizeof(buf) / sizeof(WCHAR), pszFormat, arglist);
+      va_end(arglist);
+      StringCchCatW(buf, sizeof(buf) / sizeof(WCHAR), L"\n");
+      OutputDebugStringW(buf);
+   }
 }
 
 static void PrintHexDumpActual(DWORD length, const void * const buf, const bool verbose)
@@ -80,12 +124,34 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 
 void PrintHexDump(DWORD length, const void * const buf)
 {
-	if (debug)
-	PrintHexDumpActual(length, buf, false);
+   if (debug) PrintHexDumpActual(length, buf, false);
 }
 
 void PrintHexDump(DWORD length, const void * const buf, const bool verbose)
 {
-	if (debug)
-	PrintHexDumpActual(length, buf, verbose);
+	if (debug) PrintHexDumpActual(length, buf, verbose);
+}
+
+bool IsUserAdmin()
+{
+	BOOL b;
+	SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
+	PSID AdministratorsGroup;
+	b = AllocateAndInitializeSid(
+		&NtAuthority,
+		2,
+		SECURITY_BUILTIN_DOMAIN_RID,
+		DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0,
+		&AdministratorsGroup);
+	if (b)
+	{
+		if (!CheckTokenMembership(NULL, AdministratorsGroup, &b))
+		{
+			b = FALSE;
+		}
+		FreeSid(AdministratorsGroup);
+	}
+
+	return (b == TRUE);
 }

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "SecurityHandle.h"
 #include "SSLClient.h"
 

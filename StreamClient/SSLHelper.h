@@ -13,8 +13,12 @@
 // handy functions declared in this file
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext);
-bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname);
-SECURITY_STATUS CertFindClient(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName = NULL);
+bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname);
+SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName = NULL, boolean fUserStore = true);
 SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo);
 CString GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname);
 CString GetUserName(void);
+CString GetCertName(PCCERT_CONTEXT pCertContext);
+
+// defined in another source file (CreateCertificate.cpp)
+PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);

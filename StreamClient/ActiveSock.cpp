@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <WS2tcpip.h>
 #include <MSTcpIP.h>
+#include "Utilities.h"
 #include "ActiveSock.h"
 
 #ifdef _DEBUG
@@ -9,8 +10,6 @@
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
-
-void DebugMsg(const CHAR* pszFormat, ...);
 
 /////////////////////////////////////////////////////////////////////////////
 // CActiveSock
