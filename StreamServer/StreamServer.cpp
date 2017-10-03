@@ -9,12 +9,16 @@ using namespace std;
 SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)
 {
 	SECURITY_STATUS status;
-	status = CertFindCertificateBySignature(pCertContext, 
-	   "a9 f4 6e bf 4e 1d 6d 67 2d 2b 39 14 ee ee 58 97 d1 d7 e9 d0", true);  // "true" looks in user store, "false", or nothing looks in machine store
+   status = CertFindCertificateUI(pCertContext, pszSubjectName, true);
+   if (!pCertContext) // If we don't already have a certificate, try and select a specific one
+      status = CertFindCertificateBySignature(pCertContext,
+         "a9 f4 6e bf 4e 1d 6d 67 2d 2b 39 14 ee ee 58 97 d1 d7 e9 d0", true);  // "true" looks in user store, "false", or nothing looks in machine store
    if (!pCertContext) // If we don't already have a certificate, try and select a likely looking one
 	   status = CertFindServerCertificateByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
    if (pCertContext)
       wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
+   if (pCertContext)
+      ShowCertInfo(pCertContext, "Server Certificate In Use");
    return status;
 }
 

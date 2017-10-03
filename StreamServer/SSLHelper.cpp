@@ -2,7 +2,10 @@
 #include "SSLHelper.h"
 #include <algorithm>
 #include <vector>
+#include <cryptuiapi.h>
+
 #pragma comment(lib, "Dnsapi.lib")
+#pragma comment(lib, "Cryptui.lib")
 
 // Miscellaneous functions in support of SSL
 
@@ -273,6 +276,136 @@ std::vector<byte> hexToBinary(const char * const str)
 	}
 	return boutput;
 }
+
+// Section of code supporting CertFindCertificateUI which uses CryptUIDlgSelectCertificate a function 
+// that is not exported, so you have to link to it dynamically.
+
+typedef
+BOOL(WINAPI * PFNCCERTDISPLAYPROC)(
+   _In_ PCCERT_CONTEXT pCertContext,
+   _In_ HWND           hWndSelCertDlg,
+   _In_ void           *pvCallbackData
+   );
+
+typedef struct _CRYPTUI_SELECTCERTIFICATE_STRUCT {
+   DWORD               dwSize;
+   HWND                hwndParent;
+   DWORD               dwFlags;
+   LPCTSTR             szTitle;
+   DWORD               dwDontUseColumn;
+   LPCTSTR             szDisplayString;
+   PFNCFILTERPROC      pFilterCallback;
+   PFNCCERTDISPLAYPROC pDisplayCallback;
+   void                *pvCallbackData;
+   DWORD               cDisplayStores;
+   HCERTSTORE          *rghDisplayStores;
+   DWORD               cStores;
+   HCERTSTORE          *rghStores;
+   DWORD               cPropSheetPages;
+   LPCPROPSHEETPAGE    rgPropSheetPages;
+   HCERTSTORE          hSelectedCertStore;
+} CRYPTUI_SELECTCERTIFICATE_STRUCT, *PCRYPTUI_SELECTCERTIFICATE_STRUCT;
+
+typedef
+PCCERT_CONTEXT(WINAPI * CryptUIDlgSelectCertificate) (
+   PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
+   );
+
+BOOL WINAPI ValidCert(
+   PCCERT_CONTEXT  pCertContext,
+   BOOL            *pfInitialSelectedCert,
+   void            *pvCallbackData
+)
+{
+   CString ServerName = GetHostName();
+   if (MatchCertificateName(pCertContext, ServerName))  //  (_tcscmp(pszNameString, pszSubjectName))
+      return TRUE;
+   else
+      DebugMsg("Certificate has wrong subject name.");
+   return FALSE;
+}
+
+SECURITY_STATUS CertFindCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+{
+   //--------------------------------------------------------------------
+   // Declare and initialize variables.
+   HCERTSTORE       hMyCertStore = NULL;
+   TCHAR * pszStoreName = TEXT("MY");
+
+   //--------------------------------------------------------------------
+   //   Open a certificate store.
+   if (fUserStore)
+      hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+   else
+   {	// Open the local machine certificate store.
+      hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+         X509_ASN_ENCODING,
+         NULL,
+         CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+         L"MY");
+   }
+
+   if (!hMyCertStore)
+   {
+      int err = GetLastError();
+
+      if (err == ERROR_ACCESS_DENIED)
+         DebugMsg("**** CertOpenStore failed with 'access denied'");
+      else
+         DebugMsg("**** Error %d returned by CertOpenStore", err);
+      return HRESULT_FROM_WIN32(err);
+   }
+
+   if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+      CertFreeCertificateContext(pCertContext);
+   pCertContext = NULL;
+
+   //--------------------------------------------------------------------
+   //  Display a list of the certificates in the store and 
+   //  allow the user to select a certificate.
+
+   HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
+   CryptUIDlgSelectCertificate select = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+
+   CRYPTUI_SELECTCERTIFICATE_STRUCT csc;
+
+   csc.dwSize = sizeof csc;
+   csc.hwndParent = NULL;
+   csc.dwFlags = 0;
+   csc.szTitle = L"Select a Server Certificate";
+   csc.dwDontUseColumn = CRYPTUI_SELECT_LOCATION_COLUMN;
+   csc.szDisplayString = NULL;
+   csc.pFilterCallback = ValidCert;
+   csc.pDisplayCallback = NULL;
+   csc.pvCallbackData = NULL;
+   csc.cDisplayStores = 1;
+   csc.rghDisplayStores = &hMyCertStore;
+   csc.cStores = 0;
+   csc.rghStores = NULL;
+   csc.cPropSheetPages = 0;
+   csc.rgPropSheetPages = NULL;
+   csc.hSelectedCertStore = NULL;
+
+   if (!(pCertContext = select(&csc)))
+   {
+      printf("Select Certificate UI failed.\n");
+   }
+
+   //--------------------------------------------------------------------
+   // When all processing is completed, clean up.
+
+   if (hMyCertStore)
+   {
+      if (!CertCloseStore(hMyCertStore, 0))
+      {
+         printf("CertCloseStore failed.\n");
+         return SEC_E_CERT_UNKNOWN;
+      }
+   }
+   return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
+}
+
+// End Section of code supporting CertFindCertificateUI
 
 SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
 {

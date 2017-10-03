@@ -12,6 +12,7 @@
 // handy functions declared in this file
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext);
+SECURITY_STATUS CertFindCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore = false); 
 SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore = false);
 SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore = false);
 CString GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname);
