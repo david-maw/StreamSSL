@@ -278,7 +278,8 @@ std::vector<byte> hexToBinary(const char * const str)
 }
 
 // Section of code supporting CertFindCertificateUI which uses CryptUIDlgSelectCertificate a function 
-// that is not exported, so you have to link to it dynamically.
+// that is not exported, so you have to link to it dynamically. Also various required structures and
+// methods are not in the header file, so they have to be declared.
 
 typedef
 BOOL(WINAPI * PFNCCERTDISPLAYPROC)(
@@ -311,19 +312,52 @@ PCCERT_CONTEXT(WINAPI * CryptUIDlgSelectCertificate) (
    PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
    );
 
+// Make sure the certificate is a valid server certificate, for example, does the name match, do you have a private key,
+// is the certificate allowed to be used for server identification
+
 BOOL WINAPI ValidCert(
    PCCERT_CONTEXT  pCertContext,
    BOOL            *pfInitialSelectedCert,
-   void            *pvCallbackData
+   void            *pvCallbackData // Passes in the required name
 )
 {
-   CString ServerName = GetHostName();
-   if (MatchCertificateName(pCertContext, ServerName))  //  (_tcscmp(pszNameString, pszSubjectName))
-      return TRUE;
+   DWORD cbData = 0;
+   CString s = "Certificate '" + GetCertName(pCertContext) + "' ";
+   if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
+      DebugMsg(s + "has wrong subject name.");
+   else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
+   {
+      DebugMsg(s + "has no private key.");
+   }
    else
-      DebugMsg("Certificate has wrong subject name.");
+   {  // All checks passed now check Enhanced Key Usage
+      cbData = 0;
+      CertGetEnhancedKeyUsage(pCertContext, 0, NULL, &cbData);
+      if (cbData == 0)
+         return TRUE; // There are no EKU entries, so any usage is allowed
+      else
+      {
+         std::vector<byte> Data(cbData);
+         auto peku = (PCERT_ENHKEY_USAGE)(&Data[0]);
+         CertGetEnhancedKeyUsage(pCertContext, 0, peku, &cbData);
+         LPSTR* szUsageID = peku->rgpszUsageIdentifier;
+         for (DWORD i = 0; i < peku->cUsageIdentifier; i++)
+         {
+            if (!strcmp(*szUsageID, szOID_PKIX_KP_SERVER_AUTH))
+               return TRUE; // All checks passed and the certificate is allowed to be used for server identification
+            szUsageID++;
+         }
+         DebugMsg(s + "is not allowed use for server authentication.");
+      }
+   }
+   // One of the checks failed
    return FALSE;
 }
+
+// CryptUIDlgSelectCertificateW is not in a library, but IS present in CryptUI.dll so we
+// have to link to it dynamically. This is the declaration of the function pointer.
+
+CryptUIDlgSelectCertificate SelectCertificate = NULL;
 
 SECURITY_STATUS CertFindCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
@@ -360,33 +394,29 @@ SECURITY_STATUS CertFindCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR psz
       CertFreeCertificateContext(pCertContext);
    pCertContext = NULL;
 
-   //--------------------------------------------------------------------
-   //  Display a list of the certificates in the store and 
-   //  allow the user to select a certificate.
+   // Link to SelectCertificate if it has not already been done
 
-   HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
-   CryptUIDlgSelectCertificate select = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+   if (!SelectCertificate)
+   {  // Not linked yet, find the function in the DLL
+      HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
+      SelectCertificate = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+      // Do not call FreeLibrary because the function may be called again later
+   }
 
-   CRYPTUI_SELECTCERTIFICATE_STRUCT csc;
+   // Display a list of the certificates in the store and allow the user to select a certificate.
+   // Note that only certificates which pass the test defined in ValidCert (if any) will be displayed.
+
+   CRYPTUI_SELECTCERTIFICATE_STRUCT csc {};
 
    csc.dwSize = sizeof csc;
-   csc.hwndParent = NULL;
-   csc.dwFlags = 0;
    csc.szTitle = L"Select a Server Certificate";
    csc.dwDontUseColumn = CRYPTUI_SELECT_LOCATION_COLUMN;
-   csc.szDisplayString = NULL;
    csc.pFilterCallback = ValidCert;
-   csc.pDisplayCallback = NULL;
-   csc.pvCallbackData = NULL;
    csc.cDisplayStores = 1;
    csc.rghDisplayStores = &hMyCertStore;
-   csc.cStores = 0;
-   csc.rghStores = NULL;
-   csc.cPropSheetPages = 0;
-   csc.rgPropSheetPages = NULL;
-   csc.hSelectedCertStore = NULL;
+   csc.pvCallbackData = (LPVOID)pszSubjectName;
 
-   if (!(pCertContext = select(&csc)))
+   if (!(pCertContext = SelectCertificate(&csc)))
    {
       printf("Select Certificate UI failed.\n");
    }
