@@ -1,6 +1,7 @@
 #pragma once
 #include "StdAfx.h"
 #include <functional>
+#include "wincrypt.h"
 
 class ISocketStream;
 

@@ -23,7 +23,7 @@ CString GetHostName(void)
  
 	if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0)
 	{ 
-		 fprintf(stderr, "getaddrinfo: %S\n", ATL::CT2W(gai_strerror(gai_result))); 
+		 fprintf(stderr, "getaddrinfo: %S\n", gai_strerror(gai_result)); 
 		 exit(1); 
 	} 
  
