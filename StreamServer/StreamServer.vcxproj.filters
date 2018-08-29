@@ -32,6 +32,9 @@
     <ClInclude Include="SSLHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CertRAII.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -59,6 +62,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CreateCertificate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CertRAII.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

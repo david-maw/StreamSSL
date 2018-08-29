@@ -190,3 +190,4 @@ ModelManifest.xml
 /Zipped
 *.db
 /StreamSSL.VC.VC.opendb
+/.vs

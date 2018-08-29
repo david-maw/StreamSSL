@@ -3,144 +3,11 @@
 #pragma comment(lib, "crypt32.lib")
 #include <memory>
 #include <vector>
+#include "CertRAII.h"
+
 // based on a sample found at:
 // http://blogs.msdn.com/b/alejacma/archive/2009/03/16/how-to-create-a-self-signed-certificate-with-cryptoapi-c.aspx
 // Create a self-signed certificate and store it in the machine personal store
-
-class CSP
-{
-public:
-	CSP();
-	~CSP();
-	bool AcquirePrivateKey(PCCERT_CONTEXT pCertContext);
-private:
-	HCRYPTPROV_OR_NCRYPT_KEY_HANDLE hCryptProvOrNCryptKey = NULL;
-};
-
-CSP::CSP()
-{
-}
-
-CSP::~CSP()
-{
-	if (hCryptProvOrNCryptKey)
-	{
-		DebugMsg(("CryptReleaseContext... "));
-		CryptReleaseContext(hCryptProvOrNCryptKey, 0);
-		DebugMsg("Success");
-	}
-}
-
-bool CSP::AcquirePrivateKey(PCCERT_CONTEXT pCertContext)
-{
-	BOOL fCallerFreeProvOrNCryptKey = FALSE;
-	DWORD dwKeySpec;
-	return FALSE != CryptAcquireCertificatePrivateKey(pCertContext, 0, NULL, &hCryptProvOrNCryptKey, &dwKeySpec, &fCallerFreeProvOrNCryptKey);
-}
-
-
-class CryptProvider
-{
-public:
-	WCHAR * KeyContainerName = L"SSLTestKeyContainer";
-	CryptProvider();
-	~CryptProvider();
-	BOOL AcquireContext(DWORD dwFlags);
-
-public:
-	HCRYPTPROV hCryptProv = NULL;
-};
-
-CryptProvider::CryptProvider()
-{
-}
-
-CryptProvider::~CryptProvider()
-{
-	if (hCryptProv)
-	{
-		DebugMsg(("CryptReleaseContext... "));
-		CryptReleaseContext(hCryptProv, 0);
-		DebugMsg("Success");
-	}
-}
-
-
-BOOL CryptProvider::AcquireContext(DWORD dwFlags)
-{
-	return CryptAcquireContextW(&hCryptProv, KeyContainerName, NULL, PROV_RSA_FULL, dwFlags);
-}
-
-
-
-class CryptKey
-{
-public:
-	CryptKey();
-	~CryptKey();
-	BOOL CryptGenKey(CryptProvider& prov);
-
-private:
-	HCRYPTKEY hKey = NULL;
-};
-
-CryptKey::CryptKey()
-{
-}
-
-CryptKey::~CryptKey()
-{
-	if (hKey)
-	{
-		DebugMsg(("Destructor calling CryptDestroyKey... "));
-		CryptDestroyKey(hKey);
-		DebugMsg("Success");
-	}
-}
-
-BOOL CryptKey::CryptGenKey(CryptProvider& prov)
-{
-	return ::CryptGenKey(prov.hCryptProv, AT_SIGNATURE, 0x08000000 /*RSA-2048-BIT_KEY*/, &hKey);
-}
-
-class CertStore
-{
-public:
-	CertStore();
-	~CertStore();
-	bool CertOpenStore();
-	bool AddCertificateContext(PCCERT_CONTEXT pCertContext);
-
-private:
-	HCERTSTORE hStore = NULL;
-
-};
-
-CertStore::CertStore()
-{
-}
-
-CertStore::~CertStore()
-{
-	if (hStore)
-	{
-		DebugMsg(("CertCloseStore... "));
-		CertCloseStore(hStore, 0);
-		DebugMsg("Success");
-	}
-}
-
-bool CertStore::CertOpenStore()
-{
-	hStore = ::CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0, CERT_SYSTEM_STORE_LOCAL_MACHINE, L"My");
-	return hStore != NULL;
-}
-
-bool CertStore::AddCertificateContext(PCCERT_CONTEXT pCertContext)
-{
-	return (FALSE != ::CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_REPLACE_EXISTING, 0));
-}
-
 
 PCCERT_CONTEXT CreateCertificate()
 {
@@ -321,7 +188,7 @@ PCCERT_CONTEXT CreateCertificate()
 
 	// Add the cert to the store
 	DebugMsg(("CertAddCertificateContextToStore... "));
-	if (!store.AddCertificateContext(pCertContext))
+	if (store.AddCertificateContext(pCertContext))
 		DebugMsg("Success");
 	else
 	{
