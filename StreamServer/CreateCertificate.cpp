@@ -64,7 +64,6 @@ PCCERT_CONTEXT CreateCertificate()
 
 	// CREATE SELF-SIGNED CERTIFICATE AND ADD IT TO PERSONAL STORE IN MACHINE PROFILE
 
-	PCCERT_CONTEXT pCertContext = NULL;
 	std::vector<BYTE> CertName;
 
 	// Encode certificate Subject
@@ -118,9 +117,10 @@ PCCERT_CONTEXT CreateCertificate()
 	EndTime.wYear += 5;
 
 	// Create certificate
+	Cert cert;
 	DebugMsg(("CertCreateSelfSignCertificate... "));
-	pCertContext = CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0);
-	if (pCertContext)
+	(PCCERT_CONTEXT)cert = CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0);
+	if (cert)
 		DebugMsg("Success");
 	else
 	{
@@ -131,7 +131,7 @@ PCCERT_CONTEXT CreateCertificate()
 
 	// Specify the allowed usage of the certificate (server authentication)
 	DebugMsg(("CertAddEnhancedKeyUsageIdentifier"));
-	if (CertAddEnhancedKeyUsageIdentifier(pCertContext, szOID_PKIX_KP_SERVER_AUTH))
+	if (cert.AddEnhancedKeyUsageIdentifier(szOID_PKIX_KP_SERVER_AUTH))
 		DebugMsg("Success");
 	else
 	{
@@ -147,7 +147,7 @@ PCCERT_CONTEXT CreateCertificate()
 	cdblob.pbData = (BYTE*)L"SSLStream Testing";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
-	if (CertSetCertificateContextProperty(pCertContext, CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
+	if (cert.SetCertificateContextProperty(CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
 	else
 	{
@@ -160,7 +160,7 @@ PCCERT_CONTEXT CreateCertificate()
 	cdblob.pbData = (BYTE*)L"SSL Stream Server Test";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
-	if (CertSetCertificateContextProperty(pCertContext, CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
+	if (cert.SetCertificateContextProperty(CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
 	else
 	{
@@ -188,7 +188,7 @@ PCCERT_CONTEXT CreateCertificate()
 
 	// Add the cert to the store
 	DebugMsg(("CertAddCertificateContextToStore... "));
-	if (store.AddCertificateContext(pCertContext))
+	if (store.AddCertificateContext(cert))
 		DebugMsg("Success");
 	else
 	{
@@ -200,7 +200,7 @@ PCCERT_CONTEXT CreateCertificate()
 	// Just for testing, verify that we can access cert's private key
 	DebugMsg(("CryptAcquireCertificatePrivateKey... "));
 	CSP csp;
-	if (csp.AcquirePrivateKey(pCertContext))
+	if (csp.AcquirePrivateKey(cert))
 		DebugMsg("Success, private key acquired");
 	else
 	{
@@ -208,5 +208,5 @@ PCCERT_CONTEXT CreateCertificate()
 		DebugMsg("Error 0x%x", GetLastError());
 		return 0;
 	}
-	return pCertContext;
+	return cert.Detach();
 }
