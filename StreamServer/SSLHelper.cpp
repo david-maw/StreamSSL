@@ -177,7 +177,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
          DebugMsg("CertGetNameString failed getting friendly name.");
          continue;
       }
-      DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
+      DebugMsg("Certificate '%S' is allowed to be used for server authentication.", pszFriendlyNameString);
       if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
          DebugMsg("CertGetNameString failed getting subject name.");
       else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
@@ -614,7 +614,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		pszNameString,
 		128))
 	{
-		DebugMsg("Certificate for %S", (LPWSTR)ATL::CT2W(pszNameString));
+		DebugMsg("Certificate for %S", pszNameString);
 	}
 	else
 		DebugMsg("CertGetName failed.");
