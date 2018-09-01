@@ -1,13 +1,12 @@
 #include "stdafx.h"
-#include <atlconv.h>
-#include <strsafe.h>
+#include "Utilities.h"
 
 // General purpose functions
 
 //
 // Usage: SetThreadName ("MainThread"[, threadID]);
 //
-const DWORD MS_VC_EXCEPTION=0x406D1388;
+const DWORD MS_VC_EXCEPTION = 0x406D1388;
 
 #pragma pack(push,8)
 typedef struct tagTHREADNAME_INFO
@@ -41,19 +40,34 @@ void SetThreadName(char* threadName, DWORD dwThreadID)
    }
 }
 
-void DebugMsg(const char* pszFormat, ...)
+void DebugMsg(const CHAR* pszFormat, ...)
 {
 	if (debug)
 	{
-		char buf[1024];
-		StringCchPrintfA(buf, sizeof(buf), "(%lu): ", GetCurrentThreadId());
+      CHAR buf[1024];
+      StringCchPrintfA(buf, sizeof(buf) / sizeof(CHAR), "(%lu): ", GetCurrentThreadId());
 		va_list arglist;
 		va_start(arglist, pszFormat);
-		StringCchVPrintfA(&buf[strlen(buf)], sizeof(buf), pszFormat, arglist);
+      StringCchVPrintfA(&buf[strlen(buf)], sizeof(buf) / sizeof(CHAR), pszFormat, arglist);
 		va_end(arglist);
-		StringCchCatA(buf, sizeof(buf), "\n");
+      StringCchCatA(buf, sizeof(buf) / sizeof(CHAR), "\n");
 		OutputDebugStringA(buf);
 	}
+}
+
+void DebugMsg(const WCHAR* pszFormat, ...)
+{
+   if (debug)
+   {
+      WCHAR buf[1024];
+      StringCchPrintfW(buf, sizeof(buf) / sizeof(WCHAR), L"(%lu): ", GetCurrentThreadId());
+      va_list arglist;
+      va_start(arglist, pszFormat);
+      StringCchVPrintfW(&buf[wcslen(buf)], sizeof(buf) / sizeof(WCHAR), pszFormat, arglist);
+      va_end(arglist);
+      StringCchCatW(buf, sizeof(buf) / sizeof(WCHAR), L"\n");
+      OutputDebugStringW(buf);
+   }
 }
 
 static void PrintHexDumpActual(DWORD length, const void * const buf, const bool verbose)
@@ -64,7 +78,7 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 	char cbLine;
 	const byte * buffer = static_cast<const byte *>(buf);
 
-	if (verbose & (length>16))
+	if (!verbose & (length>16))
 		length = 16;
 
 	for(index = 0; length; length -= count, buffer += count, index += count) 
@@ -107,6 +121,7 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 		DebugMsg(rgbLine);
 	}
 }
+
 void PrintHexDump(DWORD length, const void * const buf)
 {
    if (debug) PrintHexDumpActual(length, buf, false);

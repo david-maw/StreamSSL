@@ -1,15 +1,122 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
-#include "SSLServer.h"
+#include <algorithm>
+#include <vector>
+#include <cryptuiapi.h>
+
+#pragma comment(lib, "Dnsapi.lib")
+#pragma comment(lib, "Cryptui.lib")
 
 // Miscellaneous functions in support of SSL
 
 // defined in another source file (CreateCertificate.cpp)
-PCCERT_CONTEXT CreateCertificate();
+PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
+
+// Utility function to get the hostname of the host I am running on
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
+{
+   DWORD NameLength = 0;
+   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+   if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+   {
+      CString ComputerName;
+      if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+      {
+         ComputerName.ReleaseBuffer();
+         return ComputerName;
+      }
+   }
+   return CString();
+}
+
+// Utility function to return the user name I'm runng under
+CString GetUserName(void)
+{
+   DWORD NameLength = 0;
+   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+   if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+   {
+      CString UserName;
+      if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+      {
+         UserName.ReleaseBuffer();
+         return UserName;
+      }
+   }
+   return CString();
+}
+
+bool DnsNameMatches(CString HostName, PCWSTR pDNSName)
+{
+   CString DNSName(pDNSName);
+   if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
+      return true;
+   else if (DNSName.Find(L'*') < 0) // The DNSName is a hostname, but did not match
+      return false;
+   else // The DNSName is wildcarded
+   {
+      int suffixLen = HostName.GetLength() - HostName.Find(L'.'); // The length of the fixed part
+      if (DNSName.GetLength() > suffixLen + 2) // the hostname domain part must be longer than the DNSName
+         return false;
+      else if (DNSName.GetLength() - DNSName.Find(L'.') != suffixLen) // The two suffix lengths must match
+         return false;
+      else if (HostName.Right(suffixLen) != DNSName.Right(suffixLen))
+         return false;
+      else // at this point, the decision is whether the last hostname node matches the wildcard
+      {
+         DNSName = DNSName.SpanExcluding(L".");
+         CString HostShortName = HostName.SpanExcluding(L".");
+         return (S_OK == PathMatchSpecEx(HostShortName, DNSName, PMSF_NORMAL));
+      }
+   } 
+}
+
+// See http://etutorials.org/Programming/secure+programming/Chapter+10.+Public+Key+Infrastructure/10.8+Adding+Hostname+Checking+to+Certificate+Verification/
+// for a pre C++11 version of this algorithm
+bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) {
+   /* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
+   auto szOID = szOID_SUBJECT_ALT_NAME2;
+   auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+      pCertContext->pCertInfo->rgExtension);
+   if (!pExtension) 
+   {
+      szOID = szOID_SUBJECT_ALT_NAME;
+      pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+         pCertContext->pCertInfo->rgExtension);
+   }
+   CString RequiredName(pszRequiredName);
+
+   // Extract the SAN information (list of names) 
+   DWORD cbStructInfo = -1;
+   if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
+      pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
+   {
+      auto pvS = std::make_unique<byte[]>(cbStructInfo);
+      CryptDecodeObject(X509_ASN_ENCODING, szOID, pExtension->Value.pbData,
+         pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
+      auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
+
+      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [RequiredName](_CERT_ALT_NAME_ENTRY Entry)
+      {
+         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && DnsNameMatches(RequiredName, Entry.pwszDNSName);
+      }
+      );
+      return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
+   }
+
+   /* No SubjectAltName extension -- check CommonName */
+   auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
+   if (!dwCommonNameLength) // No CN found
+      return false;
+   CString CommonName;
+   CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
+   CommonName.ReleaseBufferSetLength(dwCommonNameLength);
+   return DnsNameMatches(RequiredName, CommonName);
+}
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
-SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
    HCERTSTORE  hMyCertStore = NULL;
    TCHAR pszFriendlyNameString[128];
@@ -73,7 +180,7 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
       DebugMsg("Certificate '%S' is allowed to be used for server authentication.", pszFriendlyNameString);
       if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
          DebugMsg("CertGetNameString failed getting subject name.");
-      else if (_tcscmp(pszNameString, pszSubjectName))
+      else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
          DebugMsg("Certificate has wrong subject name.");
       else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
       {
@@ -106,7 +213,7 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
       if (LastError == CRYPT_E_NOT_FOUND)
       {
          DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-         pCertContext = CreateCertificate();
+         pCertContext = CreateCertificate(true, pszSubjectName);
          if (!pCertContext)
          {
             LastError = GetLastError();
@@ -122,20 +229,283 @@ SECURITY_STATUS CertFindServerByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszS
       }
    }
 
-   if (!pCertContext)
+   return SEC_E_OK;
+}
+
+// Utility functions to help with certificates
+
+int hex_char_to_int(char c) {
+	int result = -1;
+	if (('0' <= c) && (c <= '9')) {
+		result = c - '0';
+	}
+	else if (('A' <= c) && (c <= 'F')) {
+		result = 10 + c - 'A';
+	}
+	else if (('a' <= c) && (c <= 'f')) {
+		result = 10 + c - 'a';
+	}
+	return result;
+}
+
+std::vector<byte> hexToBinary(const char * const str)
+{
+	std::vector<byte> boutput(20);
+	int nibbleValue = -1;
+	byte byteValue = 0;
+	auto it = boutput.begin();
+	const char * p = str;
+	bool highOrder = false;
+
+	while (*p != 0 && str - p < 40 && it != boutput.end())
+	{
+		nibbleValue = hex_char_to_int(*p++);
+		if (nibbleValue >= 0)
+		{
+			highOrder = !highOrder;
+			if (highOrder)
+			{
+				byteValue = nibbleValue << 4;
+			}
+			else
+			{
+				*it = static_cast<byte>(byteValue | nibbleValue);
+				it++;
+			}
+		}
+	}
+	return boutput;
+}
+
+// Section of code supporting CertFindCertificateUI which uses CryptUIDlgSelectCertificate a function 
+// that is not exported, so you have to link to it dynamically. Also various required structures and
+// methods are not in the header file, so they have to be declared.
+
+typedef
+BOOL(WINAPI * PFNCCERTDISPLAYPROC)(
+   _In_ PCCERT_CONTEXT pCertContext,
+   _In_ HWND           hWndSelCertDlg,
+   _In_ void           *pvCallbackData
+   );
+
+typedef struct _CRYPTUI_SELECTCERTIFICATE_STRUCT {
+   DWORD               dwSize;
+   HWND                hwndParent;
+   DWORD               dwFlags;
+   LPCTSTR             szTitle;
+   DWORD               dwDontUseColumn;
+   LPCTSTR             szDisplayString;
+   PFNCFILTERPROC      pFilterCallback;
+   PFNCCERTDISPLAYPROC pDisplayCallback;
+   void                *pvCallbackData;
+   DWORD               cDisplayStores;
+   HCERTSTORE          *rghDisplayStores;
+   DWORD               cStores;
+   HCERTSTORE          *rghStores;
+   DWORD               cPropSheetPages;
+   LPCPROPSHEETPAGE    rgPropSheetPages;
+   HCERTSTORE          hSelectedCertStore;
+} CRYPTUI_SELECTCERTIFICATE_STRUCT, *PCRYPTUI_SELECTCERTIFICATE_STRUCT;
+
+typedef
+PCCERT_CONTEXT(WINAPI * CryptUIDlgSelectCertificate) (
+   PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
+   );
+
+// Make sure the certificate is a valid server certificate, for example, does the name match, do you have a private key,
+// is the certificate allowed to be used for server identification
+
+BOOL WINAPI ValidCert(
+   PCCERT_CONTEXT  pCertContext,
+   BOOL            *pfInitialSelectedCert,
+   void            *pvCallbackData // Passes in the required name
+)
+{
+   DWORD cbData = 0;
+   CString s = "Certificate '" + GetCertName(pCertContext) + "' ";
+   if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
+      DebugMsg(s + "has wrong subject name.");
+   else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
    {
-      DWORD LastError = GetLastError();
-      if (LastError == CRYPT_E_NOT_FOUND)
-      {
-         DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-         pCertContext = CreateCertificate();
-      }
+      DebugMsg(s + "has no private key.");
+   }
+   else
+   {  // All checks passed now check Enhanced Key Usage
+      cbData = 0;
+      CertGetEnhancedKeyUsage(pCertContext, 0, NULL, &cbData);
+      if (cbData == 0)
+         return TRUE; // There are no EKU entries, so any usage is allowed
       else
-         DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
-      return HRESULT_FROM_WIN32(LastError);
+      {
+         std::vector<byte> Data(cbData);
+         auto peku = (PCERT_ENHKEY_USAGE)(&Data[0]);
+         CertGetEnhancedKeyUsage(pCertContext, 0, peku, &cbData);
+         LPSTR* szUsageID = peku->rgpszUsageIdentifier;
+         for (DWORD i = 0; i < peku->cUsageIdentifier; i++)
+         {
+            if (!strcmp(*szUsageID, szOID_PKIX_KP_SERVER_AUTH))
+               return TRUE; // All checks passed and the certificate is allowed to be used for server identification
+            szUsageID++;
+         }
+         DebugMsg(s + "is not allowed use for server authentication.");
+      }
+   }
+   // One of the checks failed
+   return FALSE;
+}
+
+// CryptUIDlgSelectCertificateW is not in a library, but IS present in CryptUI.dll so we
+// have to link to it dynamically. This is the declaration of the function pointer.
+
+CryptUIDlgSelectCertificate SelectCertificate = NULL;
+
+SECURITY_STATUS CertFindCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+{
+   //--------------------------------------------------------------------
+   // Declare and initialize variables.
+   HCERTSTORE       hMyCertStore = NULL;
+   TCHAR * pszStoreName = TEXT("MY");
+
+   //--------------------------------------------------------------------
+   //   Open a certificate store.
+   if (fUserStore)
+      hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+   else
+   {	// Open the local machine certificate store.
+      hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+         X509_ASN_ENCODING,
+         NULL,
+         CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+         L"MY");
    }
 
-   return SEC_E_OK;
+   if (!hMyCertStore)
+   {
+      int err = GetLastError();
+
+      if (err == ERROR_ACCESS_DENIED)
+         DebugMsg("**** CertOpenStore failed with 'access denied'");
+      else
+         DebugMsg("**** Error %d returned by CertOpenStore", err);
+      return HRESULT_FROM_WIN32(err);
+   }
+
+   if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+      CertFreeCertificateContext(pCertContext);
+   pCertContext = NULL;
+
+   // Link to SelectCertificate if it has not already been done
+
+   if (!SelectCertificate)
+   {  // Not linked yet, find the function in the DLL
+      HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
+      SelectCertificate = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+      // Do not call FreeLibrary because the function may be called again later
+   }
+
+   // Display a list of the certificates in the store and allow the user to select a certificate.
+   // Note that only certificates which pass the test defined in ValidCert (if any) will be displayed.
+
+   CRYPTUI_SELECTCERTIFICATE_STRUCT csc {};
+
+   csc.dwSize = sizeof csc;
+   csc.szTitle = L"Select a Server Certificate";
+   csc.dwDontUseColumn = CRYPTUI_SELECT_LOCATION_COLUMN;
+   csc.pFilterCallback = ValidCert;
+   csc.cDisplayStores = 1;
+   csc.rghDisplayStores = &hMyCertStore;
+   csc.pvCallbackData = (LPVOID)pszSubjectName;
+
+   if (!(pCertContext = SelectCertificate(&csc)))
+   {
+      printf("Select Certificate UI failed.\n");
+   }
+
+   //--------------------------------------------------------------------
+   // When all processing is completed, clean up.
+
+   if (hMyCertStore)
+   {
+      if (!CertCloseStore(hMyCertStore, 0))
+      {
+         printf("CertCloseStore failed.\n");
+         return SEC_E_CERT_UNKNOWN;
+      }
+   }
+   return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
+}
+
+// End Section of code supporting CertFindCertificateUI
+
+SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
+{
+	// Find a specific certificate based on its signature
+	// The parameter is the SHA1 signatureof the certificate you want the server to use in string form, which the certificate manager will show you as the "thumbprint" field
+	auto b = hexToBinary(signature);
+
+	if (b.size() != 20)
+	{
+		DebugMsg("Certificate signature length should be exactly 20 bytes. \n");
+		return SEC_E_INVALID_PARAMETER;
+	}
+	HCERTSTORE hMyCertStore;
+	if (fUserStore)
+		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+	else
+	{	// Open the local machine certificate store.
+		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+			X509_ASN_ENCODING,
+			NULL,
+			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+			L"MY");
+	}
+
+	if (!hMyCertStore)
+	{
+		int err = GetLastError();
+
+		if (err == ERROR_ACCESS_DENIED)
+			DebugMsg("**** CertOpenStore failed with 'access denied'");
+		else
+			DebugMsg("**** Error %d returned by CertOpenStore", err);
+		return HRESULT_FROM_WIN32(err);
+	}
+
+	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+		CertFreeCertificateContext(pCertContext);
+	pCertContext = NULL;
+
+	CRYPT_HASH_BLOB certhash;
+	certhash.cbData = b.size();
+	certhash.pbData = &b[0];
+
+	PCCERT_CONTEXT  pDesiredCert = NULL;
+	// Now search the selected store for the certificate
+	if (pCertContext = CertFindCertificateInStore(
+		hMyCertStore,
+		X509_ASN_ENCODING,             // Use X509_ASN_ENCODING
+		0,                            // No dwFlags needed 
+		CERT_FIND_SHA1_HASH, // Find a certificate with a SHA1 hash that matches the next parameter
+		&certhash,
+		NULL))                        // NULL for the first call to the
+	{
+		TCHAR pszFriendlyNameString[128];
+		//ShowCertInfo(pCertContext);
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+		{
+			DebugMsg("CertGetNameString failed getting friendly name.");
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
+		if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
+    		DebugMsg("A self-signed certificate was found.");
+	}
+	else
+	{
+		DebugMsg("Could not find the desired certificate.\n");
+		return SEC_E_CERT_UNKNOWN;
+	}
+	return SEC_E_OK;
 }
 
 // Return an indication of whether a certificate is trusted by asking Windows to validate the
@@ -148,7 +518,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext)
    CERT_CHAIN_PARA          ChainPara;
    PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
    HRESULT                  Status;
-   LPSTR rgszUsages[] = { szOID_PKIX_KP_SERVER_AUTH,
+   LPSTR rgszUsages[] = { szOID_PKIX_KP_CLIENT_AUTH,
       szOID_SERVER_GATED_CRYPTO,
       szOID_SGC_NETSCAPE };
    DWORD cUsages = _countof(rgszUsages);
@@ -447,7 +817,19 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 	return S_OK;
 }
 
-// General purpose helper class for SSL, decodes buffers for disgnosts, handles SNI
+// Helper function to return the friendly name of a certificate so it can be showed to a human 
+CString GetCertName(PCCERT_CONTEXT pCertContext)
+{
+   CString certName;
+   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
+   certName.ReleaseBuffer();
+   if (good)
+      return certName;
+   else
+      return L"<unknown>";
+}
+
+// General purpose helper class for SSL, decodes buffers for diagnostics, handles SNI
 
 CSSLHelper::CSSLHelper(const byte * BufPtr, const int BufBytes):
 contentType(0),

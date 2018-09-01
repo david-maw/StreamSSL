@@ -64,9 +64,11 @@ _Chutzpah*
 ipch/
 *.aps
 *.ncb
+*.opendb
 *.opensdf
 *.sdf
 *.cachefile
+
 
 # Visual Studio profiler
 *.psess
@@ -187,7 +189,11 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
-/Zipped
-*.db
-/StreamSSL.VC.VC.opendb
-/.vs
+
+# Zip files 
+*.zip
+# build artifacts
+/.vs/
+/Zipped/
+/StreamSSL.VC.db
+/.vs5/

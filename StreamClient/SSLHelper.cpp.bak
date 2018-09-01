@@ -40,7 +40,10 @@ CString GetUserName(void)
    return CString();
 }
 
-bool DnstNameMatches(CString HostName, PCWSTR pDNSName)
+// defined in another source file (CreateCertificate.cpp)
+PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NULL, LPCWSTR FriendlyName = NULL, LPCWSTR Description = NULL);
+
+bool HostNameMatches(CString HostName, PCWSTR pDNSName)
 {
    CString DNSName(pDNSName);
    if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
@@ -67,7 +70,7 @@ bool DnstNameMatches(CString HostName, PCWSTR pDNSName)
 
 // See http://etutorials.org/Programming/secure+programming/Chapter+10.+Public+Key+Infrastructure/10.8+Adding+Hostname+Checking+to+Certificate+Verification/
 // for a pre C++11 version of this algorithm
-bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) {
+bool MatchCertHostName(PCCERT_CONTEXT pCertContext, LPCWSTR hostname) {
    /* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
    auto szOID = szOID_SUBJECT_ALT_NAME2;
    auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
@@ -78,7 +81,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
       pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
          pCertContext->pCertInfo->rgExtension);
    }
-   CString RequiredName(pszRequiredName);
+   CString HostName(hostname);
 
    // Extract the SAN information (list of names) 
    DWORD cbStructInfo = -1;
@@ -90,9 +93,9 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
          pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
       auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
 
-      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [RequiredName](_CERT_ALT_NAME_ENTRY Entry)
+      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [HostName](_CERT_ALT_NAME_ENTRY Entry)
       {
-         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && DnstNameMatches(RequiredName, Entry.pwszDNSName);
+         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && HostNameMatches(HostName, Entry.pwszDNSName);
       }
       );
       return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
@@ -105,12 +108,12 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
    CString CommonName;
    CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
    CommonName.ReleaseBufferSetLength(dwCommonNameLength);
-   return DnstNameMatches(RequiredName, CommonName);
+   return HostNameMatches(HostName, CommonName);
 }
 
 // Select, and return a handle to a client certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
-SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindClient(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName)
 {
    HCERTSTORE  hMyCertStore = NULL;
    TCHAR pszFriendlyNameString[128];
@@ -119,16 +122,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
    if (pCertContext)
       return SEC_E_INVALID_PARAMETER;
 
-   if (fUserStore)
-      hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-   else
-   {	// Open the local machine certificate store.
-      hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-         X509_ASN_ENCODING,
-         NULL,
-         CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-         L"MY");
-   }
+   hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
 
    if (!hMyCertStore)
    {
@@ -145,11 +139,11 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
       CertFreeCertificateContext(pCertContext);
    pCertContext = NULL;
 
-   char * requiredUsage = szOID_PKIX_KP_CLIENT_AUTH;
+   char * serverauth = szOID_PKIX_KP_CLIENT_AUTH;
    CERT_ENHKEY_USAGE eku;
    PCCERT_CONTEXT  pCertContextCurrent = NULL;
    eku.cUsageIdentifier = 1;
-   eku.rgpszUsageIdentifier = &requiredUsage;
+   eku.rgpszUsageIdentifier = &serverauth;
    // Find a client certificate. Note that this code just searches for a 
    // certificate that has the required enhanced key usage for server authentication
    // it then selects the best one (ideally one that contains the client name somewhere
@@ -421,7 +415,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		pszNameString,
 		128))
 	{
-		DebugMsg("Certificate for %S", (LPWSTR)ATL::CT2W(pszNameString));
+		DebugMsg("Certificate for %S", ATL::CT2W(pszNameString));
 	}
 	else
 		DebugMsg("CertGetName failed.");
@@ -622,16 +616,4 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		free(pvData);
 	}
 	return S_OK;
-}
-
-// Given a pointer to a certificate context, return the certificate name (the friendly name if there is one, the subject name otherwise).
-CString GetCertName(PCCERT_CONTEXT pCertContext)
-{
-   CString certName;
-   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
-   certName.ReleaseBuffer();
-   if (good)
-      return certName;
-   else
-      return L"<unknown>";
 }

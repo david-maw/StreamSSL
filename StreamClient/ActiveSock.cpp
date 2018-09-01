@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <WS2tcpip.h>
 #include <MSTcpIP.h>
+#include "Utilities.h"
 #include "ActiveSock.h"
 
 #ifdef _DEBUG
@@ -9,8 +10,6 @@
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
-
-void DebugMsg(const CHAR* pszFormat, ...);
 
 /////////////////////////////////////////////////////////////////////////////
 // CActiveSock
@@ -180,12 +179,12 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
 	{
 		CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
-		DWORD dwWait, milliSecondsLeft = (DWORD)TimeLeft.GetTotalSeconds()*1000;
-		if (milliSecondsLeft <= 5)
+		DWORD dwWait, SecondsLeft = (DWORD)TimeLeft.GetTotalSeconds();
+		if (SecondsLeft <= 0)
 			dwWait = WAIT_TIMEOUT;
 		else
 		{
-			dwWait = WaitForMultipleObjects(2, hEvents, false, milliSecondsLeft);
+			dwWait = WaitForMultipleObjects(2, hEvents, false, SecondsLeft*1000);
 			if (dwWait == WAIT_OBJECT_0+1) // The read event 
 				IOCompleted = true;
 		}

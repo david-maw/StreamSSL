@@ -9,9 +9,6 @@ PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
 CredHandle CSSLServer::g_ServerCreds = { 0 };
 CString CSSLServer::g_ServerName = CString();
 
-// defined in another source file (Listener.cpp)
-CString GetHostName(void);
-
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means to send messages to a client (a CPassiveSock).
 CSSLServer::CSSLServer(CPassiveSock * SocketStream)
@@ -63,8 +60,11 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
 	if(!SSPINegotiateLoop())
 	{
 		DebugMsg("Couldn't connect");
-		std::cout << "SSL handshake failed, are you running as administrator?" << std::endl;
-		int le = GetLastError();
+      if (IsUserAdmin())
+         std::cout << "SSL handshake failed." << std::endl;
+      else
+         std::cout << "SSL handshake failed, perhaps because you are not running as administrator." << std::endl;
+      int le = GetLastError();
 		return le == 0 ? E_FAIL : HRESULT_FROM_WIN32(le);
 	}
 
@@ -77,35 +77,6 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
 		DebugMsg("Couldn't get Sizes");
 		return E_FAIL;
 	}
-
-	// Get the client supplied certificate in order to decide whether it is acceptable
-
-	//PCERT_CONTEXT pCertContext = NULL;
-
-	//hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
-
-	//if (FAILED(hr))
-	//{
-	//	DebugMsg("Couldn't get client certificate, hr=%#x", hr);
-	//}
-	//else
-	//{
-	//	DebugMsg("Client Certificate returned");
- //     if (false && debug && pCertContext)
-	//	   ShowCertInfo(pCertContext, _T("Server Received Client Certificate"));
- //     // All looking good, now see if there's a client certificate, and if it is valid
- //     bool acceptable = true;
- //     if (ClientCertAcceptable) // Means the function is defined
- //        acceptable = ClientCertAcceptable(pCertContext, S_OK == CertTrusted(pCertContext));
- //     CertFreeCertificateContext(pCertContext);
- //     if (acceptable)
- //        DebugMsg("Client certificate was unacceptable");
- //     else
- //     {
- //        DebugMsg("Client certificate was unacceptable");
- //        return SEC_E_CERT_UNKNOWN;
- //     }
- //  }
 
    return S_OK;
 }
@@ -282,7 +253,10 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 // whatever plaintext data the caller provides
 int CSSLServer::Send(const void * const lpBuf, const int Len)
 {
-	INT err;
+   if (!lpBuf || Len > MaxMsgSize)
+      return SOCKET_ERROR;
+   
+   INT err;
 
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];
@@ -372,7 +346,10 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		ASC_REQ_STREAM;
 
    if (ClientCertAcceptable) // If the caller wants a client certificate, request one
+   {
+      DebugMsg("Client certificate will be required.");
       dwSSPIFlags |= ASC_REQ_MUTUAL_AUTH;
+   }
 
 	//
 	//  set OutBuffer for InitializeSecurityContext call
@@ -436,13 +413,13 @@ bool CSSLServer::SSPINegotiateLoop(void)
                      }
                   }
                   else
-                     status = CertFindServerByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
+                     status = CertFindServerCertificateByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
                   g_ServerName = (SUCCEEDED(status)) ? serverName : CString();
                   if (SUCCEEDED(status))
                      status = CreateCredentialsFromCertificate(&g_ServerCreds, pCertContext);
                   if (FAILED(status))
                   {
-                     DebugMsg("Failed handling client initialization, error = 0x%08x", status);
+                     DebugMsg("Failed handling server initialization, error = 0x%08x", status);
                      scRet = SEC_E_INTERNAL_ERROR;
                      break;
                   }
@@ -498,39 +475,6 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		if ( scRet == SEC_E_OK || scRet == SEC_I_CONTINUE_NEEDED
 			|| (FAILED(scRet) && (0 != (dwSSPIOutFlags & ASC_RET_EXTENDED_ERROR))))
 		{
-         // Get the client supplied certificate if there is one, and decide whether it is acceptable
-
-         PCERT_CONTEXT pCertContext = NULL;
-
-         HRESULT hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
-
-         if (FAILED(hr))
-         {
-            if (hr == SEC_E_INVALID_HANDLE)
-               DebugMsg("QueryContextAttributes for cert returned SEC_E_INVALID_HANDLE, which is normal");
-            else
-               DebugMsg("Couldn't get client certificate, hr=%#x", hr);
-         }
-         else
-         {
-            DebugMsg("Client Certificate returned");
-            if (false && debug && pCertContext)
-               ShowCertInfo(pCertContext, _T("Server Received Client Certificate"));
-            // All looking good, now see if there's a client certificate, and if it is valid
-            bool acceptable = true;
-            if (ClientCertAcceptable) // Means the function is defined
-               acceptable = ClientCertAcceptable(pCertContext, S_OK == CertTrusted(pCertContext));
-            CertFreeCertificateContext(pCertContext);
-            if (acceptable)
-               DebugMsg("Client certificate was unacceptable");
-            else
-            {
-               DebugMsg("Client certificate was unacceptable");
-               return false;
-            }
-         }
-
-         
          if  (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL )
 			{
 				// Send response to client if there is one
@@ -555,9 +499,39 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		}
 
 		// At this point, we've read and checked a message (giving scRet) and maybe sent a response (giving err)
-		if ( scRet == SEC_E_OK )
-		{	// The termination case, the handshake worked and is completed
-			if ( InBuffers[1].BufferType == SECBUFFER_EXTRA )
+      // as far as the client is concerned, the SSL handshake may be done, but we still have checks to make.
+
+		if (scRet == SEC_E_OK)
+		{	// The termination case, the handshake worked and is completed, this could as easily be outside the loop
+
+         // Ensure a client certificate is checked if one was requested, if none was provided we'd already have failed
+         if (ClientCertAcceptable)
+         {
+            PCERT_CONTEXT pCertContext = NULL;
+            HRESULT hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
+
+            if (FAILED(hr))
+               DebugMsg("Couldn't get client certificate, hr=%#x", hr);
+            else
+            {
+               DebugMsg("Client Certificate returned");
+               if (false && debug && pCertContext)
+                  ShowCertInfo(pCertContext, _T("Server Received Client Certificate"));
+               // All looking good, now see if there's a client certificate, and if it is valid
+               bool acceptable = ClientCertAcceptable(pCertContext, S_OK == CertTrusted(pCertContext));
+               CertFreeCertificateContext(pCertContext);
+               if (acceptable)
+                  DebugMsg("Client certificate was acceptable");
+               else
+               {
+                  DebugMsg("Client certificate was unacceptable");
+                  return false;
+               }
+            }
+         }
+
+         // Now deal with the possibility that there were some data bytes tacked on to the end of the handshake
+         if ( InBuffers[1].BufferType == SECBUFFER_EXTRA )
 			{
 				readPtr = readBuffer + (readBufferBytes - InBuffers[1].cbBuffer);
 				readBufferBytes = InBuffers[1].cbBuffer;

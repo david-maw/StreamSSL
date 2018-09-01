@@ -79,9 +79,9 @@ CertStore::~CertStore()
 	}
 }
 
-bool CertStore::CertOpenStore()
+bool CertStore::CertOpenStore(DWORD dwFlags)
 {
-	hStore = ::CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0, CERT_SYSTEM_STORE_LOCAL_MACHINE, L"My");
+	hStore = ::CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0, dwFlags, L"My");
 	return hStore != NULL;
 }
 

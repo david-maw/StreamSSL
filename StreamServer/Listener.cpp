@@ -1,10 +1,5 @@
 #include "stdafx.h"
 #include "Listener.h"
-#include <process.h>
-#include <strsafe.h>
-#include <atlconv.h>
-#include <WS2tcpip.h>
-#include "Transport.h"
 
 // Handy utility function to get the hostname of the host I am running on
 CString GetHostName(void)
@@ -51,7 +46,6 @@ CListener::CListener()
 		m_hSocketEvents[i] = NULL;
 	}
 }
-
 
 CListener::~CListener(void)
 {

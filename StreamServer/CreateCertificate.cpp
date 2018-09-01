@@ -8,15 +8,15 @@
 // based on a sample found at:
 // http://blogs.msdn.com/b/alejacma/archive/2009/03/16/how-to-create-a-self-signed-certificate-with-cryptoapi-c.aspx
 // Create a self-signed certificate and store it in the machine personal store
-
-PCCERT_CONTEXT CreateCertificate()
+PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR FriendlyName, LPCWSTR Description)
 {
 	// CREATE KEY PAIR FOR SELF-SIGNED CERTIFICATE IN MACHINE PROFILE
 	CryptProvider cryptprovider;
 	CryptKey key;
+    DWORD KeyFlags = MachineCert ? CRYPT_MACHINE_KEYSET : 0;
 	// Acquire key container
 	DebugMsg(("CryptAcquireContext of existing key container... "));
-	if (!cryptprovider.AcquireContext(CRYPT_MACHINE_KEYSET))
+	if (!cryptprovider.AcquireContext(KeyFlags))
 	{
 		int err = GetLastError();
 
@@ -58,20 +58,22 @@ PCCERT_CONTEXT CreateCertificate()
 		return 0;
 	}
 	else
-	{
 		DebugMsg("Success");
-	}
 
-	// CREATE SELF-SIGNED CERTIFICATE AND ADD IT TO PERSONAL STORE IN MACHINE PROFILE
+	// Create self-signed certificate and add it to personal store in machine or user profile
 
 	std::vector<BYTE> CertName;
 
 	// Encode certificate Subject
-	LPCWSTR pszX500 = L"CN=localhostXX";
+    CString X500(L"CN=");
+    if (Subject)
+       X500 += Subject;
+    else
+       X500 += L"localuser";
 	DWORD cbEncoded = 0;
 	// Find out how many bytes are needed to encode the certificate
 	DebugMsg(("CertStrToName... "));
-	if (CertStrToName(X509_ASN_ENCODING, pszX500, CERT_X500_NAME_STR, NULL, NULL, &cbEncoded, NULL))
+	if (CertStrToName(X509_ASN_ENCODING, LPCWSTR(X500), CERT_X500_NAME_STR, NULL, NULL, &cbEncoded, NULL))
 		DebugMsg("Success");
 	else
 	{
@@ -83,7 +85,7 @@ PCCERT_CONTEXT CreateCertificate()
 	CertName.resize(cbEncoded);
 	// Encode the certificate
 	DebugMsg(("CertStrToName... "));
-	if (CertStrToName(X509_ASN_ENCODING, pszX500, CERT_X500_NAME_STR, NULL, &CertName[0], &cbEncoded, NULL))
+	if (CertStrToName(X509_ASN_ENCODING, LPCWSTR(X500), CERT_X500_NAME_STR, NULL, &CertName[0], &cbEncoded, NULL))
 		DebugMsg("Success");
 	else
 	{
@@ -144,6 +146,9 @@ PCCERT_CONTEXT CreateCertificate()
 	CRYPT_DATA_BLOB cdblob;
 
 	// Give the certificate a friendly name
+      if (FriendlyName)
+         cdblob.pbData = (BYTE*)FriendlyName;
+      else
 	cdblob.pbData = (BYTE*)L"SSLStream Testing";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
@@ -157,7 +162,12 @@ PCCERT_CONTEXT CreateCertificate()
 	}
 
 	// Give the certificate a description
+      if (Description)
+         cdblob.pbData = (BYTE*)Description;
+      else if (MachineCert)
 	cdblob.pbData = (BYTE*)L"SSL Stream Server Test";
+      else
+         cdblob.pbData = (BYTE*)L"SSLStream Client Test";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
 	if (cert.SetCertificateContextProperty(CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
@@ -172,7 +182,7 @@ PCCERT_CONTEXT CreateCertificate()
 	// Open Personal cert store in machine profile
 	DebugMsg(("CertOpenStore to open root store... "));
 	CertStore store;
-	if (store.CertOpenStore())
+	if (store.CertOpenStore(MachineCert ? CERT_SYSTEM_STORE_LOCAL_MACHINE : CERT_SYSTEM_STORE_CURRENT_USER))
 		DebugMsg("Success");
 	else
 	{

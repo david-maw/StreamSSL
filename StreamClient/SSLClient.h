@@ -10,6 +10,8 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
+#include "SecurityHandle.h"
+
 
 class CActiveSock; // forward declaration
 
@@ -18,9 +20,9 @@ class CSSLClient
 public:
 	CSSLClient(CActiveSock *);
 	~CSSLClient(void);
-private:
    static PSecurityFunctionTable g_pSSPI;
-	CredHandle m_ClientCreds;
+private:
+	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
 	static HRESULT InitializeClass(void);
@@ -35,7 +37,7 @@ private:
 	CHAR * plainTextPtr;
    DWORD plainTextBytes;
 	void * readPtr;
-	CtxtHandle m_hContext;
+   SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes;
    static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
    SECURITY_STATUS GetNewClientCredentials();

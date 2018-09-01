@@ -15,6 +15,9 @@ const bool debug = false;
 
 #include <atlstr.h>
 #include <comdef.h>
+#include <strsafe.h>
 #include <memory>
+
+#include "Utilities.h"
 
 using namespace ATL;

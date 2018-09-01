@@ -32,6 +32,9 @@
     <ClInclude Include="SSLHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Utilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="CertRAII.h">
       <Filter>Header Files</Filter>
     </ClInclude>
