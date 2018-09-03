@@ -88,6 +88,42 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
    return Status;
 }
 
+BOOL FlushConsoleInputBufferAlternate(HANDLE h)
+{	// Needed because FlushConsoleInputBuffer did not work in Windows 10 as of October 2017
+	// but by July 2018 it was working again, so, for example version 10.0.17134 works.
+	INPUT_RECORD inRec;
+	DWORD recsRead;
+	BOOL rslt = true;
+	while (rslt && (rslt = GetNumberOfConsoleInputEvents(h, &recsRead)) && (recsRead > 0))
+		rslt = ReadConsoleInput(h, &inRec, 1, &recsRead);
+	return rslt;
+}
+
+WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
+{
+	//printf("Press a key within %i ms\n", TimeOutMilliSeconds);
+	HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+	ULONGLONG endTime = GetTickCount64() + TimeOutMilliSeconds;
+	// flush to remove existing events
+	if (!FlushConsoleInputBufferAlternate(hStdin))
+		printf("FlushConsoleInputBuffer failed LastError=%i\n", GetLastError());
+	// Now wait for input or timeout
+	while (WaitForSingleObject(hStdin, (DWORD)max(0, endTime - GetTickCount64())) == WAIT_OBJECT_0)
+	{
+		INPUT_RECORD inRec;
+		DWORD recsRead = 0;
+		while (GetNumberOfConsoleInputEvents(hStdin, &recsRead) && (recsRead > 0))
+		{
+			ReadConsoleInput(hStdin, &inRec, 1, &recsRead);
+			if (inRec.EventType == KEY_EVENT && inRec.Event.KeyEvent.bKeyDown == 0)
+				return inRec.Event.KeyEvent.wVirtualKeyCode; // a key was released, return its identity
+		}
+	}
+	//printf("Done waiting for key release, continuing\n");
+	//Sleep(2000); // Enough time to read the message
+	return 0;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
    CString HostName(GetHostName(ComputerNameDnsFullyQualified));
@@ -135,8 +171,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		cout << "Socket failed to connect to server" << endl;
 	}
-	cout << "Press any key to exit" << endl;
-	getchar();
+	cout << "Press any key to pause, Q to exit immediately" << endl;
+	WORD key = WaitForAnyKey(30000);
+	if (!(key == 'Q' || key == 0))
+	{
+		cout << "The the program will pause until you press a key" << endl;
+		getchar();
+	}
 	return 0;
 }
-
