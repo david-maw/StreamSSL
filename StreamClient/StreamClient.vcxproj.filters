@@ -29,10 +29,10 @@
     <ClInclude Include="SSLHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Handle.h">
+    <ClInclude Include="..\StreamServer\SecurityHandle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SecurityHandle.h">
+    <ClInclude Include="..\StreamServer\Handle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,9 +50,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SSLHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SecurityHandle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\StreamServer\Utilities.cpp">

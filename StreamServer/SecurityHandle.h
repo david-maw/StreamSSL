@@ -8,6 +8,22 @@
 #pragma comment(lib, "secur32.lib")
 #include "Handle.h"
 
+/*
+This is one of 2 different approaches to handling old Windows handle classes.
+
+The approach in "SecurityHandle.h" encapsulates the native handles but leaves the class usage 
+somewhat untouched (certainly not quite untouched, since handle usages tend to be replaced by 
+"get" or "set" calls, but generally the notion of a handle to an object is preserved with lifetime 
+management using RAII added.
+
+The approach in "CertRAII...." also replaces handles with objects encapsulating the handles, but 
+these behave as if they were the underlying object. So, for example instead of a "CertContextHandle"
+class, we have a "Cert" class with a Cert::SetCertificateContextProperty method, which ultimately
+calls ::CertSetCertificateContextProperty. This works fine if only a relatively small number
+of methods are to be called, but since each one has to be added to the class, it can be a pain
+if there are a lot of methods. 
+*/
+
 class CredentialHandle
 {
 public:
@@ -98,9 +114,9 @@ private:
 
 };
 
-// Traits for concrete handle types
+// Concrete handle types for certificates (traits first, then the actual class, defined using the traits class)
 
-struct ConstCertContextTraits : public HandleTraits<PCCERT_CONTEXT>
+struct CertContextTraits : public HandleTraits<PCCERT_CONTEXT>
 {
    static void Close(Type value)
    {
@@ -108,7 +124,7 @@ struct ConstCertContextTraits : public HandleTraits<PCCERT_CONTEXT>
    }
 };
 
-class ConstCertContextHandle : public Handle<ConstCertContextTraits>
+class ConstCertContextHandle : public Handle<CertContextTraits>
 {
    friend Type & setref(ConstCertContextHandle & value) noexcept
    {
@@ -117,18 +133,11 @@ class ConstCertContextHandle : public Handle<ConstCertContextTraits>
    }
 };
 
-
-struct CertContextTraits : public HandleTraits<PCERT_CONTEXT>
-{
-   static void Close(Type value)
-   {
-      CertFreeCertificateContext(value);
-   }
-};
-
 class CertContextHandle : public Handle<CertContextTraits>
 {
 };
+
+// SecurityContextHandle class
 
 class SecurityContextHandle
 {

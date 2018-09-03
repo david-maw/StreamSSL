@@ -6,8 +6,26 @@
 PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
 // Cached server credentials (a handle to a certificate), usually these do not change 
 // because the server name does not change, but occasionally they may change due to SNI
-CredHandle CSSLServer::g_ServerCreds = { 0 };
+CredentialHandle CSSLServer::g_ServerCreds;
 CString CSSLServer::g_ServerName = CString();
+
+// Declare the Close functions for the handle classes using the global SSPI function table pointer
+
+void CredentialHandle::Close() noexcept
+{
+	if (*this)
+	{
+		CSSLServer::SSPI()->FreeCredentialsHandle(&m_value);
+	}
+}
+
+void SecurityContextHandle::Close() noexcept
+{
+	if (*this)
+	{
+		CSSLServer::SSPI()->DeleteSecurityContext(&m_value);
+	}
+}
 
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means to send messages to a client (a CPassiveSock).
@@ -17,13 +35,10 @@ CSSLServer::CSSLServer(CPassiveSock * SocketStream)
 	,m_SocketStream(SocketStream)
 	,m_LastError(0)
 {
-	m_hContext.dwLower = m_hContext.dwUpper = ((ULONG_PTR) ((INT_PTR)-1)); // Invalidate it
 }
 
 CSSLServer::~CSSLServer(void)
 {
-	if (m_hContext.dwUpper != ((ULONG_PTR) ((INT_PTR)-1)))
-		g_pSSPI->DeleteSecurityContext(&m_hContext);
 }
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
@@ -70,7 +85,7 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
 
 	// Find out how big the header and trailer will be:
 
-	scRet = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_STREAM_SIZES, &Sizes);
+	scRet = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_STREAM_SIZES, &Sizes);
 
 	if(scRet != SEC_E_OK)
 	{
@@ -141,7 +156,7 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(&m_hContext, &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(&get(m_hContext), &Message, 0, NULL);
 	}
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -171,7 +186,7 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 		Buffers[2].BufferType = SECBUFFER_EMPTY;
 		Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-		scRet = g_pSSPI->DecryptMessage(&m_hContext, &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(&get(m_hContext), &Message, 0, NULL);
 	}
 	
 
@@ -297,7 +312,7 @@ int CSSLServer::Send(const void * const lpBuf, const int Len)
 
 	Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-	scRet = g_pSSPI->EncryptMessage(&m_hContext, 0, &Message, 0);
+	scRet = g_pSSPI->EncryptMessage(&get(m_hContext), 0, &Message, 0);
 
 	DebugMsg(" ");
 	DebugMsg("Plaintext message has %d bytes", Len);
@@ -335,7 +350,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 	SecBuffer            OutBuffers[1];
 	DWORD                err = 0;
 	DWORD                dwSSPIOutFlags = 0;
-	bool						ContextHandleValid = (m_hContext.dwUpper != ((ULONG_PTR) ((INT_PTR)-1))); 
+	bool				 ContextHandleValid = (bool)m_hContext; 
 
 	DWORD dwSSPIFlags =   
 		ASC_REQ_SEQUENCE_DETECT  |
@@ -393,11 +408,11 @@ bool CSSLServer::SSPINegotiateLoop(void)
             if (SSLHelper.IsClientInitialize())
             {  // Figure out what certificate we might want to use, either using SNI or the local host name
                CString serverName = SSLHelper.GetSNI();
-               if ((!g_ServerCreds.dwLower && !g_ServerCreds.dwUpper) // No certificate handle stored
+               if ((!(bool)g_ServerCreds) // No certificate handle stored
                   || (serverName.Compare(g_ServerName) != 0)) // Requested names are different
                {  // 
-                  if ((g_ServerCreds.dwLower || g_ServerCreds.dwUpper)) // Certificate handle stored
-                     g_pSSPI->FreeCredentialsHandle(&g_ServerCreds);
+                  if ((bool)g_ServerCreds) // Certificate handle stored
+                     g_pSSPI->FreeCredentialsHandle(&get(g_ServerCreds));
                   if (serverName.IsEmpty()) // There was no hostname supplied by SNI
                      serverName = GetHostName();
                   PCCERT_CONTEXT pCertContext = NULL;
@@ -416,7 +431,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
                      status = CertFindServerCertificateByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
                   g_ServerName = (SUCCEEDED(status)) ? serverName : CString();
                   if (SUCCEEDED(status))
-                     status = CreateCredentialsFromCertificate(&g_ServerCreds, pCertContext);
+                     status = CreateCredentialsFromCertificate(set(g_ServerCreds), pCertContext);
                   if (FAILED(status))
                   {
                      DebugMsg("Failed handling server initialization, error = 0x%08x", status);
@@ -460,12 +475,12 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		OutBuffers[0].cbBuffer   = 0;
 
 		scRet = g_pSSPI->AcceptSecurityContext(
-			&g_ServerCreds,								// Which certificate to use, already established
-			ContextHandleValid?&m_hContext:NULL,	// The context handle if we have one, ask to make one if this is first call
+			&get(g_ServerCreds),								// Which certificate to use, already established
+			ContextHandleValid?&get(m_hContext):NULL,	// The context handle if we have one, ask to make one if this is first call
 			&InBuffer,										// Input buffer list
 			dwSSPIFlags,									// What we require of the connection
 			0,													// Data representation, not used 
-			ContextHandleValid?NULL:&m_hContext,	// If we don't yet have a context handle, it is returned here
+			ContextHandleValid?NULL:set(m_hContext),	// If we don't yet have a context handle, it is returned here
 			&OutBuffer,										// [out] The output buffer, for messages to be sent to the other end
 			&dwSSPIOutFlags,								// [out] The flags associated with the negotiated connection
 			&tsExpiry);										// [out] Receives context expiration time
@@ -508,7 +523,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
          if (ClientCertAcceptable)
          {
             PCERT_CONTEXT pCertContext = NULL;
-            HRESULT hr = g_pSSPI->QueryContextAttributes(&m_hContext, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
+            HRESULT hr = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
 
             if (FAILED(hr))
                DebugMsg("Couldn't get client certificate, hr=%#x", hr);
@@ -618,7 +633,7 @@ HRESULT CSSLServer::Disconnect(void)
 	OutBuffer.pBuffers  = OutBuffers;
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
-	Status = g_pSSPI->ApplyControlToken(&m_hContext, &OutBuffer);
+	Status = g_pSSPI->ApplyControlToken(&get(m_hContext), &OutBuffer);
 
 	if(FAILED(Status)) 
 	{
@@ -647,8 +662,8 @@ HRESULT CSSLServer::Disconnect(void)
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	Status = g_pSSPI->AcceptSecurityContext(
-		&g_ServerCreds,			// Which certificate to use, already established
-		&m_hContext,				// The context handle if we have one, ask to make one if this is first call
+		&get(g_ServerCreds),			// Which certificate to use, already established
+		&get(m_hContext),				// The context handle
 		NULL,							// Input buffer list
 		dwSSPIFlags,				// What we require of the connection
 		0,								// Data representation, not used 

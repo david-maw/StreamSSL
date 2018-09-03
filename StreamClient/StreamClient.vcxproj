@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -89,9 +89,9 @@
   <ItemGroup>
     <ClInclude Include="ActiveSock.h" />
     <ClInclude Include="EventWrapper.h" />
-    <ClInclude Include="Handle.h" />
+    <ClInclude Include="..\StreamServer\Handle.h" />
     <ClInclude Include="ISocketStream.h" />
-    <ClInclude Include="SecurityHandle.h" />
+    <ClInclude Include="..\StreamServer\SecurityHandle.h" />
     <ClInclude Include="SSLClient.h" />
     <ClInclude Include="SSLHelper.h" />
     <ClInclude Include="stdafx.h" />
@@ -103,10 +103,6 @@
     <ClCompile Include="ActiveSock.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="SecurityHandle.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="SSLClient.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
