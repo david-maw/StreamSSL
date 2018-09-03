@@ -6,6 +6,7 @@
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
 #include "PassiveSock.h"
+#include "SecurityHandle.h"
 
 class CSSLServer : public ISocketStream
 {
@@ -25,7 +26,7 @@ public:
 private:
    SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext);
    static PSecurityFunctionTable g_pSSPI;
-	static CredHandle g_ServerCreds;
+	static CredentialHandle g_ServerCreds;
    static CString g_ServerName;
 	CPassiveSock * m_SocketStream;
 	int m_LastError;
@@ -38,7 +39,7 @@ private:
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes;
 	void * readPtr;
-	CtxtHandle      m_hContext;
+	SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes;
 };
 

@@ -7,6 +7,24 @@
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLClient::g_pSSPI = NULL;
 
+// Declare the Close functions for the handle classes using the global SSPI function table pointer
+
+void CredentialHandle::Close() noexcept
+{
+	if (*this)
+	{
+		CSSLClient::SSPI()->FreeCredentialsHandle(&m_value);
+	}
+}
+
+void SecurityContextHandle::Close() noexcept
+{
+	if (*this)
+	{
+		CSSLClient::SSPI()->DeleteSecurityContext(&m_value);
+	}
+}
+
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)

@@ -88,9 +88,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CertRAII.h" />
+    <ClInclude Include="Handle.h" />
     <ClInclude Include="ISocketStream.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="PassiveSock.h" />
+    <ClInclude Include="SecurityHandle.h" />
     <ClInclude Include="SSLServer.h" />
     <ClInclude Include="SSLHelper.h" />
     <ClInclude Include="stdafx.h" />

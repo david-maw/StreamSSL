@@ -20,8 +20,8 @@ class CSSLClient
 public:
 	CSSLClient(CActiveSock *);
 	~CSSLClient(void);
-   static PSecurityFunctionTable g_pSSPI;
 private:
+   static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
