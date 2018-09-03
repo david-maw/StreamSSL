@@ -16,15 +16,15 @@ public:
 	virtual ~CActiveSock();
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 	void SetRecvTimeoutSeconds(int NewTimeoutSeconds);
-   int GetRecvTimeoutSeconds();
+	int GetRecvTimeoutSeconds();
 	void SetSendTimeoutSeconds(int NewTimeoutSeconds);
-   int GetSendTimeoutSeconds();
-   // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
+	int GetSendTimeoutSeconds();
+	// Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
-   // Sends up to Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
-	int SendPartial (LPCVOID lpBuf, const ULONG Len);
+	// Sends up to Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
+	int SendPartial(LPCVOID lpBuf, const ULONG Len);
 	// Receives exactly Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
-	int RecvMsg (LPVOID lpBuf, const ULONG Len);
+	int RecvMsg(LPVOID lpBuf, const ULONG Len);
 	// Sends exactly Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
 	int SendMsg(LPCVOID lpBuf, const ULONG Len);
 	BOOL ShutDown(int nHow = SD_BOTH);
@@ -44,4 +44,3 @@ private:
 	int SendTimeoutSeconds, RecvTimeoutSeconds;
 	HANDLE m_hStopEvent;
 };
-

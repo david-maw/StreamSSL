@@ -4,43 +4,43 @@
 // Handy utility function to get the hostname of the host I am running on
 CString GetHostName(void)
 {
-	struct addrinfo hints, *info; 
-	int gai_result; 
- 
-	char hostname[1024]; 
-	hostname[1023] = '\0'; 
-	gethostname(hostname, 1023); 
- 
-	memset(&hints, 0, sizeof hints); 
-	hints.ai_family = AF_UNSPEC; /*either IPV4 or IPV6*/ 
-	hints.ai_socktype = SOCK_STREAM; 
-	hints.ai_flags = AI_CANONNAME; 
- 
+	struct addrinfo hints, *info;
+	int gai_result;
+
+	char hostname[1024];
+	hostname[1023] = '\0';
+	gethostname(hostname, 1023);
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; /*either IPV4 or IPV6*/
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_CANONNAME;
+
 	if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0)
-	{ 
-		 fprintf(stderr, "getaddrinfo: %S\n", gai_strerror(gai_result)); 
-		 exit(1); 
-	} 
- 
+	{
+		fprintf(stderr, "getaddrinfo: %S\n", gai_strerror(gai_result));
+		exit(1);
+	}
+
 	if (info == NULL)
-        return hostname;
-    else
-    {
-        CString s(info->ai_canonname);
-        freeaddrinfo(info);
-        return s;
-    }
+		return hostname;
+	else
+	{
+		CString s(info->ai_canonname);
+		freeaddrinfo(info);
+		return s;
+	}
 }
 
 // CListerner object, listens for connections on one thread, and initiates a worker
 // thread each time a client connects.
 CListener::CListener()
 	:m_StopEvent(FALSE, TRUE),
-    m_WorkerThreadCount(0),
+	m_WorkerThreadCount(0),
 	m_ListenerThread(NULL),
 	m_iNumListenSockets(0)
 {
-	for (int i = 0; i<FD_SETSIZE; i++)
+	for (int i = 0; i < FD_SETSIZE; i++)
 	{
 		m_iListenSockets[i] = INVALID_SOCKET;
 		m_hSocketEvents[i] = NULL;
@@ -50,7 +50,7 @@ CListener::CListener()
 CListener::~CListener(void)
 {
 	EndListening();
-	for (int i = 0; i<FD_SETSIZE; i++)
+	for (int i = 0; i < FD_SETSIZE; i++)
 	{
 		if (m_iListenSockets[i] != INVALID_SOCKET)
 			closesocket(m_iListenSockets[i]);
@@ -75,7 +75,7 @@ UINT __cdecl CListener::Worker(void * v)
 // Worker process for connection listening
 UINT __cdecl CListener::ListenerWorker(LPVOID v)
 {
-	CListener * Listener = (CListener *) v; // See _beginthread call for parameter definition
+	CListener * Listener = (CListener *)v; // See _beginthread call for parameter definition
 
 	SetThreadName("Listener");
 	Listener->Listen();
@@ -87,15 +87,15 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 {
 	TCHAR MsgText[100];
 	CString TCPSocketText;
-	TCPSocketText.Format(_T("%i"),TCPSocket);
+	TCPSocketText.Format(_T("%i"), TCPSocket);
 
 	WSADATA wsadata;
-	if (WSAStartup(MAKEWORD(2,0), &wsadata))
+	if (WSAStartup(MAKEWORD(2, 0), &wsadata))
 		return UnknownError;
 
 	// Get list of addresses to listen on
 	ADDRINFOT Hints, *AddrInfo, *AI;
-	memset(&Hints, 0, sizeof (Hints));
+	memset(&Hints, 0, sizeof(Hints));
 	Hints.ai_family = PF_UNSPEC;
 	Hints.ai_socktype = SOCK_STREAM;
 	Hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
@@ -141,7 +141,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		int rc = bind(m_iListenSockets[i], AI->ai_addr, (int)AI->ai_addrlen);
 		if (rc)
 		{
-			if (WSAGetLastError()==WSAEADDRINUSE)
+			if (WSAGetLastError() == WSAEADDRINUSE)
 				return SocketInuse;
 			else
 				return SocketUnusable;
@@ -194,8 +194,8 @@ void CListener::LogWarning(const CHAR* const msg)
 // its own thread
 void CListener::Listen(void)
 {
-	HANDLE hEvents[FD_SETSIZE+1];
-	SOCKET iReadSocket=NULL;
+	HANDLE hEvents[FD_SETSIZE + 1];
+	SOCKET iReadSocket = NULL;
 	DWORD dwWait;
 	//TCHAR MsgText[100];
 
@@ -210,10 +210,10 @@ void CListener::Listen(void)
 	// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen hEvents[0] = m_StopEvent = %d"), m_StopEvent);
 	// LogWarning(MsgText);
 
- 	// Add the events for each socket type (two at most, one for IPv4, one for IPv6)
-	for (int i=0; i<m_iNumListenSockets; i++)
+	// Add the events for each socket type (two at most, one for IPv4, one for IPv6)
+	for (int i = 0; i < m_iNumListenSockets; i++)
 	{
-		hEvents[i+1] = m_hSocketEvents[i];
+		hEvents[i + 1] = m_hSocketEvents[i];
 		// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen hEvents[%d] = m_hSocketEvents[%d] = %d"), i+1, i, m_hSocketEvents[i]);
 		// LogWarning(MsgText);
 	}
@@ -224,14 +224,14 @@ void CListener::Listen(void)
 		// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen entering WaitForMultipleObjects for %d objects"), m_iNumListenSockets+1);
 		// LogWarning(MsgText);
 
-		dwWait = WaitForMultipleObjects(m_iNumListenSockets+1, hEvents, false, INFINITE);
+		dwWait = WaitForMultipleObjects(m_iNumListenSockets + 1, hEvents, false, INFINITE);
 
 		if (dwWait == WAIT_OBJECT_0)
 		{
 			// LogWarning("CListener::Listen received a stop event");
 			break; // Received a stop event
 		}
-		int iMyIndex = dwWait-1;
+		int iMyIndex = dwWait - 1;
 		// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen event %d triggered, iMyIndex = %d"), dwWait, iMyIndex);
 		// LogWarning(MsgText);
 
@@ -245,14 +245,14 @@ void CListener::Listen(void)
 
 		// A request to open a socket has been received, begin a thread to handle that connection
 		DebugMsg("Starting worker");
-		
+
 		CTransport * Transport = new CTransport(iReadSocket, this); // Deleted by worker thread
 		if (Transport->IsConnected)
 			AfxBeginThread(Worker, Transport);
 		else
 			delete Transport;
 		iReadSocket = INVALID_SOCKET;
-    }
+	}
 	// There has been a problem, wait for all the worker threads to terminate
 	Sleep(500);
 	m_WorkerThreadLock.Lock();

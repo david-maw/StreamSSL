@@ -3,7 +3,7 @@
 
 #ifdef _DEBUG
 #undef THIS_FILE
-static char THIS_FILE[]=__FILE__;
+static char THIS_FILE[] = __FILE__;
 #define new DEBUG_NEW
 #endif
 
@@ -11,17 +11,17 @@ static char THIS_FILE[]=__FILE__;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CTransport::CTransport(SOCKET s,  CListener * Listener): // constructor requires a socket already assigned
+CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires a socket already assigned
 	IsConnected(false)
-	,m_Listener(Listener)
-	,SSLServer(NULL)
+	, m_Listener(Listener)
+	, SSLServer(NULL)
 {
 	PassiveSock = new CPassiveSock(s, Listener->m_StopEvent);
 	SocketStream = PassiveSock;
 	PassiveSock->SetTimeoutSeconds(60);
 	SSLServer = new CSSLServer(PassiveSock);
-   SSLServer->SelectServerCert = Listener->SelectServerCert;
-   SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
+	SSLServer->SelectServerCert = Listener->SelectServerCert;
+	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
 	HRESULT hr = SSLServer->Initialize();
 	if SUCCEEDED(hr)
 	{
@@ -41,7 +41,7 @@ CTransport::CTransport(SOCKET s,  CListener * Listener): // constructor requires
 			m_Listener->LogWarning(_T("Could not access certificate store, is this program running with administrative privileges?"));
 		else if (hr == SEC_E_UNKNOWN_CREDENTIALS)
 			m_Listener->LogWarning(_T("Credentials unknown, is this program running with administrative privileges?"));
-      else if (hr == SEC_E_CERT_UNKNOWN)
+		else if (hr == SEC_E_CERT_UNKNOWN)
 			m_Listener->LogWarning(_T("The returned client certificate was unacceptable"));
 		else
 		{

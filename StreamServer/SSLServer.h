@@ -21,13 +21,13 @@ public:
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
 	HRESULT Initialize(const void * const lpBuf = NULL, const int Len = 0);
-   std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
-   std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
+	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
+	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
-   SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext);
-   static PSecurityFunctionTable g_pSSPI;
+	SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext);
+	static PSecurityFunctionTable g_pSSPI;
 	static CredentialHandle g_ServerCreds;
-   static CString g_ServerName;
+	static CString g_ServerName;
 	CPassiveSock * m_SocketStream;
 	int m_LastError;
 	static HRESULT InitializeClass(void);
@@ -42,4 +42,3 @@ private:
 	SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes;
 };
-

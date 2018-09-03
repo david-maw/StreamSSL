@@ -39,10 +39,10 @@ CPassiveSock::~CPassiveSock()
 int CPassiveSock::Recv(void * const lpBuf, const int Len)
 {
 	WSABUF buffer;
-	WSAEVENT hEvents[2] = {NULL,NULL};
+	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD
 		bytes_read = 0,
-		dwWait = 0, 
+		dwWait = 0,
 		msg_flags = 0;
 	int rc;
 
@@ -63,14 +63,14 @@ int CPassiveSock::Recv(void * const lpBuf, const int Len)
 		// Setup the buffers array
 		buffer.buf = static_cast<char*>(lpBuf);
 		buffer.len = Len;
-	
+
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
 		os.hEvent = hEvents[1];
 		WSAResetEvent(os.hEvent);
 		RecvInitiated = true;
 		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
-		LastError=WSAGetLastError();
+		LastError = WSAGetLastError();
 	}
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
 	{
@@ -78,8 +78,8 @@ int CPassiveSock::Recv(void * const lpBuf, const int Len)
 		if (TimeLeft.GetTotalSeconds() <= 0)
 			dwWait = WAIT_TIMEOUT;
 		else
-			dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds()*1000);
-		if (dwWait == WAIT_OBJECT_0+1) 
+			dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds() * 1000);
+		if (dwWait == WAIT_OBJECT_0 + 1)
 		{
 			RecvInitiated = false;
 			if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
@@ -107,16 +107,16 @@ int CPassiveSock::ReceiveBytes(void * const lpBuf, const int Len)
 {
 	int
 		bytes_received = 0,
-		total_bytes_received = 0; 
+		total_bytes_received = 0;
 
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0,0,0,TimeoutSeconds);
+	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 
 	while (total_bytes_received < Len)
 	{
-		bytes_received = Recv((char*)lpBuf+total_bytes_received, Len-total_bytes_received);
-		if (bytes_received == SOCKET_ERROR) 
+		bytes_received = Recv((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		if (bytes_received == SOCKET_ERROR)
 			return SOCKET_ERROR;
-		else if (bytes_received == 0) 
+		else if (bytes_received == 0)
 			break; // socket is closed, no data left to receive
 		else
 		{
@@ -128,26 +128,26 @@ int CPassiveSock::ReceiveBytes(void * const lpBuf, const int Len)
 
 void CPassiveSock::SetTimeoutSeconds(int NewTimeoutSeconds)
 {
-	if (NewTimeoutSeconds>0)
+	if (NewTimeoutSeconds > 0)
 	{
 		TimeoutSeconds = NewTimeoutSeconds;
-		SendEndTime = RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0,0,0,TimeoutSeconds);
+		SendEndTime = RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 	}
 }
 
 int CPassiveSock::GetLastError()
 {
-	return LastError; 
+	return LastError;
 }
 
 BOOL CPassiveSock::ShutDown(int nHow)
 {
-	return ::shutdown(ActualSocket,nHow);
+	return ::shutdown(ActualSocket, nHow);
 }
 
 HRESULT CPassiveSock::Disconnect(void)
 {
-	return ShutDown()?HRESULT_FROM_WIN32(GetLastError()):S_OK;
+	return ShutDown() ? HRESULT_FROM_WIN32(GetLastError()) : S_OK;
 }
 
 //sends a message, or part of one
@@ -155,10 +155,10 @@ int CPassiveSock::Send(const void * const lpBuf, const int Len)
 {
 	WSAOVERLAPPED os;
 	WSABUF buffers[2];
-	WSAEVENT hEvents[2] = {NULL,NULL};
+	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD
 		dwWait,
-		bytes_sent=0,
+		bytes_sent = 0,
 		msg_flags = 0;
 
 	// Setup up the events to wait on
@@ -178,13 +178,13 @@ int CPassiveSock::Send(const void * const lpBuf, const int Len)
 	os.hEvent = write_event;
 	WSAResetEvent(read_event);
 	rc = WSASend(ActualSocket, buffers, 1, &bytes_sent, 0, &os, NULL);
-	LastError=WSAGetLastError();
+	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
 		CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
-		dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds()*1000);
-		if (dwWait == WAIT_OBJECT_0+1) // I/O completed
-		{	
+		dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds() * 1000);
+		if (dwWait == WAIT_OBJECT_0 + 1) // I/O completed
+		{
 			if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_sent, true, &msg_flags))
 				return bytes_sent;
 		}
@@ -202,14 +202,14 @@ int CPassiveSock::SendBytes(const void * const lpBuf, const int Len)
 {
 	int
 		bytes_sent = 0,
-		total_bytes_sent = 0; 
+		total_bytes_sent = 0;
 
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0,0,0,TimeoutSeconds);
+	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 
 	while (total_bytes_sent < Len)
 	{
 		bytes_sent = Send((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
-		if ((bytes_sent == SOCKET_ERROR)) 
+		if ((bytes_sent == SOCKET_ERROR))
 			return SOCKET_ERROR;
 		else if (bytes_sent == 0)
 			if (total_bytes_sent == 0)

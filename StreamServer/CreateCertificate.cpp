@@ -13,7 +13,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	// CREATE KEY PAIR FOR SELF-SIGNED CERTIFICATE IN MACHINE PROFILE
 	CryptProvider cryptprovider;
 	CryptKey key;
-    DWORD KeyFlags = MachineCert ? CRYPT_MACHINE_KEYSET : 0;
+	DWORD KeyFlags = MachineCert ? CRYPT_MACHINE_KEYSET : 0;
 	// Acquire key container
 	DebugMsg(("CryptAcquireContext of existing key container... "));
 	if (!cryptprovider.AcquireContext(KeyFlags))
@@ -65,11 +65,11 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	std::vector<BYTE> CertName;
 
 	// Encode certificate Subject
-    CString X500(L"CN=");
-    if (Subject)
-       X500 += Subject;
-    else
-       X500 += L"localuser";
+	CString X500(L"CN=");
+	if (Subject)
+		X500 += Subject;
+	else
+		X500 += L"localuser";
 	DWORD cbEncoded = 0;
 	// Find out how many bytes are needed to encode the certificate
 	DebugMsg(("CertStrToName... "));
@@ -146,10 +146,10 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	CRYPT_DATA_BLOB cdblob;
 
 	// Give the certificate a friendly name
-      if (FriendlyName)
-         cdblob.pbData = (BYTE*)FriendlyName;
-      else
-	cdblob.pbData = (BYTE*)L"SSLStream Testing";
+	if (FriendlyName)
+		cdblob.pbData = (BYTE*)FriendlyName;
+	else
+		cdblob.pbData = (BYTE*)L"SSLStream Testing";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
 	if (cert.SetCertificateContextProperty(CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
@@ -162,12 +162,12 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	}
 
 	// Give the certificate a description
-      if (Description)
-         cdblob.pbData = (BYTE*)Description;
-      else if (MachineCert)
-	cdblob.pbData = (BYTE*)L"SSL Stream Server Test";
-      else
-         cdblob.pbData = (BYTE*)L"SSLStream Client Test";
+	if (Description)
+		cdblob.pbData = (BYTE*)Description;
+	else if (MachineCert)
+		cdblob.pbData = (BYTE*)L"SSL Stream Server Test";
+	else
+		cdblob.pbData = (BYTE*)L"SSLStream Client Test";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
 	if (cert.SetCertificateContextProperty(CERT_DESCRIPTION_PROP_ID, 0, &cdblob))

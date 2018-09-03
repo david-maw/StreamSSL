@@ -3,7 +3,7 @@ class CPrtMsg;
 class CListener;
 class CSSLServer;
 
-class CTransport  
+class CTransport
 {
 private:
 	CSSLServer * SSLServer;

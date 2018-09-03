@@ -17,18 +17,18 @@ using namespace std;
 // if you want to keep it around call CertDuplicateCertificateContext, then CertFreeCertificateContext to free it
 bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)
 {
-   if (trusted)
-      cout << "A trusted";
-   else
-      cout << "An untrusted";
-   wcout << " server certificate called \"" << (LPCWSTR)GetCertName(pCertContext) << "\" was returned with a name "; // wcout for WCHAR* handling
-   if (matchingName)
-      cout << "match" << endl;
-   else
-      cout << "mismatch" << endl;
-   if (false && debug && pCertContext)
-      ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
-   return true; // Any certificate will do
+	if (trusted)
+		cout << "A trusted";
+	else
+		cout << "An untrusted";
+	wcout << " server certificate called \"" << (LPCWSTR)GetCertName(pCertContext) << "\" was returned with a name "; // wcout for WCHAR* handling
+	if (matchingName)
+		cout << "match" << endl;
+	else
+		cout << "mismatch" << endl;
+	if (false && debug && pCertContext)
+		ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
+	return true; // Any certificate will do
 }
 
 // This will get called once, or twice, the first call with "Required" false, which can return any
@@ -36,56 +36,56 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 // If that call did not return an acceptable certificate, the procedure may be called again if the server requests a 
 // client certificate, whatever is returned on the first call (including null) is sent to the server which gets to decide
 // whether or not it is acceptable. If there is a second call (which will have "Required" true and may have 
-// pIssuerListInfo non-NULL) it MUST return a certificate or the handshale will fail.
+// pIssuerListInfo non-NULL) it MUST return a certificate or the handshake will fail.
 
 SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)
 {
-   SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
+	SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
 
-   if (Required)
-   {
-      // A client certificate must be returned or the handshake will fail
-      if (pIssuerListInfo && pIssuerListInfo->cIssuers == 0)
-         cout << "Client certificate required, issuer list is empty";
-      else
-      {
-         cout << "Client certificate required, issuer list provided";
-         Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
-         if (!pCertContext)
-            cout << " but no certificates matched";
-      }
-      if (!pCertContext)
-         Status = CertFindClientCertificate(pCertContext); // Select any valid certificate, regardless of issuer
-      // If a search for a required client certificate failed, just make one
-      if (!pCertContext)
-      {
-         cout << ", none found, creating one";
-         pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName());
-         if (pCertContext)
-            Status = S_OK;
-         else
-         {
-            DWORD LastError = GetLastError();
-            cout << endl << "**** Error 0x" << std::hex << std::setw(8) << std::setfill('0') << LastError << " in CreateCertificate" << endl 
-               << "Client certificate";
-            Status = HRESULT_FROM_WIN32(LastError);
-         }
-      }
-   }
-   else
-   {
-      cout << "Optional client certificate requested (without issuer list)";
-      // Enable the next line to preemptively guess at an appropriate certificate 
-      if (false && FAILED(Status))
-         Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
-   }
-   if (pCertContext)
-      wcout << ", selected name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling
-   else
-      cout << ", no certificate found." << endl;
-   if (false && debug && pCertContext)
-      ShowCertInfo(pCertContext, _T("Client certificate being returned"));
-   return Status;
+	if (Required)
+	{
+		// A client certificate must be returned or the handshake will fail
+		if (pIssuerListInfo && pIssuerListInfo->cIssuers == 0)
+			cout << "Client certificate required, issuer list is empty";
+		else
+		{
+			cout << "Client certificate required, issuer list provided";
+			Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
+			if (!pCertContext)
+				cout << " but no certificates matched";
+		}
+		if (!pCertContext)
+			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate, regardless of issuer
+		 // If a search for a required client certificate failed, just make one
+		if (!pCertContext)
+		{
+			cout << ", none found, creating one";
+			pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName());
+			if (pCertContext)
+				Status = S_OK;
+			else
+			{
+				DWORD LastError = GetLastError();
+				cout << endl << "**** Error 0x" << std::hex << std::setw(8) << std::setfill('0') << LastError << " in CreateCertificate" << endl
+					<< "Client certificate";
+				Status = HRESULT_FROM_WIN32(LastError);
+			}
+		}
+	}
+	else
+	{
+		cout << "Optional client certificate requested (without issuer list)";
+		// Enable the next line to preemptively guess at an appropriate certificate 
+		if (false && FAILED(Status))
+			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
+	}
+	if (pCertContext)
+		wcout << ", selected name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling
+	else
+		cout << ", no certificate found." << endl;
+	if (false && debug && pCertContext)
+		ShowCertInfo(pCertContext, _T("Client certificate being returned"));
+	return Status;
 }
 
 BOOL FlushConsoleInputBufferAlternate(HANDLE h)
@@ -126,9 +126,9 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-   CString HostName(GetHostName(ComputerNameDnsFullyQualified));
-   if (argc >= 2)
-      HostName.SetString(argv[1]);
+	CString HostName(GetHostName(ComputerNameDnsFullyQualified));
+	if (argc >= 2)
+		HostName.SetString(argv[1]);
 	int Port = 41000;
 
 	CEventWrapper ShutDownEvent;
@@ -144,9 +144,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		cout << "Socket connected to server, initializing SSL" << endl;
 		char Msg[100];
 		pSSLClient = new CSSLClient(pActiveSock);
-      pSSLClient->ServerCertAcceptable = CertAcceptable;
-      pSSLClient->SelectClientCertificate = SelectClientCertificate;
-      HRESULT hr = pSSLClient->Initialize(ATL::CT2W(HostName));
+		pSSLClient->ServerCertAcceptable = CertAcceptable;
+		pSSLClient->SelectClientCertificate = SelectClientCertificate;
+		HRESULT hr = pSSLClient->Initialize(ATL::CT2W(HostName));
 		if (SUCCEEDED(hr))
 		{
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
@@ -158,15 +158,15 @@ int _tmain(int argc, _TCHAR* argv[])
 			int len = 0;
 			while (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
 				cout << "Received " << CStringA(Msg, len) << endl;
-		   pSSLClient->Close();
+			pSSLClient->Close();
 		}
 		else
 		{
 			cout << "SSL client initialize failed" << endl;
 		}
 		::SetEvent(ShutDownEvent);
-      pActiveSock->Close();
-   }
+		pActiveSock->Close();
+	}
 	else
 	{
 		cout << "Socket failed to connect to server" << endl;
