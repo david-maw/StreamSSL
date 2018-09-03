@@ -21,7 +21,7 @@ public:
 	CSSLClient(CActiveSock *);
 	~CSSLClient(void);
 private:
-   static PSecurityFunctionTable g_pSSPI;
+	static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
@@ -33,32 +33,31 @@ private:
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]; // Enough for a whole encrypted message
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes;
-	CHAR plainText[MaxMsgSize*2]; // Extra plaintext data not yet delivered
+	CHAR plainText[MaxMsgSize * 2]; // Extra plaintext data not yet delivered
 	CHAR * plainTextPtr;
-   DWORD plainTextBytes;
+	DWORD plainTextBytes;
 	void * readPtr;
-   SecurityContextHandle m_hContext;
+	SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes;
-   static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
-   SECURITY_STATUS GetNewClientCredentials();
+	static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
+	SECURITY_STATUS GetNewClientCredentials();
 	bool ServerCertNameMatches;
 	bool ServerCertTrusted;
 
 public:
 	// ISocketStream
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
-	int SendPartial (LPCVOID lpBuf, const ULONG Len);
+	int SendPartial(LPCVOID lpBuf, const ULONG Len);
 	DWORD GetLastError(void);
 	bool Close();
 	// Regular class interface
 	HRESULT Disconnect(void);
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
-    HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = NULL, const int Len = 0);
+	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = NULL, const int Len = 0);
 	// Attributes
-    std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
-    std::function<SECURITY_STATUS (PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
-    bool getServerCertNameMatches();
+	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
+	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
+	bool getServerCertNameMatches();
 	bool getServerCertTrusted();
 };
-

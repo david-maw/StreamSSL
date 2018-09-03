@@ -15,221 +15,221 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert = false, LPCWSTR Subject = NUL
 // Utility function to get the hostname of the host I am running on
 CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
 {
-   DWORD NameLength = 0;
-   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
-   if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
-   {
-      CString ComputerName;
-      if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
-      {
-         ComputerName.ReleaseBuffer();
-         return ComputerName;
-      }
-   }
-   return CString();
+	DWORD NameLength = 0;
+	//BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+	if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+	{
+		CString ComputerName;
+		if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+		{
+			ComputerName.ReleaseBuffer();
+			return ComputerName;
+		}
+	}
+	return CString();
 }
 
 // Utility function to return the user name I'm runng under
 CString GetUserName(void)
 {
-   DWORD NameLength = 0;
-   //BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
-   if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
-   {
-      CString UserName;
-      if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
-      {
-         UserName.ReleaseBuffer();
-         return UserName;
-      }
-   }
-   return CString();
+	DWORD NameLength = 0;
+	//BOOL R = GetComputerNameExW(ComputerNameDnsHostname, NULL, &NameLength);
+	if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+	{
+		CString UserName;
+		if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+		{
+			UserName.ReleaseBuffer();
+			return UserName;
+		}
+	}
+	return CString();
 }
 
 bool DnsNameMatches(CString HostName, PCWSTR pDNSName)
 {
-   CString DNSName(pDNSName);
-   if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
-      return true;
-   else if (DNSName.Find(L'*') < 0) // The DNSName is a hostname, but did not match
-      return false;
-   else // The DNSName is wildcarded
-   {
-      int suffixLen = HostName.GetLength() - HostName.Find(L'.'); // The length of the fixed part
-      if (DNSName.GetLength() > suffixLen + 2) // the hostname domain part must be longer than the DNSName
-         return false;
-      else if (DNSName.GetLength() - DNSName.Find(L'.') != suffixLen) // The two suffix lengths must match
-         return false;
-      else if (HostName.Right(suffixLen) != DNSName.Right(suffixLen))
-         return false;
-      else // at this point, the decision is whether the last hostname node matches the wildcard
-      {
-         DNSName = DNSName.SpanExcluding(L".");
-         CString HostShortName = HostName.SpanExcluding(L".");
-         return (S_OK == PathMatchSpecEx(HostShortName, DNSName, PMSF_NORMAL));
-      }
-   } 
+	CString DNSName(pDNSName);
+	if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
+		return true;
+	else if (DNSName.Find(L'*') < 0) // The DNSName is a hostname, but did not match
+		return false;
+	else // The DNSName is wildcarded
+	{
+		int suffixLen = HostName.GetLength() - HostName.Find(L'.'); // The length of the fixed part
+		if (DNSName.GetLength() > suffixLen + 2) // the hostname domain part must be longer than the DNSName
+			return false;
+		else if (DNSName.GetLength() - DNSName.Find(L'.') != suffixLen) // The two suffix lengths must match
+			return false;
+		else if (HostName.Right(suffixLen) != DNSName.Right(suffixLen))
+			return false;
+		else // at this point, the decision is whether the last hostname node matches the wildcard
+		{
+			DNSName = DNSName.SpanExcluding(L".");
+			CString HostShortName = HostName.SpanExcluding(L".");
+			return (S_OK == PathMatchSpecEx(HostShortName, DNSName, PMSF_NORMAL));
+		}
+	}
 }
 
 // See http://etutorials.org/Programming/secure+programming/Chapter+10.+Public+Key+Infrastructure/10.8+Adding+Hostname+Checking+to+Certificate+Verification/
 // for a pre C++11 version of this algorithm
 bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) {
-   /* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
-   auto szOID = szOID_SUBJECT_ALT_NAME2;
-   auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
-      pCertContext->pCertInfo->rgExtension);
-   if (!pExtension) 
-   {
-      szOID = szOID_SUBJECT_ALT_NAME;
-      pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
-         pCertContext->pCertInfo->rgExtension);
-   }
-   CString RequiredName(pszRequiredName);
+	/* Try SUBJECT_ALT_NAME2 first - it supercedes SUBJECT_ALT_NAME */
+	auto szOID = szOID_SUBJECT_ALT_NAME2;
+	auto pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+		pCertContext->pCertInfo->rgExtension);
+	if (!pExtension)
+	{
+		szOID = szOID_SUBJECT_ALT_NAME;
+		pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
+			pCertContext->pCertInfo->rgExtension);
+	}
+	CString RequiredName(pszRequiredName);
 
-   // Extract the SAN information (list of names) 
-   DWORD cbStructInfo = -1;
-   if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
-      pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
-   {
-      auto pvS = std::make_unique<byte[]>(cbStructInfo);
-      CryptDecodeObject(X509_ASN_ENCODING, szOID, pExtension->Value.pbData,
-         pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
-      auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
+	// Extract the SAN information (list of names) 
+	DWORD cbStructInfo = -1;
+	if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
+		pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
+	{
+		auto pvS = std::make_unique<byte[]>(cbStructInfo);
+		CryptDecodeObject(X509_ASN_ENCODING, szOID, pExtension->Value.pbData,
+			pExtension->Value.cbData, 0, pvS.get(), &cbStructInfo);
+		auto pNameInfo = (CERT_ALT_NAME_INFO *)pvS.get();
 
-      auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [RequiredName](_CERT_ALT_NAME_ENTRY Entry)
-      {
-         return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && DnsNameMatches(RequiredName, Entry.pwszDNSName);
-      }
-      );
-      return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
-   }
+		auto it = std::find_if(&pNameInfo->rgAltEntry[0], &pNameInfo->rgAltEntry[pNameInfo->cAltEntry], [RequiredName](_CERT_ALT_NAME_ENTRY Entry)
+		{
+			return Entry.dwAltNameChoice == CERT_ALT_NAME_DNS_NAME && DnsNameMatches(RequiredName, Entry.pwszDNSName);
+		}
+		);
+		return (it != &pNameInfo->rgAltEntry[pNameInfo->cAltEntry]); // left pointing past the end if not found
+	}
 
-   /* No SubjectAltName extension -- check CommonName */
-   auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
-   if (!dwCommonNameLength) // No CN found
-      return false;
-   CString CommonName;
-   CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
-   CommonName.ReleaseBufferSetLength(dwCommonNameLength);
-   return DnsNameMatches(RequiredName, CommonName);
+	/* No SubjectAltName extension -- check CommonName */
+	auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
+	if (!dwCommonNameLength) // No CN found
+		return false;
+	CString CommonName;
+	CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
+	CommonName.ReleaseBufferSetLength(dwCommonNameLength);
+	return DnsNameMatches(RequiredName, CommonName);
 }
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
 SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
-   HCERTSTORE  hMyCertStore = NULL;
-   TCHAR pszFriendlyNameString[128];
-   TCHAR	pszNameString[128];
+	HCERTSTORE  hMyCertStore = NULL;
+	TCHAR pszFriendlyNameString[128];
+	TCHAR	pszNameString[128];
 
-   if (pszSubjectName == NULL || _tcslen(pszSubjectName) == 0)
-   {
-      DebugMsg("**** No subject name specified!");
-      return E_POINTER;
-   }
+	if (pszSubjectName == NULL || _tcslen(pszSubjectName) == 0)
+	{
+		DebugMsg("**** No subject name specified!");
+		return E_POINTER;
+	}
 
-   if (fUserStore)
-      hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-   else
-   {	// Open the local machine certificate store.
-      hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-         X509_ASN_ENCODING,
-         NULL,
-         CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-         L"MY");
-   }
+	if (fUserStore)
+		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+	else
+	{	// Open the local machine certificate store.
+		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+			X509_ASN_ENCODING,
+			NULL,
+			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+			L"MY");
+	}
 
-   if (!hMyCertStore)
-   {
-      int err = GetLastError();
+	if (!hMyCertStore)
+	{
+		int err = GetLastError();
 
-      if (err == ERROR_ACCESS_DENIED)
-         DebugMsg("**** CertOpenStore failed with 'access denied'");
-      else
-         DebugMsg("**** Error %d returned by CertOpenStore", err);
-      return HRESULT_FROM_WIN32(err);
-   }
+		if (err == ERROR_ACCESS_DENIED)
+			DebugMsg("**** CertOpenStore failed with 'access denied'");
+		else
+			DebugMsg("**** Error %d returned by CertOpenStore", err);
+		return HRESULT_FROM_WIN32(err);
+	}
 
-   if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
-      CertFreeCertificateContext(pCertContext);
-   pCertContext = NULL;
+	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+		CertFreeCertificateContext(pCertContext);
+	pCertContext = NULL;
 
-   char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
-   CERT_ENHKEY_USAGE eku;
-   PCCERT_CONTEXT pCertContextSaved = NULL;
-   eku.cUsageIdentifier = 1;
-   eku.rgpszUsageIdentifier = &serverauth;
-   // Find a server certificate. Note that this code just searches for a 
-   // certificate that has the required enhanced key usage for server authentication
-   // it then selects the best one (ideally one that contains the server name
-   // in the subject name).
+	char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
+	CERT_ENHKEY_USAGE eku;
+	PCCERT_CONTEXT pCertContextSaved = NULL;
+	eku.cUsageIdentifier = 1;
+	eku.rgpszUsageIdentifier = &serverauth;
+	// Find a server certificate. Note that this code just searches for a 
+	// certificate that has the required enhanced key usage for server authentication
+	// it then selects the best one (ideally one that contains the server name
+	// in the subject name).
 
-   while (NULL != (pCertContext = CertFindCertificateInStore(hMyCertStore,
-      X509_ASN_ENCODING,
-      CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
-      CERT_FIND_ENHKEY_USAGE,
-      &eku,
-      pCertContext)))
-   {
-      //ShowCertInfo(pCertContext);
-      if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
-      {
-         DebugMsg("CertGetNameString failed getting friendly name.");
-         continue;
-      }
-      DebugMsg("Certificate '%S' is allowed to be used for server authentication.", pszFriendlyNameString);
-      if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
-         DebugMsg("CertGetNameString failed getting subject name.");
-      else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
-         DebugMsg("Certificate has wrong subject name.");
-      else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
-      {
-         if (!pCertContextSaved)
-         {
-            DebugMsg("A self-signed certificate was found and saved in case it is needed.");
-            pCertContextSaved = CertDuplicateCertificateContext(pCertContext);
-         }
-      }
-      else
-      {
-         DebugMsg("Certificate is acceptable.");
-         if (pCertContextSaved)	// We have a saved self signed certificate context we no longer need, so free it
-            CertFreeCertificateContext(pCertContextSaved);
-         pCertContextSaved = NULL;
-         break;
-      }
-   }
+	while (NULL != (pCertContext = CertFindCertificateInStore(hMyCertStore,
+		X509_ASN_ENCODING,
+		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
+		CERT_FIND_ENHKEY_USAGE,
+		&eku,
+		pCertContext)))
+	{
+		//ShowCertInfo(pCertContext);
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+		{
+			DebugMsg("CertGetNameString failed getting friendly name.");
+			continue;
+		}
+		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", pszFriendlyNameString);
+		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
+			DebugMsg("CertGetNameString failed getting subject name.");
+		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
+			DebugMsg("Certificate has wrong subject name.");
+		else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
+		{
+			if (!pCertContextSaved)
+			{
+				DebugMsg("A self-signed certificate was found and saved in case it is needed.");
+				pCertContextSaved = CertDuplicateCertificateContext(pCertContext);
+			}
+		}
+		else
+		{
+			DebugMsg("Certificate is acceptable.");
+			if (pCertContextSaved)	// We have a saved self signed certificate context we no longer need, so free it
+				CertFreeCertificateContext(pCertContextSaved);
+			pCertContextSaved = NULL;
+			break;
+		}
+	}
 
-   if (pCertContextSaved && !pCertContext)
-   {	// We have a saved self-signed certificate and nothing better 
-      DebugMsg("A self-signed certificate was the best we had.");
-      pCertContext = pCertContextSaved;
-      pCertContextSaved = NULL;
-   }
+	if (pCertContextSaved && !pCertContext)
+	{	// We have a saved self-signed certificate and nothing better 
+		DebugMsg("A self-signed certificate was the best we had.");
+		pCertContext = pCertContextSaved;
+		pCertContextSaved = NULL;
+	}
 
-   if (!pCertContext)
-   {
-      DWORD LastError = GetLastError();
-      if (LastError == CRYPT_E_NOT_FOUND)
-      {
-         DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-         pCertContext = CreateCertificate(true, pszSubjectName);
-         if (!pCertContext)
-         {
-            LastError = GetLastError();
-            DebugMsg("**** Error 0x%x returned by CreateCertificate", LastError);
-            std::cout << "Could not create certificate, are you running as administrator?" << std::endl;
-            return HRESULT_FROM_WIN32(LastError);
-         }
-      }
-      else
-      {
-         DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
-         return HRESULT_FROM_WIN32(LastError);
-      }
-   }
+	if (!pCertContext)
+	{
+		DWORD LastError = GetLastError();
+		if (LastError == CRYPT_E_NOT_FOUND)
+		{
+			DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
+			pCertContext = CreateCertificate(true, pszSubjectName);
+			if (!pCertContext)
+			{
+				LastError = GetLastError();
+				DebugMsg("**** Error 0x%x returned by CreateCertificate", LastError);
+				std::cout << "Could not create certificate, are you running as administrator?" << std::endl;
+				return HRESULT_FROM_WIN32(LastError);
+			}
+		}
+		else
+		{
+			DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
+			return HRESULT_FROM_WIN32(LastError);
+		}
+	}
 
-   return SEC_E_OK;
+	return SEC_E_OK;
 }
 
 // Utility functions to help with certificates
@@ -283,75 +283,75 @@ std::vector<byte> hexToBinary(const char * const str)
 
 typedef
 BOOL(WINAPI * PFNCCERTDISPLAYPROC)(
-   _In_ PCCERT_CONTEXT pCertContext,
-   _In_ HWND           hWndSelCertDlg,
-   _In_ void           *pvCallbackData
-   );
+	_In_ PCCERT_CONTEXT	pCertContext,
+	_In_ HWND			hWndSelCertDlg,
+	_In_ void			*pvCallbackData
+	);
 
 typedef struct _CRYPTUI_SELECTCERTIFICATE_STRUCT {
-   DWORD               dwSize;
-   HWND                hwndParent;
-   DWORD               dwFlags;
-   LPCTSTR             szTitle;
-   DWORD               dwDontUseColumn;
-   LPCTSTR             szDisplayString;
-   PFNCFILTERPROC      pFilterCallback;
-   PFNCCERTDISPLAYPROC pDisplayCallback;
-   void                *pvCallbackData;
-   DWORD               cDisplayStores;
-   HCERTSTORE          *rghDisplayStores;
-   DWORD               cStores;
-   HCERTSTORE          *rghStores;
-   DWORD               cPropSheetPages;
-   LPCPROPSHEETPAGE    rgPropSheetPages;
-   HCERTSTORE          hSelectedCertStore;
+	DWORD				dwSize;
+	HWND				hwndParent;
+	DWORD				dwFlags;
+	LPCTSTR				szTitle;
+	DWORD				dwDontUseColumn;
+	LPCTSTR				szDisplayString;
+	PFNCFILTERPROC		pFilterCallback;
+	PFNCCERTDISPLAYPROC	pDisplayCallback;
+	void				*pvCallbackData;
+	DWORD				cDisplayStores;
+	HCERTSTORE			*rghDisplayStores;
+	DWORD				cStores;
+	HCERTSTORE			*rghStores;
+	DWORD				cPropSheetPages;
+	LPCPROPSHEETPAGE	rgPropSheetPages;
+	HCERTSTORE			hSelectedCertStore;
 } CRYPTUI_SELECTCERTIFICATE_STRUCT, *PCRYPTUI_SELECTCERTIFICATE_STRUCT;
 
 typedef
 PCCERT_CONTEXT(WINAPI * CryptUIDlgSelectCertificate) (
-   PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
-   );
+	PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
+	);
 
 // Make sure the certificate is a valid server certificate, for example, does the name match, do you have a private key,
 // is the certificate allowed to be used for server identification
 
 BOOL WINAPI ValidCert(
-   PCCERT_CONTEXT  pCertContext,
-   BOOL            *pfInitialSelectedCert,
-   void            *pvCallbackData // Passes in the required name
+	PCCERT_CONTEXT	pCertContext,
+	BOOL			*pfInitialSelectedCert,
+	void			*pvCallbackData // Passes in the required name
 )
 {
-   DWORD cbData = 0;
-   CString s = "Certificate '" + GetCertName(pCertContext) + "' ";
-   if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
-      DebugMsg(s + "has wrong subject name.");
-   else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
-   {
-      DebugMsg(s + "has no private key.");
-   }
-   else
-   {  // All checks passed now check Enhanced Key Usage
-      cbData = 0;
-      CertGetEnhancedKeyUsage(pCertContext, 0, NULL, &cbData);
-      if (cbData == 0)
-         return TRUE; // There are no EKU entries, so any usage is allowed
-      else
-      {
-         std::vector<byte> Data(cbData);
-         auto peku = (PCERT_ENHKEY_USAGE)(&Data[0]);
-         CertGetEnhancedKeyUsage(pCertContext, 0, peku, &cbData);
-         LPSTR* szUsageID = peku->rgpszUsageIdentifier;
-         for (DWORD i = 0; i < peku->cUsageIdentifier; i++)
-         {
-            if (!strcmp(*szUsageID, szOID_PKIX_KP_SERVER_AUTH))
-               return TRUE; // All checks passed and the certificate is allowed to be used for server identification
-            szUsageID++;
-         }
-         DebugMsg(s + "is not allowed use for server authentication.");
-      }
-   }
-   // One of the checks failed
-   return FALSE;
+	DWORD cbData = 0;
+	CString s = "Certificate '" + GetCertName(pCertContext) + "' ";
+	if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
+		DebugMsg(s + "has wrong subject name.");
+	else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
+	{
+		DebugMsg(s + "has no private key.");
+	}
+	else
+	{  // All checks passed now check Enhanced Key Usage
+		cbData = 0;
+		CertGetEnhancedKeyUsage(pCertContext, 0, NULL, &cbData);
+		if (cbData == 0)
+			return TRUE; // There are no EKU entries, so any usage is allowed
+		else
+		{
+			std::vector<byte> Data(cbData);
+			auto peku = (PCERT_ENHKEY_USAGE)(&Data[0]);
+			CertGetEnhancedKeyUsage(pCertContext, 0, peku, &cbData);
+			LPSTR* szUsageID = peku->rgpszUsageIdentifier;
+			for (DWORD i = 0; i < peku->cUsageIdentifier; i++)
+			{
+				if (!strcmp(*szUsageID, szOID_PKIX_KP_SERVER_AUTH))
+					return TRUE; // All checks passed and the certificate is allowed to be used for server identification
+				szUsageID++;
+			}
+			DebugMsg(s + "is not allowed use for server authentication.");
+		}
+	}
+	// One of the checks failed
+	return FALSE;
 }
 
 // CryptUIDlgSelectCertificateW is not in a library, but IS present in CryptUI.dll so we
@@ -361,78 +361,78 @@ CryptUIDlgSelectCertificate SelectCertificate = NULL;
 
 SECURITY_STATUS CertFindCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
-   //--------------------------------------------------------------------
-   // Declare and initialize variables.
-   HCERTSTORE       hMyCertStore = NULL;
-   TCHAR * pszStoreName = TEXT("MY");
+	//--------------------------------------------------------------------
+	// Declare and initialize variables.
+	HCERTSTORE       hMyCertStore = NULL;
+	TCHAR * pszStoreName = TEXT("MY");
 
-   //--------------------------------------------------------------------
-   //   Open a certificate store.
-   if (fUserStore)
-      hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-   else
-   {	// Open the local machine certificate store.
-      hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-         X509_ASN_ENCODING,
-         NULL,
-         CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-         L"MY");
-   }
+	//--------------------------------------------------------------------
+	//   Open a certificate store.
+	if (fUserStore)
+		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+	else
+	{	// Open the local machine certificate store.
+		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+			X509_ASN_ENCODING,
+			NULL,
+			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
+			L"MY");
+	}
 
-   if (!hMyCertStore)
-   {
-      int err = GetLastError();
+	if (!hMyCertStore)
+	{
+		int err = GetLastError();
 
-      if (err == ERROR_ACCESS_DENIED)
-         DebugMsg("**** CertOpenStore failed with 'access denied'");
-      else
-         DebugMsg("**** Error %d returned by CertOpenStore", err);
-      return HRESULT_FROM_WIN32(err);
-   }
+		if (err == ERROR_ACCESS_DENIED)
+			DebugMsg("**** CertOpenStore failed with 'access denied'");
+		else
+			DebugMsg("**** Error %d returned by CertOpenStore", err);
+		return HRESULT_FROM_WIN32(err);
+	}
 
-   if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
-      CertFreeCertificateContext(pCertContext);
-   pCertContext = NULL;
+	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+		CertFreeCertificateContext(pCertContext);
+	pCertContext = NULL;
 
-   // Link to SelectCertificate if it has not already been done
+	// Link to SelectCertificate if it has not already been done
 
-   if (!SelectCertificate)
-   {  // Not linked yet, find the function in the DLL
-      HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
-      SelectCertificate = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
-      // Do not call FreeLibrary because the function may be called again later
-   }
+	if (!SelectCertificate)
+	{  // Not linked yet, find the function in the DLL
+		HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
+		SelectCertificate = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+		// Do not call FreeLibrary because the function may be called again later
+	}
 
-   // Display a list of the certificates in the store and allow the user to select a certificate.
-   // Note that only certificates which pass the test defined in ValidCert (if any) will be displayed.
+	// Display a list of the certificates in the store and allow the user to select a certificate.
+	// Note that only certificates which pass the test defined in ValidCert (if any) will be displayed.
 
-   CRYPTUI_SELECTCERTIFICATE_STRUCT csc {};
+	CRYPTUI_SELECTCERTIFICATE_STRUCT csc{};
 
-   csc.dwSize = sizeof csc;
-   csc.szTitle = L"Select a Server Certificate";
-   csc.dwDontUseColumn = CRYPTUI_SELECT_LOCATION_COLUMN;
-   csc.pFilterCallback = ValidCert;
-   csc.cDisplayStores = 1;
-   csc.rghDisplayStores = &hMyCertStore;
-   csc.pvCallbackData = (LPVOID)pszSubjectName;
+	csc.dwSize = sizeof csc;
+	csc.szTitle = L"Select a Server Certificate";
+	csc.dwDontUseColumn = CRYPTUI_SELECT_LOCATION_COLUMN;
+	csc.pFilterCallback = ValidCert;
+	csc.cDisplayStores = 1;
+	csc.rghDisplayStores = &hMyCertStore;
+	csc.pvCallbackData = (LPVOID)pszSubjectName;
 
-   if (!(pCertContext = SelectCertificate(&csc)))
-   {
-      printf("Select Certificate UI failed.\n");
-   }
+	if (!(pCertContext = SelectCertificate(&csc)))
+	{
+		printf("Select Certificate UI failed.\n");
+	}
 
-   //--------------------------------------------------------------------
-   // When all processing is completed, clean up.
+	//--------------------------------------------------------------------
+	// When all processing is completed, clean up.
 
-   if (hMyCertStore)
-   {
-      if (!CertCloseStore(hMyCertStore, 0))
-      {
-         printf("CertCloseStore failed.\n");
-         return SEC_E_CERT_UNKNOWN;
-      }
-   }
-   return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
+	if (hMyCertStore)
+	{
+		if (!CertCloseStore(hMyCertStore, 0))
+		{
+			printf("CertCloseStore failed.\n");
+			return SEC_E_CERT_UNKNOWN;
+		}
+	}
+	return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
 }
 
 // End Section of code supporting CertFindCertificateUI
@@ -498,7 +498,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 		}
 		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
 		if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
-    		DebugMsg("A self-signed certificate was found.");
+			DebugMsg("A self-signed certificate was found.");
 	}
 	else
 	{
@@ -512,77 +512,77 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 // trust chain (basically asking is the certificate issuer trusted)
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext)
 {
-   HTTPSPolicyCallbackData  polHttps;
-   CERT_CHAIN_POLICY_PARA   PolicyPara;
-   CERT_CHAIN_POLICY_STATUS PolicyStatus;
-   CERT_CHAIN_PARA          ChainPara;
-   PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
-   HRESULT                  Status;
-   LPSTR rgszUsages[] = { szOID_PKIX_KP_CLIENT_AUTH,
-      szOID_SERVER_GATED_CRYPTO,
-      szOID_SGC_NETSCAPE };
-   DWORD cUsages = _countof(rgszUsages);
+	HTTPSPolicyCallbackData  polHttps;
+	CERT_CHAIN_POLICY_PARA   PolicyPara;
+	CERT_CHAIN_POLICY_STATUS PolicyStatus;
+	CERT_CHAIN_PARA          ChainPara;
+	PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
+	HRESULT                  Status;
+	LPSTR rgszUsages[] = { szOID_PKIX_KP_CLIENT_AUTH,
+	   szOID_SERVER_GATED_CRYPTO,
+	   szOID_SGC_NETSCAPE };
+	DWORD cUsages = _countof(rgszUsages);
 
-   // Build certificate chain.
-   ZeroMemory(&ChainPara, sizeof(ChainPara));
-   ChainPara.cbSize = sizeof(ChainPara);
-   ChainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
-   ChainPara.RequestedUsage.Usage.cUsageIdentifier = cUsages;
-   ChainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
+	// Build certificate chain.
+	ZeroMemory(&ChainPara, sizeof(ChainPara));
+	ChainPara.cbSize = sizeof(ChainPara);
+	ChainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
+	ChainPara.RequestedUsage.Usage.cUsageIdentifier = cUsages;
+	ChainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
 
-   if (!CertGetCertificateChain(NULL,
-      pCertContext,
-      NULL,
-      pCertContext->hCertStore,
-      &ChainPara,
-      0,
-      NULL,
-      &pChainContext))
-   {
-      Status = GetLastError();
-      DebugMsg("Error %#x returned by CertGetCertificateChain!", Status);
-      goto cleanup;
-   }
+	if (!CertGetCertificateChain(NULL,
+		pCertContext,
+		NULL,
+		pCertContext->hCertStore,
+		&ChainPara,
+		0,
+		NULL,
+		&pChainContext))
+	{
+		Status = GetLastError();
+		DebugMsg("Error %#x returned by CertGetCertificateChain!", Status);
+		goto cleanup;
+	}
 
 
-   // Validate certificate chain.
-   ZeroMemory(&polHttps, sizeof(HTTPSPolicyCallbackData));
-   polHttps.cbStruct = sizeof(HTTPSPolicyCallbackData);
-   polHttps.dwAuthType = AUTHTYPE_SERVER;
-   polHttps.fdwChecks = 0;    // dwCertFlags;
-   polHttps.pwszServerName = NULL; // ServerName - checked elsewhere
+	// Validate certificate chain.
+	ZeroMemory(&polHttps, sizeof(HTTPSPolicyCallbackData));
+	polHttps.cbStruct = sizeof(HTTPSPolicyCallbackData);
+	polHttps.dwAuthType = AUTHTYPE_SERVER;
+	polHttps.fdwChecks = 0;    // dwCertFlags;
+	polHttps.pwszServerName = NULL; // ServerName - checked elsewhere
 
-   ZeroMemory(&PolicyPara, sizeof(PolicyPara));
-   PolicyPara.cbSize = sizeof(PolicyPara);
-   PolicyPara.pvExtraPolicyPara = &polHttps;
+	ZeroMemory(&PolicyPara, sizeof(PolicyPara));
+	PolicyPara.cbSize = sizeof(PolicyPara);
+	PolicyPara.pvExtraPolicyPara = &polHttps;
 
-   ZeroMemory(&PolicyStatus, sizeof(PolicyStatus));
-   PolicyStatus.cbSize = sizeof(PolicyStatus);
+	ZeroMemory(&PolicyStatus, sizeof(PolicyStatus));
+	PolicyStatus.cbSize = sizeof(PolicyStatus);
 
-   if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
-      pChainContext,
-      &PolicyPara,
-      &PolicyStatus))
-   {
-      Status = HRESULT_FROM_WIN32(GetLastError());
-      DebugMsg("Error %#x returned by CertVerifyCertificateChainPolicy!", Status);
-      goto cleanup;
-   }
+	if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
+		pChainContext,
+		&PolicyPara,
+		&PolicyStatus))
+	{
+		Status = HRESULT_FROM_WIN32(GetLastError());
+		DebugMsg("Error %#x returned by CertVerifyCertificateChainPolicy!", Status);
+		goto cleanup;
+	}
 
-   if (PolicyStatus.dwError)
-   {
-      Status = S_FALSE;
-      //DisplayWinVerifyTrustError(PolicyStatus.dwError); 
-      goto cleanup;
-   }
+	if (PolicyStatus.dwError)
+	{
+		Status = S_FALSE;
+		//DisplayWinVerifyTrustError(PolicyStatus.dwError); 
+		goto cleanup;
+	}
 
-   Status = SEC_E_OK;
+	Status = SEC_E_OK;
 
 cleanup:
-   if (pChainContext)
-      CertFreeCertificateChain(pChainContext);
+	if (pChainContext)
+		CertFreeCertificateChain(pChainContext);
 
-   return Status;
+	return Status;
 }
 
 // Display a UI with the certificate info and also write it to the debug output
@@ -820,29 +820,29 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 // Helper function to return the friendly name of a certificate so it can be showed to a human 
 CString GetCertName(PCCERT_CONTEXT pCertContext)
 {
-   CString certName;
-   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
-   certName.ReleaseBuffer();
-   if (good)
-      return certName;
-   else
-      return L"<unknown>";
+	CString certName;
+	auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
+	certName.ReleaseBuffer();
+	if (good)
+		return certName;
+	else
+		return L"<unknown>";
 }
 
 // General purpose helper class for SSL, decodes buffers for diagnostics, handles SNI
 
-CSSLHelper::CSSLHelper(const byte * BufPtr, const int BufBytes):
-contentType(0),
-major(0),
-minor(0),
-length(0),
-handshakeType(0),
-handshakeLength(0),
-OriginalBufPtr(BufPtr),
-DataPtr(BufPtr),
-MaxBufBytes(BufBytes)
+CSSLHelper::CSSLHelper(const byte * BufPtr, const int BufBytes) :
+	contentType(0),
+	major(0),
+	minor(0),
+	length(0),
+	handshakeType(0),
+	handshakeLength(0),
+	OriginalBufPtr(BufPtr),
+	DataPtr(BufPtr),
+	MaxBufBytes(BufBytes)
 {
-   decoded = (BufPtr != nullptr) && CanDecode();
+	decoded = (BufPtr != nullptr) && CanDecode();
 }
 
 CSSLHelper::~CSSLHelper()
@@ -852,183 +852,183 @@ CSSLHelper::~CSSLHelper()
 // Decode a buffer
 bool CSSLHelper::CanDecode()
 {
-   if (MaxBufBytes < 5)
-      return false;
-   else
-   {
-      contentType = *(DataPtr++);
-      major = *(DataPtr++);
-      minor = *(DataPtr++);
-      length = (*(DataPtr) << 8) + *(DataPtr + 1);
-      DataPtr += 2;
-      if (length + 5 > MaxBufBytes)
-         return false;
-      // This is a version we recognize
-      if (contentType != 22)
-         return false;
-      // This is a handshake message (content type 22)
-      handshakeType = *(DataPtr++);
-      handshakeLength = (*DataPtr << 16) + (*(DataPtr + 1) << 8) + *(DataPtr + 2);
-      DataPtr += 3;
-      if (handshakeType != 1)
-         return false;
-      BufEnd = OriginalBufPtr + 5 + 4 + handshakeLength;
-      return true;
-   }
+	if (MaxBufBytes < 5)
+		return false;
+	else
+	{
+		contentType = *(DataPtr++);
+		major = *(DataPtr++);
+		minor = *(DataPtr++);
+		length = (*(DataPtr) << 8) + *(DataPtr + 1);
+		DataPtr += 2;
+		if (length + 5 > MaxBufBytes)
+			return false;
+		// This is a version we recognize
+		if (contentType != 22)
+			return false;
+		// This is a handshake message (content type 22)
+		handshakeType = *(DataPtr++);
+		handshakeLength = (*DataPtr << 16) + (*(DataPtr + 1) << 8) + *(DataPtr + 2);
+		DataPtr += 3;
+		if (handshakeType != 1)
+			return false;
+		BufEnd = OriginalBufPtr + 5 + 4 + handshakeLength;
+		return true;
+	}
 }
 
 // Trace handshake buffer
 void CSSLHelper::TraceHandshake()
 {
-   if (MaxBufBytes < 5)
-      DebugMsg("Buffer space too small");
-   else
-   {
-      const byte * BufPtr = DataPtr;
-      if (length + 5 == MaxBufBytes)
-         DebugMsg("Exactly one buffer is present");
-      else if (length + 5 <= MaxBufBytes)
-         DebugMsg("Whole buffer is present");
-      else
-         DebugMsg("Only part of the buffer is present");
-      if (major == 3)
-      {
-         if (minor == 0)
-            DebugMsg("SSL version 3.0");
-         else if (minor == 1)
-            DebugMsg("TLS version 1.0");
-         else if (minor == 2)
-            DebugMsg("TLS version 1.1");
-         else if (minor == 3)
-            DebugMsg("TLS version 1.2");
-         else
-            DebugMsg("TLS version after 1.2");
-      }
-      else
-      {
-         DebugMsg("Content Type = %d, Major.Minor Version = %d.%d, length %d (0x%04X)", contentType, major, minor, length, length);
-         DebugMsg("This version is not recognized so no more information is available");
-         PrintHexDump(MaxBufBytes, OriginalBufPtr);
-         return;
-      }
-      // This is a version we recognize
-      if (contentType != 22)
-      {
-         DebugMsg("This content type (%d) is not recognized", contentType);
-         PrintHexDump(MaxBufBytes, OriginalBufPtr);
-         return;
-      }
-      // This is a handshake message (content type 22)
-      if (handshakeType != 1)
-      {
-         DebugMsg("This handshake type (%d) is not recognized", handshakeType);
-         PrintHexDump(MaxBufBytes, OriginalBufPtr);
-         return;
-      }
-      // This is a client hello message (handshake type 1)
-      DebugMsg("client_hello");
-      BufPtr += 2; // Skip ClientVersion
-      BufPtr += 32; // Skip Random
-      UINT8 sessionidLength = *BufPtr;
-      BufPtr += 1 + sessionidLength; // Skip SessionID
-      UINT16 cipherSuitesLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-      BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
-      UINT8 compressionMethodsLength = *BufPtr;
-      BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
-      bool extensionsPresent = BufPtr < BufEnd;
-      UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-      BufPtr += 2;
-      if (extensionsLength == BufEnd - BufPtr)
-         DebugMsg("There are %d bytes of extension data", extensionsLength);
-      while (BufPtr < BufEnd)
-      {
-         UINT16 extensionType = (*(BufPtr) << 8) + *(BufPtr + 1);
-         BufPtr += 2;
-         UINT16 extensionDataLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-         BufPtr += 2;
-         if (extensionType == 0) // server name list, in practice there's only ever one name in it (see RFC 6066)
-         {
-            UINT16 serverNameListLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-            BufPtr += 2;
-            DebugMsg("Server name list extension, length %d", serverNameListLength);
-            const byte * serverNameListEnd = BufPtr + serverNameListLength;
-            while (BufPtr < serverNameListEnd)
-            {
-               UINT8 serverNameType = *(BufPtr++);
-               UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-               BufPtr += 2;
-               if (serverNameType == 0)
-                  DebugMsg("   Requested name \"%*s\"", serverNameLength, BufPtr);
-               else
-                  DebugMsg("   Server name Type %d, length %d, data \"%*s\"", serverNameType, serverNameLength, serverNameLength, BufPtr);
-               BufPtr += serverNameLength;
-            }
-         }
-         else
-         {
-            DebugMsg("Extension Type %d, length %d", extensionType, extensionDataLength);
-            BufPtr += extensionDataLength;
-         }
-      }
-      if (BufPtr == BufEnd)
-         DebugMsg("Extensions exactly filled the header, as expected");
-      else
-         DebugMsg("** Error ** Extensions did not fill the header");
-   }
-   PrintHexDump(MaxBufBytes, OriginalBufPtr);
-   return;
+	if (MaxBufBytes < 5)
+		DebugMsg("Buffer space too small");
+	else
+	{
+		const byte * BufPtr = DataPtr;
+		if (length + 5 == MaxBufBytes)
+			DebugMsg("Exactly one buffer is present");
+		else if (length + 5 <= MaxBufBytes)
+			DebugMsg("Whole buffer is present");
+		else
+			DebugMsg("Only part of the buffer is present");
+		if (major == 3)
+		{
+			if (minor == 0)
+				DebugMsg("SSL version 3.0");
+			else if (minor == 1)
+				DebugMsg("TLS version 1.0");
+			else if (minor == 2)
+				DebugMsg("TLS version 1.1");
+			else if (minor == 3)
+				DebugMsg("TLS version 1.2");
+			else
+				DebugMsg("TLS version after 1.2");
+		}
+		else
+		{
+			DebugMsg("Content Type = %d, Major.Minor Version = %d.%d, length %d (0x%04X)", contentType, major, minor, length, length);
+			DebugMsg("This version is not recognized so no more information is available");
+			PrintHexDump(MaxBufBytes, OriginalBufPtr);
+			return;
+		}
+		// This is a version we recognize
+		if (contentType != 22)
+		{
+			DebugMsg("This content type (%d) is not recognized", contentType);
+			PrintHexDump(MaxBufBytes, OriginalBufPtr);
+			return;
+		}
+		// This is a handshake message (content type 22)
+		if (handshakeType != 1)
+		{
+			DebugMsg("This handshake type (%d) is not recognized", handshakeType);
+			PrintHexDump(MaxBufBytes, OriginalBufPtr);
+			return;
+		}
+		// This is a client hello message (handshake type 1)
+		DebugMsg("client_hello");
+		BufPtr += 2; // Skip ClientVersion
+		BufPtr += 32; // Skip Random
+		UINT8 sessionidLength = *BufPtr;
+		BufPtr += 1 + sessionidLength; // Skip SessionID
+		UINT16 cipherSuitesLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+		BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
+		UINT8 compressionMethodsLength = *BufPtr;
+		BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
+		bool extensionsPresent = BufPtr < BufEnd;
+		UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+		BufPtr += 2;
+		if (extensionsLength == BufEnd - BufPtr)
+			DebugMsg("There are %d bytes of extension data", extensionsLength);
+		while (BufPtr < BufEnd)
+		{
+			UINT16 extensionType = (*(BufPtr) << 8) + *(BufPtr + 1);
+			BufPtr += 2;
+			UINT16 extensionDataLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+			BufPtr += 2;
+			if (extensionType == 0) // server name list, in practice there's only ever one name in it (see RFC 6066)
+			{
+				UINT16 serverNameListLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+				BufPtr += 2;
+				DebugMsg("Server name list extension, length %d", serverNameListLength);
+				const byte * serverNameListEnd = BufPtr + serverNameListLength;
+				while (BufPtr < serverNameListEnd)
+				{
+					UINT8 serverNameType = *(BufPtr++);
+					UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+					BufPtr += 2;
+					if (serverNameType == 0)
+						DebugMsg("   Requested name \"%*s\"", serverNameLength, BufPtr);
+					else
+						DebugMsg("   Server name Type %d, length %d, data \"%*s\"", serverNameType, serverNameLength, serverNameLength, BufPtr);
+					BufPtr += serverNameLength;
+				}
+			}
+			else
+			{
+				DebugMsg("Extension Type %d, length %d", extensionType, extensionDataLength);
+				BufPtr += extensionDataLength;
+			}
+		}
+		if (BufPtr == BufEnd)
+			DebugMsg("Extensions exactly filled the header, as expected");
+		else
+			DebugMsg("** Error ** Extensions did not fill the header");
+	}
+	PrintHexDump(MaxBufBytes, OriginalBufPtr);
+	return;
 }
 
 // Is this packet a complete client initialize packet
 bool CSSLHelper::IsClientInitialize()
 {
-   return decoded;
+	return decoded;
 }
 
 // Get SNI provided hostname
 CString CSSLHelper::GetSNI()
 {
-   const byte * BufPtr = DataPtr;
-   if (decoded)
-   {
-      // This is a client hello message (handshake type 1)
-      BufPtr += 2; // Skip ClientVersion
-      BufPtr += 32; // Skip Random
-      UINT8 sessionidLength = *BufPtr;
-      BufPtr += 1 + sessionidLength; // Skip SessionID
-      UINT16 cipherSuitesLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-      BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
-      UINT8 compressionMethodsLength = *BufPtr;
-      BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
-      bool extensionsPresent = BufPtr < BufEnd;
-      UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-      BufPtr += 2;
-      while (BufPtr < BufEnd)
-      {
-         UINT16 extensionType = (*(BufPtr) << 8) + *(BufPtr + 1);
-         BufPtr += 2;
-         UINT16 extensionDataLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-         BufPtr += 2;
-         if (extensionType == 0) // server name list, in practice there's only ever one name in it (see RFC 6066)
-         {
-            UINT16 serverNameListLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-            BufPtr += 2;
-            const byte * serverNameListEnd = BufPtr + serverNameListLength;
-            while (BufPtr < serverNameListEnd)
-            {
-               UINT8 serverNameType = *(BufPtr++);
-               UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-               BufPtr += 2;
-               if (serverNameType == 0)
-                  return CString((char*)BufPtr, serverNameLength);
-               BufPtr += serverNameLength;
-            }
-         }
-         else
-         {
-            BufPtr += extensionDataLength;
-         }
-      }
-   }
-   return CString();
+	const byte * BufPtr = DataPtr;
+	if (decoded)
+	{
+		// This is a client hello message (handshake type 1)
+		BufPtr += 2; // Skip ClientVersion
+		BufPtr += 32; // Skip Random
+		UINT8 sessionidLength = *BufPtr;
+		BufPtr += 1 + sessionidLength; // Skip SessionID
+		UINT16 cipherSuitesLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+		BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
+		UINT8 compressionMethodsLength = *BufPtr;
+		BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
+		bool extensionsPresent = BufPtr < BufEnd;
+		UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+		BufPtr += 2;
+		while (BufPtr < BufEnd)
+		{
+			UINT16 extensionType = (*(BufPtr) << 8) + *(BufPtr + 1);
+			BufPtr += 2;
+			UINT16 extensionDataLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+			BufPtr += 2;
+			if (extensionType == 0) // server name list, in practice there's only ever one name in it (see RFC 6066)
+			{
+				UINT16 serverNameListLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+				BufPtr += 2;
+				const byte * serverNameListEnd = BufPtr + serverNameListLength;
+				while (BufPtr < serverNameListEnd)
+				{
+					UINT8 serverNameType = *(BufPtr++);
+					UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+					BufPtr += 2;
+					if (serverNameType == 0)
+						return CString((char*)BufPtr, serverNameLength);
+					BufPtr += serverNameLength;
+				}
+			}
+			else
+			{
+				BufPtr += extensionDataLength;
+			}
+		}
+	}
+	return CString();
 }

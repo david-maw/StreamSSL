@@ -8,7 +8,7 @@ class ISocketStream;
 class CListener
 {
 public:
-	enum ErrorType{
+	enum ErrorType {
 		NoError,
 		UnknownError,
 		SocketInuse,
@@ -33,9 +33,9 @@ public:
 	CEvent m_StopEvent;
 	// Initialize the listener
 	ErrorType Initialize(int TCPSocket);
-   std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
-   std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
-   void EndListening(void);
+	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
+	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
+	void EndListening(void);
 	void BeginListening(std::function<void(ISocketStream * StreamSock)> actualwork);
 };
 
