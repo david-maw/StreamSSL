@@ -1,7 +1,41 @@
 #include "stdafx.h"
 #include "Utilities.h"
+#include <atlconv.h>
+#include <string>
 
 // General purpose functions
+
+// Utility function to get the hostname of the host I am running on
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
+{
+	DWORD NameLength = 0;
+	if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+	{
+		CString ComputerName;
+		if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+		{
+			ComputerName.ReleaseBuffer();
+			return ComputerName;
+		}
+	}
+	return CString();
+}
+
+// Utility function to return the user name I'm runing under
+CString GetUserName()
+{
+	DWORD NameLength = 0;
+	if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+	{
+		CString UserName;
+		if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+		{
+			UserName.ReleaseBuffer();
+			return UserName;
+		}
+	}
+	return CString();
+}
 
 //
 // Usage: SetThreadName ("MainThread"[, threadID]);

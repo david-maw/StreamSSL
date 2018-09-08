@@ -11,13 +11,14 @@ const bool debug = true;
 const bool debug = false;
 #endif
 
-#define VC_EXTRALEAN
+#define _AFXDLL
+#include <afxwin.h>
+#include <afxmt.h>
 
-#include <atlstr.h>
-#include <comdef.h>
+// Windows SDK
+#ifndef VC_EXTRALEAN
+#define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
+#endif
+#define SECURITY_WIN32
+#include <security.h>
 #include <strsafe.h>
-#include <memory>
-
-#include "Utilities.h"
-
-using namespace ATL;

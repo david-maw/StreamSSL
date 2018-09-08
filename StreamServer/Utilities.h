@@ -1,5 +1,5 @@
 #pragma once
-// General purpose utilities for use both at compile time and run time 
+// General purpose utilities for use both at compile time and run time
 #define Stringize(L) #L
 #define MakeString(M, L) M(L)
 #define $Line					\
@@ -15,3 +15,5 @@ void SetThreadName(char* threadName, DWORD dwThreadID);
 void DebugMsg(const WCHAR* pszFormat, ...);
 void DebugMsg(const CHAR* pszFormat, ...);
 bool IsUserAdmin();
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname);
+CString GetUserName(void);

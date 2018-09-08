@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
+#include "CertHelper.h"
 
 using namespace std;
 
@@ -10,7 +11,7 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubje
 {
 	SECURITY_STATUS status;
 
-	status = CertFindCertificateUI(pCertContext, pszSubjectName, false);
+	status = CertFindServerCertificateUI(pCertContext, pszSubjectName, false);
 	if (!pCertContext) // If we don't already have a certificate, try and select a specific one
 		status = CertFindCertificateBySignature(pCertContext,
 			"a9 f4 6e bf 4e 1d 6d 67 2d 2b 39 14 ee ee 58 97 d1 d7 e9 d0", true);  // "true" looks in user store, "false", or nothing looks in machine store

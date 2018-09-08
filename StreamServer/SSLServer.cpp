@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "SSLServer.h"
 #include "SSLHelper.h"
+#include "CertHelper.h"
 
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
@@ -533,7 +534,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 					if (false && debug && pCertContext)
 						ShowCertInfo(pCertContext, _T("Server Received Client Certificate"));
 					// All looking good, now see if there's a client certificate, and if it is valid
-					bool acceptable = ClientCertAcceptable(pCertContext, S_OK == CertTrusted(pCertContext));
+					bool acceptable = ClientCertAcceptable(pCertContext, S_OK == CertTrusted(pCertContext, true));
 					CertFreeCertificateContext(pCertContext);
 					if (acceptable)
 						DebugMsg("Client certificate was acceptable");

@@ -44,6 +44,9 @@
     <ClInclude Include="SecurityHandle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CertHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -70,10 +73,10 @@
     <ClCompile Include="SSLHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CreateCertificate.cpp">
+    <ClCompile Include="CertRAII.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CertRAII.cpp">
+    <ClCompile Include="CertHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

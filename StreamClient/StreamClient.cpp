@@ -2,14 +2,13 @@
 //
 
 #include "stdafx.h"
+#include "Utilities.h"
 #include "ActiveSock.h"
 #include "SSLClient.h"
 #include "EventWrapper.h"
-#include <atlconv.h>
-#include <string>
 #include <iostream>
 #include <iomanip>
-#include "SSLHelper.h"
+#include "CertHelper.h"
 
 using namespace std;
 
@@ -60,7 +59,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 		if (!pCertContext)
 		{
 			cout << ", none found, creating one";
-			pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName());
+			pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName(), L"StreamSSL client", NULL, true);
 			if (pCertContext)
 				Status = S_OK;
 			else

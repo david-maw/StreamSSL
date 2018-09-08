@@ -44,6 +44,3 @@ const bool debug = false;
 #include "SSLServer.h"
 #include "Transport.h"
 #include "Utilities.h"
-
-#pragma comment(lib, "Dnsapi.lib")
-#pragma comment(lib, "secur32.lib")

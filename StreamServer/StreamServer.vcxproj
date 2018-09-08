@@ -87,6 +87,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CertHelper.h" />
     <ClInclude Include="CertRAII.h" />
     <ClInclude Include="Handle.h" />
     <ClInclude Include="ISocketStream.h" />
@@ -100,8 +101,8 @@
     <ClInclude Include="Utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CertHelper.cpp" />
     <ClCompile Include="CertRAII.cpp" />
-    <ClCompile Include="CreateCertificate.cpp" />
     <ClCompile Include="Listener.cpp" />
     <ClCompile Include="PassiveSock.cpp" />
     <ClCompile Include="SSLServer.cpp" />

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include <process.h>
 #include <stdlib.h>
 #include <WS2tcpip.h>

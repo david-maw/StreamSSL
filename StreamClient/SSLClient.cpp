@@ -1,8 +1,9 @@
 #include "stdafx.h"
 #include "SSLClient.h"
-#include "SSLHelper.h"
+#include "Utilities.h"
 #include "ActiveSock.h"
 #include "SecurityHandle.h"
+#include "CertHelper.h"
 
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLClient::g_pSSPI = NULL;
@@ -611,7 +612,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
 			{
 				DebugMsg("Server Certificate returned");
 				ServerCertNameMatches = MatchCertificateName(get(hServerCertContext), ATL::CW2T(ServerName));
-				hr = CertTrusted(get(hServerCertContext));
+				hr = CertTrusted(get(hServerCertContext), false);
 				ServerCertTrusted = hr == S_OK;
 				bool IsServerCertAcceptable = ServerCertAcceptable == nullptr;
 				if (!IsServerCertAcceptable)
