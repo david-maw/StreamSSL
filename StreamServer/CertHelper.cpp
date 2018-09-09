@@ -678,7 +678,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 
 // Return an indication of whether a certificate is trusted by asking Windows to validate the
 // trust chain (basically asking is the certificate issuer trusted)
-HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool forClient)
+HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 {
 	HTTPSPolicyCallbackData  polHttps;
 	CERT_CHAIN_POLICY_PARA   PolicyPara;
@@ -686,7 +686,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool forClient)
 	CERT_CHAIN_PARA          ChainPara;
 	PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
 	HRESULT                  Status;
-	LPSTR rgszUsages[] = { forClient ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH,
+	LPSTR rgszUsages[] = { isClientCert ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH,
 	   szOID_SERVER_GATED_CRYPTO,
 	   szOID_SGC_NETSCAPE };
 	DWORD cUsages = _countof(rgszUsages);
@@ -716,7 +716,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool forClient)
 	// Validate certificate chain.
 	ZeroMemory(&polHttps, sizeof(HTTPSPolicyCallbackData));
 	polHttps.cbStruct = sizeof(HTTPSPolicyCallbackData);
-	polHttps.dwAuthType = AUTHTYPE_SERVER;
+	polHttps.dwAuthType = isClientCert ? AUTHTYPE_CLIENT : AUTHTYPE_SERVER;
 	polHttps.fdwChecks = 0;    // dwCertFlags;
 	polHttps.pwszServerName = NULL; // ServerName - checked elsewhere
 
@@ -740,7 +740,8 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool forClient)
 	if (PolicyStatus.dwError)
 	{
 		Status = S_FALSE;
-		//DisplayWinVerifyTrustError(PolicyStatus.dwError); 
+		//DisplayWinVerifyTrustError(PolicyStatus.dwError);
+		DebugMsg("PolicyStatus error %#x returned by CertVerifyCertificateChainPolicy!", PolicyStatus.dwError);
 		goto cleanup;
 	}
 

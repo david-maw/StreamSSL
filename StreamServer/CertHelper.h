@@ -1,7 +1,7 @@
 #pragma once
 bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName);
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
-HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool forClient);
+HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert);
 CString GetCertName(PCCERT_CONTEXT pCertContext);
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
 SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName = NULL, boolean fUserStore = true);
