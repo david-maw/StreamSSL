@@ -16,7 +16,7 @@ private:
 class CryptProvider
 {
 public:
-	WCHAR * KeyContainerName = L"SSLTestKeyContainer";
+	WCHAR * KeyContainerName = NULL; // will create a random one in constructor
 	CryptProvider();
 	~CryptProvider();
 	BOOL AcquireContext(DWORD dwFlags);

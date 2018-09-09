@@ -2,7 +2,8 @@
 #include <memory>
 #include <vector>
 #include "CertRAII.h"
-
+#include <Rpc.h>
+#pragma comment(lib, "Rpcrt4.lib")
 
 CSP::CSP()
 {
@@ -27,6 +28,20 @@ bool CSP::AcquirePrivateKey(PCCERT_CONTEXT pCertContext)
 
 CryptProvider::CryptProvider()
 {
+	// We always want a new keycontainer, so give it a unique name
+	UUID uuid;
+	RPC_STATUS ret_val = ::UuidCreate(&uuid);
+
+	if (ret_val == RPC_S_OK)
+	{
+		// convert UUID to LPWSTR
+		::UuidToString(&uuid, (RPC_WSTR*)&KeyContainerName);
+		if (!KeyContainerName)
+			DebugMsg("CryptProvider constructor could not initialize KeyContainerName");
+	}
+	else
+		DebugMsg("CryptProvider constructor UuidCreate failed");
+	// end of naming keycontainer
 }
 
 CryptProvider::~CryptProvider()
@@ -36,6 +51,12 @@ CryptProvider::~CryptProvider()
 		DebugMsg(("CryptReleaseContext... "));
 		CryptReleaseContext(hCryptProv, 0);
 		DebugMsg("Success");
+	}
+	if (KeyContainerName)
+	{
+		// free up the allocated string
+		::RpcStringFree((RPC_WSTR*)&KeyContainerName);
+		KeyContainerName = NULL;
 	}
 }
 
