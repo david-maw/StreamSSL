@@ -948,37 +948,45 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		{
 			// If the first call to the function failed,
 			// exit to an error routine.
-			DebugMsg("Call #1 to GetCertContextProperty failed.");
+			DebugMsg("Call #1 to CertGetCertificateContextProperty failed.");
 			return E_FAIL;
 		}
 		//-------------------------------------------------------------------
 		// The call succeeded. Use the size to allocate memory 
 		// for the property.
-		std::vector<char> data(cbData);
-		pvData = (void*)&data[0];
-		//----------------------------------------------------------------
-		// Allocation succeeded. Retrieve the property data.
-
-		if (CertGetCertificateContextProperty(
-			pCertContext,
-			dwPropId,
-			pvData,
-			&cbData))
+		if (cbData > 0)
 		{
-			// The data has been retrieved. Continue.
+			std::vector<char> propertydata(cbData);
+			pvData = propertydata.data();
+			//----------------------------------------------------------------
+			// Allocation succeeded. Retrieve the property data.
+
+			if (CertGetCertificateContextProperty(
+				pCertContext,
+				dwPropId,
+				pvData,
+
+				&cbData))
+			{
+				// The data has been retrieved. Continue.
+			}
+			else
+			{
+				// If an error occurred in the second call, 
+				// exit to an error routine.
+				DebugMsg("Call #2 to CertGetCertificateContextProperty failed.");
+				return E_FAIL;
+			}
+			//---------------------------------------------------------------
+			// Show the results.
+
+			DebugMsg("The Property Content is");
+			PrintHexDump(cbData, pvData);
 		}
 		else
 		{
-			// If an error occurred in the second call, 
-			// exit to an error routine.
-			DebugMsg("Call #2 failed.");
-			return E_FAIL;
+			DebugMsg("The Property is empty");
 		}
-		//---------------------------------------------------------------
-		// Show the results.
-
-		DebugMsg("The Property Content is");
-		PrintHexDump(cbData, pvData);
 	}
 	return S_OK;
 }
