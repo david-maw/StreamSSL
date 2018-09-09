@@ -125,6 +125,7 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	//_CrtSetBreakAlloc(225); // Catch a memory leak
 	CString HostName(GetHostName(ComputerNameDnsFullyQualified));
 	if (argc >= 2)
 		HostName.SetString(argv[1]);
@@ -132,8 +133,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CEventWrapper ShutDownEvent;
 
-	CActiveSock * pActiveSock = new CActiveSock(ShutDownEvent);
-	CSSLClient * pSSLClient = nullptr;
+	auto pActiveSock = make_unique<CActiveSock>(ShutDownEvent);
 	pActiveSock->SetRecvTimeoutSeconds(30);
 	pActiveSock->SetSendTimeoutSeconds(60);
 	wcout << "Connecting to " << HostName.GetString() << ":" << Port << endl;
@@ -142,7 +142,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		cout << "Socket connected to server, initializing SSL" << endl;
 		char Msg[100];
-		pSSLClient = new CSSLClient(pActiveSock);
+		auto pSSLClient = make_unique<CSSLClient>(pActiveSock.get());
 		pSSLClient->ServerCertAcceptable = CertAcceptable;
 		pSSLClient->SelectClientCertificate = SelectClientCertificate;
 		HRESULT hr = pSSLClient->Initialize(ATL::CT2W(HostName));
