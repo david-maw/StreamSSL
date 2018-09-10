@@ -80,7 +80,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
 SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
-	HCERTSTORE  hMyCertStore = NULL;
+	CertStore  certStore;
 	TCHAR pszFriendlyNameString[128];
 	TCHAR	pszNameString[128];
 
@@ -90,18 +90,8 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		return E_POINTER;
 	}
 
-	if (fUserStore)
-		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-	else
-	{	// Open the local machine certificate store.
-		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-			X509_ASN_ENCODING,
-			NULL,
-			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-			L"MY");
-	}
-
-	if (!hMyCertStore)
+	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
+			(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
 	{
 		int err = GetLastError();
 
@@ -126,7 +116,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 	// it then selects the best one (ideally one that contains the server name
 	// in the subject name).
 
-	while (NULL != (pCertContext = CertFindCertificateInStore(hMyCertStore,
+	while (NULL != (pCertContext = CertFindCertificateInStore(certStore.get(),
 		X509_ASN_ENCODING,
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
@@ -175,7 +165,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		if (LastError == CRYPT_E_NOT_FOUND)
 		{
 			DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-			pCertContext = CreateCertificate(true, pszSubjectName);
+			pCertContext = CreateCertificate(!fUserStore, pszSubjectName);
 			if (!pCertContext)
 			{
 				LastError = GetLastError();

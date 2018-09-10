@@ -41,6 +41,8 @@ class CertStore
 public:
 	CertStore();
 	~CertStore();
+	HCERTSTORE get() const;
+	operator bool() const;
 	bool CertOpenStore(DWORD dwFlags);
 	bool AddCertificateContext(PCCERT_CONTEXT pCertContext);
 

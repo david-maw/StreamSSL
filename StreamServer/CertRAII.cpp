@@ -94,7 +94,7 @@ CertStore::~CertStore()
 {
 	if (hStore)
 	{
-		DebugMsg(("CertCloseStore... "));
+		DebugMsg(("CertStore destructor calling CertCloseStore... "));
 		CertCloseStore(hStore, 0);
 		DebugMsg("Success");
 	}
@@ -109,6 +109,16 @@ bool CertStore::CertOpenStore(DWORD dwFlags)
 bool CertStore::AddCertificateContext(PCCERT_CONTEXT pCertContext)
 {
 	return (FALSE != ::CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_REPLACE_EXISTING, 0));
+}
+
+CertStore::operator bool() const
+{
+	return hStore != NULL;
+}
+
+HCERTSTORE CertStore::get() const
+{
+	return hStore;
 }
 
 // Cert class
