@@ -680,10 +680,10 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 // trust chain (basically asking is the certificate issuer trusted)
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 {
-	HTTPSPolicyCallbackData  polHttps;
-	CERT_CHAIN_POLICY_PARA   PolicyPara;
-	CERT_CHAIN_POLICY_STATUS PolicyStatus;
-	CERT_CHAIN_PARA          ChainPara;
+	HTTPSPolicyCallbackData  polHttps{ 0 };
+	CERT_CHAIN_POLICY_PARA   PolicyPara{ 0 };
+	CERT_CHAIN_POLICY_STATUS PolicyStatus{ 0 };
+	CERT_CHAIN_PARA          ChainPara{ 0 };
 	PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
 	HRESULT                  Status;
 	LPSTR rgszUsages[] = { isClientCert ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH,
@@ -692,7 +692,6 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 	DWORD cUsages = _countof(rgszUsages);
 
 	// Build certificate chain.
-	ZeroMemory(&ChainPara, sizeof(ChainPara));
 	ChainPara.cbSize = sizeof(ChainPara);
 	ChainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
 	ChainPara.RequestedUsage.Usage.cUsageIdentifier = cUsages;
@@ -714,17 +713,14 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 
 
 	// Validate certificate chain.
-	ZeroMemory(&polHttps, sizeof(HTTPSPolicyCallbackData));
 	polHttps.cbStruct = sizeof(HTTPSPolicyCallbackData);
 	polHttps.dwAuthType = isClientCert ? AUTHTYPE_CLIENT : AUTHTYPE_SERVER;
 	polHttps.fdwChecks = 0;    // dwCertFlags;
 	polHttps.pwszServerName = NULL; // ServerName - checked elsewhere
 
-	ZeroMemory(&PolicyPara, sizeof(PolicyPara));
 	PolicyPara.cbSize = sizeof(PolicyPara);
 	PolicyPara.pvExtraPolicyPara = &polHttps;
 
-	ZeroMemory(&PolicyStatus, sizeof(PolicyStatus));
 	PolicyStatus.cbSize = sizeof(PolicyStatus);
 
 	if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
