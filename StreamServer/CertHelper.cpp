@@ -188,22 +188,12 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
 SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, boolean fUserStore)
 {
-	HCERTSTORE  hMyCertStore = NULL;
+	CertStore certStore;
 	TCHAR pszFriendlyNameString[128];
 	TCHAR	pszNameString[128];
 
-	if (fUserStore)
-		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-	else
-	{	// Open the local machine certificate store.
-		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-			X509_ASN_ENCODING,
-			NULL,
-			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-			L"MY");
-	}
-
-	if (!hMyCertStore)
+	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
+		(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
 	{
 		int err = GetLastError();
 
@@ -228,7 +218,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 	// it then selects the best one (ideally one that contains the client name somewhere
 	// in the subject name).
 
-	while (NULL != (pCertContextCurrent = CertFindCertificateInStore(hMyCertStore,
+	while (NULL != (pCertContextCurrent = CertFindCertificateInStore(certStore.get(),
 		X509_ASN_ENCODING,
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
@@ -290,9 +280,10 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 	PCCERT_CHAIN_CONTEXT pChainContext = NULL;
 	CERT_CHAIN_FIND_BY_ISSUER_PARA FindByIssuerPara = { 0 };
 	SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
-	HCERTSTORE  hMyCertStore = NULL;
+	CertStore  certStore;
 
-	hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
+	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_CURRENT_USER))
+		return GetLastError();
 
 	//
 	// Enumerate possible client certificates.
@@ -309,7 +300,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 	while (TRUE)
 	{
 		// Find a certificate chain.
-		pChainContext = CertFindChainInStore(hMyCertStore,
+		pChainContext = CertFindChainInStore(certStore.get(),
 			X509_ASN_ENCODING,
 			0,
 			CERT_CHAIN_FIND_BY_ISSUER,
@@ -344,11 +335,9 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 
 HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName)
 {
-	HCERTSTORE  hMyCertStore = NULL;
+	CertStore  certStore;
 
-	hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-
-	if (!hMyCertStore)
+	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_CURRENT_USER))
 	{
 		int err = GetLastError();
 
@@ -370,7 +359,7 @@ HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectNa
 
 	if (pszSubjectName)
 	{
-		pCertContext = CertFindCertificateInStore(hMyCertStore,
+		pCertContext = CertFindCertificateInStore(certStore.get(),
 			X509_ASN_ENCODING,
 			0,
 			CERT_FIND_SUBJECT_STR,
@@ -521,23 +510,13 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 {
 	//--------------------------------------------------------------------
 	// Declare and initialize variables.
-	HCERTSTORE       hMyCertStore = NULL;
+	CertStore certStore;
 	TCHAR * pszStoreName = TEXT("MY");
 
 	//--------------------------------------------------------------------
 	//   Open a certificate store.
-	if (fUserStore)
-		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-	else
-	{	// Open the local machine certificate store.
-		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-			X509_ASN_ENCODING,
-			NULL,
-			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-			L"MY");
-	}
-
-	if (!hMyCertStore)
+	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
+		(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
 	{
 		int err = GetLastError();
 
@@ -565,13 +544,14 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	// Note that only certificates which pass the test defined in ValidCert (if any) will be displayed.
 
 	CRYPTUI_SELECTCERTIFICATE_STRUCT csc{};
+	HCERTSTORE tempStore = certStore.get(); // A kludge depending on rghDisplayStores being readonly later on.
 
 	csc.dwSize = sizeof csc;
 	csc.szTitle = L"Select a Server Certificate";
 	csc.dwDontUseColumn = CRYPTUI_SELECT_LOCATION_COLUMN;
 	csc.pFilterCallback = ValidServerCert;
 	csc.cDisplayStores = 1;
-	csc.rghDisplayStores = &hMyCertStore;
+	csc.rghDisplayStores = &tempStore;
 	csc.pvCallbackData = (LPVOID)pszSubjectName;
 
 	if (!(pCertContext = SelectCertificate(&csc)))
@@ -579,17 +559,6 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 		printf("Select Certificate UI failed.\n");
 	}
 
-	//--------------------------------------------------------------------
-	// When all processing is completed, clean up.
-
-	if (hMyCertStore)
-	{
-		if (!CertCloseStore(hMyCertStore, 0))
-		{
-			printf("CertCloseStore failed.\n");
-			return SEC_E_CERT_UNKNOWN;
-		}
-	}
 	return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
 }
 
@@ -606,19 +575,9 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 		DebugMsg("Certificate signature length should be exactly 20 bytes. \n");
 		return SEC_E_INVALID_PARAMETER;
 	}
-	HCERTSTORE hMyCertStore;
-	if (fUserStore)
-		hMyCertStore = CertOpenSystemStore(NULL, _T("MY"));
-	else
-	{	// Open the local machine certificate store.
-		hMyCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-			X509_ASN_ENCODING,
-			NULL,
-			CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_LOCAL_MACHINE,
-			L"MY");
-	}
-
-	if (!hMyCertStore)
+	CertStore certStore;
+	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
+		(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
 	{
 		int err = GetLastError();
 
@@ -640,7 +599,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 	PCCERT_CONTEXT  pDesiredCert = NULL;
 	// Now search the selected store for the certificate
 	if (pCertContext = CertFindCertificateInStore(
-		hMyCertStore,
+		certStore.get(),
 		X509_ASN_ENCODING,             // Use X509_ASN_ENCODING
 		0,                            // No dwFlags needed 
 		CERT_FIND_SHA1_HASH, // Find a certificate with a SHA1 hash that matches the next parameter
@@ -654,13 +613,13 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			return HRESULT_FROM_WIN32(GetLastError());
 		}
-		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
+		DebugMsg("CertFindCertificateBySignature found certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
 		if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
 			DebugMsg("A self-signed certificate was found.");
 	}
 	else
 	{
-		DebugMsg("Could not find the desired certificate.\n");
+		DebugMsg("CertFindCertificateBySignature could not find the desired certificate.\n");
 		return SEC_E_CERT_UNKNOWN;
 	}
 	return SEC_E_OK;
