@@ -8,6 +8,7 @@
 	__FILE__ "(" $Line ") : Reminder: "
 // usage #pragma message(Reminder "your message here")
 
+CString WinErrorMsg(int nErrorCode);
 void PrintHexDump(DWORD length, const void * const buf);
 void PrintHexDump(DWORD length, const void * const buf, const bool verbose);
 void SetThreadName(char* threadName);

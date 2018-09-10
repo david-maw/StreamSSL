@@ -37,6 +37,28 @@ CString GetUserName()
 	return CString();
 }
 
+CString WinErrorMsg(int nErrorCode)
+{
+	CString theMsg;
+	// First get the message length;
+	try
+	{
+		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL, nErrorCode,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+			(LPTSTR)theMsg.GetBufferSetLength(100),
+			100,
+			NULL);
+		theMsg.ReleaseBuffer();
+		if (theMsg.IsEmpty())
+			theMsg.Format(TEXT("Error code %u (0x%.8x)"), nErrorCode, nErrorCode);
+	}
+	catch (...)
+	{
+	}
+	return theMsg.TrimRight();
+}
+
 //
 // Usage: SetThreadName ("MainThread"[, threadID]);
 //
