@@ -17,6 +17,7 @@ void CredentialHandle::Close() noexcept
 	if (*this)
 	{
 		CSSLServer::SSPI()->FreeCredentialsHandle(&m_value);
+		m_value = Invalid();
 	}
 }
 
@@ -25,6 +26,7 @@ void SecurityContextHandle::Close() noexcept
 	if (*this)
 	{
 		CSSLServer::SSPI()->DeleteSecurityContext(&m_value);
+		m_value = Invalid();
 	}
 }
 
@@ -409,10 +411,10 @@ bool CSSLServer::SSPINegotiateLoop(void)
 				if (SSLHelper.IsClientInitialize())
 				{  // Figure out what certificate we might want to use, either using SNI or the local host name
 					CString serverName = SSLHelper.GetSNI();
-					if ((!(bool)g_ServerCreds) // No certificate handle stored
+					if ((!g_ServerCreds) // No certificate handle stored
 						|| (serverName.Compare(g_ServerName) != 0)) // Requested names are different
 					{  // 
-						if ((bool)g_ServerCreds) // Certificate handle stored
+						if (g_ServerCreds) // Certificate handle stored
 							g_pSSPI->FreeCredentialsHandle(&get(g_ServerCreds));
 						if (serverName.IsEmpty()) // There was no hostname supplied by SNI
 							serverName = GetHostName();
@@ -432,7 +434,9 @@ bool CSSLServer::SSPINegotiateLoop(void)
 							status = CertFindServerCertificateByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
 						g_ServerName = (SUCCEEDED(status)) ? serverName : CString();
 						if (SUCCEEDED(status))
+						{
 							status = CreateCredentialsFromCertificate(set(g_ServerCreds), pCertContext);
+						}
 						if (FAILED(status))
 						{
 							DebugMsg("Failed handling server initialization, error = 0x%08x", status);
@@ -704,10 +708,11 @@ HRESULT CSSLServer::Disconnect(void)
 	m_SocketStream->Disconnect();
 	return S_OK;
 }
-// Create credentials (a handle to a certificate) by selecting an appropriate certificate
-// We take a best guess at a certificate to be used as the SSL certificate for this server 
+// Create credentials (a handle to a credential context) from a certificate
 SECURITY_STATUS CSSLServer::CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
 {
+	DebugMsg("CreateCredentialsFromCertificate 0x%.8x '%S'.", pCertContext, GetCertName(pCertContext));
+
 	// Build Schannel credential structure.
 	SCHANNEL_CRED   SchannelCred = { 0 };
 	SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;

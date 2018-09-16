@@ -54,6 +54,7 @@ public:
 		if (*this)
 		{
 			T::Close(m_value);
+			m_value = T::Invalid();
 		}
 	}
 

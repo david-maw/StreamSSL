@@ -94,9 +94,8 @@ CertStore::~CertStore()
 {
 	if (hStore)
 	{
-		DebugMsg(("CertStore destructor calling CertCloseStore... "));
+		DebugMsg("CertStore destructor calling CertCloseStore(0x%.8x)", hStore);
 		CertCloseStore(hStore, 0);
-		DebugMsg("Success");
 	}
 }
 

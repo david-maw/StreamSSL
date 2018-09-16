@@ -62,7 +62,7 @@ public:
 		return{ (ULONG_PTR)((INT_PTR)-1), (ULONG_PTR)((INT_PTR)-1) };
 	}
 
-	explicit operator bool() const noexcept
+	operator bool() const noexcept
 	{
 		return SecIsValidHandle(&m_value);
 	}
@@ -126,6 +126,7 @@ struct CertContextTraits : public HandleTraits<PCCERT_CONTEXT>
 
 class ConstCertContextHandle : public Handle<CertContextTraits>
 {
+	using Handle::Handle; // Inherit constructors
 	friend Type & setref(ConstCertContextHandle & value) noexcept
 	{
 		_ASSERTE(!value);
@@ -135,6 +136,7 @@ class ConstCertContextHandle : public Handle<CertContextTraits>
 
 class CertContextHandle : public Handle<CertContextTraits>
 {
+	using Handle::Handle; // Inherit constructors
 };
 
 // SecurityContextHandle class
@@ -142,7 +144,6 @@ class CertContextHandle : public Handle<CertContextTraits>
 class SecurityContextHandle
 {
 public:
-
 	SecurityContextHandle() noexcept = default;
 	SecurityContextHandle(SecurityContextHandle const &) = delete;
 	SecurityContextHandle & operator=(SecurityContextHandle const &) = delete;
