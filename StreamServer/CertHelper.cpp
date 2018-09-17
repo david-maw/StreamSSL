@@ -4,9 +4,35 @@
 #include <vector>
 #include <cryptuiapi.h>
 #include "CertRAII.h"
+#include "SecurityHandle.h"
 
 #pragma comment(lib, "Cryptui.lib")
 #pragma comment(lib, "Dnsapi.lib")
+
+static CertStore userStore{}, machineStore{}; // These stores are intended to stay open and be reused once used
+
+// Open the required user of machine store and cache it so you can hand back handles to it
+// The returned handles should NOT be closed after use
+SECURITY_STATUS GetStore(HCERTSTORE &phStore, bool useUserStore)
+{
+	CertStore * certStore = useUserStore ? &userStore : &machineStore;
+	if (!*certStore)
+		{
+			if (!certStore->CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
+				(useUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
+			{
+				int err = GetLastError();
+
+				if (err == ERROR_ACCESS_DENIED)
+					DebugMsg("**** GetStore failed with 'access denied'");
+				else
+					DebugMsg("**** Error %d returned by CertOpenStore", err);
+				return HRESULT_FROM_WIN32(err);
+			}
+		}
+	phStore = certStore->get();
+	return SEC_E_OK;
+}
 
 bool DnsNameMatches(CString HostName, PCWSTR pDNSName)
 {
@@ -80,7 +106,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
 SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
-	CertStore  certStore;
+	HCERTSTORE hCertStore{};
 	TCHAR pszFriendlyNameString[128];
 	TCHAR	pszNameString[128];
 
@@ -90,25 +116,16 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		return E_POINTER;
 	}
 
-	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
-			(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
-	{
-		int err = GetLastError();
+	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
+	if (FAILED(hr))
+		return hr;
 
-		if (err == ERROR_ACCESS_DENIED)
-			DebugMsg("**** CertOpenStore failed with 'access denied'");
-		else
-			DebugMsg("**** Error %d returned by CertOpenStore", err);
-		return HRESULT_FROM_WIN32(err);
-	}
 
-	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
-		CertFreeCertificateContext(pCertContext);
-	pCertContext = NULL;
+
+	ConstCertContextHandle hCertContext(pCertContext), hCertContextSaved;
 
 	char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
 	CERT_ENHKEY_USAGE eku;
-	PCCERT_CONTEXT pCertContextSaved = NULL;
 	eku.cUsageIdentifier = 1;
 	eku.rgpszUsageIdentifier = &serverauth;
 	// Find a server certificate. Note that this code just searches for a 
@@ -116,12 +133,12 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 	// it then selects the best one (ideally one that contains the server name
 	// in the subject name).
 
-	while (NULL != (pCertContext = CertFindCertificateInStore(certStore.get(),
+	while (NULL != (pCertContext = CertFindCertificateInStore(hCertStore,
 		X509_ASN_ENCODING,
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
 		&eku,
-		pCertContext)))
+		pCertContext))) // If this points to a valid certifcate it will act as starting point and also be closed
 	{
 		//ShowCertInfo(pCertContext);
 		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
@@ -129,37 +146,44 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
-		DebugMsg("Certificate '%S' is allowed to be used for server authentication.", pszFriendlyNameString);
+		DebugMsg("Certificate 0x%.8x '%S' is allowed to be used for server authentication.", (int)pCertContext, pszFriendlyNameString);
 		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
 			DebugMsg("CertGetNameString failed getting subject name.");
 		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
-			DebugMsg("Certificate has wrong subject name.");
+			DebugMsg("Certificate 0x%.8x has wrong subject name.", pCertContext);
 		else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
 		{
-			if (!pCertContextSaved)
+			if (!hCertContextSaved)
 			{
-				DebugMsg("A self-signed certificate was found and saved in case it is needed.");
-				pCertContextSaved = CertDuplicateCertificateContext(pCertContext);
+				DebugMsg("Self-signed certificate 0x%.8x was found and saved in case it is needed.", pCertContext);
+				attach(hCertContextSaved, CertDuplicateCertificateContext(pCertContext));
 			}
 		}
 		else
 		{
 			DebugMsg("Certificate is acceptable.");
-			if (pCertContextSaved)	// We have a saved self signed certificate context we no longer need, so free it
-				CertFreeCertificateContext(pCertContextSaved);
-			pCertContextSaved = NULL;
 			break;
 		}
 	}
 
-	if (pCertContextSaved && !pCertContext)
-	{	// We have a saved self-signed certificate and nothing better 
-		DebugMsg("A self-signed certificate was the best we had.");
-		pCertContext = pCertContextSaved;
-		pCertContextSaved = NULL;
+	if (pCertContext) // This means we exited after finding a perfect certificate
+	{
+		DebugMsg("Attaching context 0x%.8x", (int)pCertContext);
+		attach(hCertContext, pCertContext);
 	}
 
-	if (!pCertContext)
+	if (hCertContextSaved && !hCertContext)
+	{	// We have a saved self-signed certificate and nothing better 
+		DebugMsg("Self-signed certificate 0x%.8x was the best we had.", get(hCertContextSaved));
+		hCertContext = std::move(hCertContextSaved);
+	}
+
+	if (hCertContext)
+	{
+		pCertContext = detach(hCertContext);
+		DebugMsg("CertFindServerCertificateByName returning context 0x%.8x", (int)pCertContext);
+	}
+	else
 	{
 		DWORD LastError = GetLastError();
 		if (LastError == CRYPT_E_NOT_FOUND)
@@ -169,14 +193,14 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 			if (!pCertContext)
 			{
 				LastError = GetLastError();
-				DebugMsg("**** Error 0x%x returned by CreateCertificate", LastError);
+				DebugMsg("**** Error 0x%.8x returned by CreateCertificate", LastError);
 				std::cout << "Could not create certificate, are you running as administrator?" << std::endl;
 				return HRESULT_FROM_WIN32(LastError);
 			}
 		}
 		else
 		{
-			DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", LastError);
+			DebugMsg("**** Error 0x%.8x returned by CertFindCertificateInStore", LastError);
 			return HRESULT_FROM_WIN32(LastError);
 		}
 	}
@@ -372,7 +396,7 @@ HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectNa
 		else
 		{
 			DWORD Err = GetLastError();
-			DebugMsg("**** Error 0x%x returned by CertFindCertificateInStore", Err);
+			DebugMsg("**** Error 0x%.8x returned by CertFindCertificateInStore", Err);
 			return HRESULT_FROM_WIN32(Err);
 		}
 	}
@@ -955,7 +979,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 		if (err == NTE_BAD_KEYSET)
 			DebugMsg("**** CryptAcquireContext failed with 'bad keyset'");
 		else
-			DebugMsg("**** Error 0x%x returned by CryptAcquireContext", err);
+			DebugMsg("**** Error 0x%.8x returned by CryptAcquireContext", err);
 
 		// Try to create a new key container
 		DebugMsg(("CryptAcquireContext create new container... "));
@@ -966,9 +990,9 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 			if (err == NTE_EXISTS)
 				DebugMsg("**** CryptAcquireContext failed with 'already exists', are you running as administrator");
 			else
-				DebugMsg("**** Error 0x%x returned by CryptAcquireContext", err);
+				DebugMsg("**** Error 0x%.8x returned by CryptAcquireContext", err);
 			// Error
-			DebugMsg("Error 0x%x", GetLastError());
+			DebugMsg("Error 0x%.8x", GetLastError());
 			return 0;
 		}
 		else
@@ -986,7 +1010,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	if (!key.CryptGenKey(cryptprovider))
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 	else
@@ -1010,7 +1034,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 	// Allocate the required space
@@ -1022,7 +1046,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 
@@ -1059,7 +1083,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 
@@ -1070,7 +1094,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 
@@ -1089,7 +1113,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 
@@ -1107,7 +1131,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 
@@ -1124,7 +1148,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 		if (err == ERROR_ACCESS_DENIED)
 			DebugMsg("**** CertOpenStore failed with 'access denied' are  you running as administrator?");
 		else
-			DebugMsg("**** Error 0x%x returned by CertOpenStore", err);
+			DebugMsg("**** Error 0x%.8x returned by CertOpenStore", err);
 		return 0;
 	}
 
@@ -1135,7 +1159,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 
@@ -1147,7 +1171,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	else
 	{
 		// Error
-		DebugMsg("Error 0x%x", GetLastError());
+		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
 	return cert.Detach();
