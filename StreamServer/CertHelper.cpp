@@ -120,8 +120,6 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 	if (FAILED(hr))
 		return hr;
 
-
-
 	ConstCertContextHandle hCertContext(pCertContext), hCertContextSaved;
 
 	char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
@@ -189,7 +187,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		if (LastError == CRYPT_E_NOT_FOUND)
 		{
 			DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
-			pCertContext = CreateCertificate(!fUserStore, pszSubjectName);
+			pCertContext = CreateCertificate(!fUserStore, pszSubjectName); // No need to specify, makes server cert by default
 			if (!pCertContext)
 			{
 				LastError = GetLastError();
@@ -212,21 +210,14 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
 SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, boolean fUserStore)
 {
-	CertStore certStore;
+	HCERTSTORE hCertStore;
 	TCHAR pszFriendlyNameString[128];
 	TCHAR	pszNameString[128];
 
-	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
-		(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
-	{
-		int err = GetLastError();
+	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
+	if (FAILED(hr))
+		return hr;
 
-		if (err == ERROR_ACCESS_DENIED)
-			DebugMsg("**** CertOpenStore failed with 'access denied'");
-		else
-			DebugMsg("**** Error %d returned by CertOpenStore", err);
-		return HRESULT_FROM_WIN32(err);
-	}
 
 	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
 		CertFreeCertificateContext(pCertContext);
@@ -242,7 +233,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 	// it then selects the best one (ideally one that contains the client name somewhere
 	// in the subject name).
 
-	while (NULL != (pCertContextCurrent = CertFindCertificateInStore(certStore.get(),
+	while (NULL != (pCertContextCurrent = CertFindCertificateInStore(hCertStore,
 		X509_ASN_ENCODING,
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
@@ -301,13 +292,18 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 
 SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo)
 {
+	if (pCertContext)
+	{ // The caller passed in a certificate context we no longer need, so free it
+		CertFreeCertificateContext(pCertContext);
+		pCertContext = NULL;
+	}
 	PCCERT_CHAIN_CONTEXT pChainContext = NULL;
 	CERT_CHAIN_FIND_BY_ISSUER_PARA FindByIssuerPara = { 0 };
 	SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
-	CertStore  certStore;
-
-	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_CURRENT_USER))
-		return GetLastError();
+	HCERTSTORE hCertStore;
+	SECURITY_STATUS hr = GetStore(hCertStore, false);
+	if (FAILED(hr))
+		return hr;
 
 	//
 	// Enumerate possible client certificates.
@@ -324,7 +320,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 	while (TRUE)
 	{
 		// Find a certificate chain.
-		pChainContext = CertFindChainInStore(certStore.get(),
+		pChainContext = CertFindChainInStore(hCertStore,
 			X509_ASN_ENCODING,
 			0,
 			CERT_CHAIN_FIND_BY_ISSUER,
@@ -359,20 +355,15 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 
 HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName)
 {
-	CertStore  certStore;
-
-	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG | CERT_SYSTEM_STORE_CURRENT_USER))
-	{
-		int err = GetLastError();
-
-		if (err == ERROR_ACCESS_DENIED)
-			DebugMsg("**** CertOpenStore failed with 'access denied'");
-		else
-			DebugMsg("**** Error %d returned by CertOpenStore", err);
-		return HRESULT_FROM_WIN32(err);
+	if (pCertContext)
+	{ // The caller passed in a certificate context we no longer need, so free it
+		CertFreeCertificateContext(pCertContext);
+		pCertContext = NULL;
 	}
-
-	pCertContext = NULL;
+	HCERTSTORE hCertStore;
+	SECURITY_STATUS hr = GetStore(hCertStore, false);
+	if (FAILED(hr))
+		return hr;
 
 	// Find a client certificate. Note that this code just searches for a 
 	// certificate that contains the name somewhere in the subject name.
@@ -383,7 +374,7 @@ HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectNa
 
 	if (pszSubjectName)
 	{
-		pCertContext = CertFindCertificateInStore(certStore.get(),
+		pCertContext = CertFindCertificateInStore(hCertStore,
 			X509_ASN_ENCODING,
 			0,
 			CERT_FIND_SUBJECT_STR,
@@ -532,28 +523,17 @@ CryptUIDlgSelectCertificate SelectCertificate = NULL;
 
 SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
-	//--------------------------------------------------------------------
-	// Declare and initialize variables.
-	CertStore certStore;
-	TCHAR * pszStoreName = TEXT("MY");
-
-	//--------------------------------------------------------------------
 	//   Open a certificate store.
-	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
-		(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
-	{
-		int err = GetLastError();
-
-		if (err == ERROR_ACCESS_DENIED)
-			DebugMsg("**** CertOpenStore failed with 'access denied'");
-		else
-			DebugMsg("**** Error %d returned by CertOpenStore", err);
-		return HRESULT_FROM_WIN32(err);
-	}
+	HCERTSTORE hCertStore;
+	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
+	if (FAILED(hr))
+		return hr;
 
 	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+	{
 		CertFreeCertificateContext(pCertContext);
-	pCertContext = NULL;
+		pCertContext = NULL;
+	}
 
 	// Link to SelectCertificate if it has not already been done
 
@@ -568,7 +548,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	// Note that only certificates which pass the test defined in ValidCert (if any) will be displayed.
 
 	CRYPTUI_SELECTCERTIFICATE_STRUCT csc{};
-	HCERTSTORE tempStore = certStore.get(); // A kludge depending on rghDisplayStores being readonly later on.
+	HCERTSTORE tempStore = hCertStore; // A kludge depending on rghDisplayStores being readonly later on.
 
 	csc.dwSize = sizeof csc;
 	csc.szTitle = L"Select a Server Certificate";
@@ -599,22 +579,17 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 		DebugMsg("Certificate signature length should be exactly 20 bytes. \n");
 		return SEC_E_INVALID_PARAMETER;
 	}
-	CertStore certStore;
-	if (!certStore.CertOpenStore(CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG |
-		(fUserStore ? CERT_SYSTEM_STORE_CURRENT_USER : CERT_SYSTEM_STORE_LOCAL_MACHINE)))
-	{
-		int err = GetLastError();
-
-		if (err == ERROR_ACCESS_DENIED)
-			DebugMsg("**** CertOpenStore failed with 'access denied'");
-		else
-			DebugMsg("**** Error %d returned by CertOpenStore", err);
-		return HRESULT_FROM_WIN32(err);
-	}
+	//   Open a certificate store.
+	HCERTSTORE hCertStore;
+	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
+	if (FAILED(hr))
+		return hr;
 
 	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
+	{
 		CertFreeCertificateContext(pCertContext);
-	pCertContext = NULL;
+		pCertContext = NULL;
+	}
 
 	CRYPT_HASH_BLOB certhash;
 	certhash.cbData = b.size();
@@ -623,7 +598,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 	PCCERT_CONTEXT  pDesiredCert = NULL;
 	// Now search the selected store for the certificate
 	if (pCertContext = CertFindCertificateInStore(
-		certStore.get(),
+		hCertStore,
 		X509_ASN_ENCODING,             // Use X509_ASN_ENCODING
 		0,                            // No dwFlags needed 
 		CERT_FIND_SHA1_HASH, // Find a certificate with a SHA1 hash that matches the next parameter
@@ -964,12 +939,12 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 // based on a sample found at:
 // http://blogs.msdn.com/b/alejacma/archive/2009/03/16/how-to-create-a-self-signed-certificate-with-cryptoapi-c.aspx
 // Create a self-signed certificate and store it in the machine personal store
-PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR FriendlyName, LPCWSTR Description, bool forClient)
+PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR FriendlyName, LPCWSTR Description, bool forClient)
 {
 	// CREATE KEY PAIR FOR SELF-SIGNED CERTIFICATE IN MACHINE PROFILE
 	CryptProvider cryptprovider;
 	CryptKey key;
-	DWORD KeyFlags = MachineCert ? CRYPT_MACHINE_KEYSET : 0;
+	DWORD KeyFlags = useMachineStore ? CRYPT_MACHINE_KEYSET : 0;
 	// Acquire key container
 	DebugMsg(("CryptAcquireContext of existing key container... "));
 	if (!cryptprovider.AcquireContext(KeyFlags))
@@ -1075,10 +1050,9 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	EndTime.wYear += 5;
 
 	// Create certificate
-	Cert cert;
 	DebugMsg(("CertCreateSelfSignCertificate... "));
-	(PCCERT_CONTEXT)cert = CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0);
-	if (cert)
+	ConstCertContextHandle pCertContext(CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0));
+	if (pCertContext)
 		DebugMsg("Success");
 	else
 	{
@@ -1087,9 +1061,9 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 		return 0;
 	}
 
-	// Specify the allowed usage of the certificate (server authentication)
+	// Specify the allowed usage of the certificate (client or server authentication)
 	DebugMsg(("CertAddEnhancedKeyUsageIdentifier"));
-	if (cert.AddEnhancedKeyUsageIdentifier(forClient ? szOID_PKIX_KP_CLIENT_AUTH :  szOID_PKIX_KP_SERVER_AUTH))
+	if (CertAddEnhancedKeyUsageIdentifier(get(pCertContext), forClient ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH))
 		DebugMsg("Success");
 	else
 	{
@@ -1108,7 +1082,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 		cdblob.pbData = (BYTE*)L"SSLStream Testing";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
-	if (cert.SetCertificateContextProperty(CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
+	if (CertSetCertificateContextProperty(get(pCertContext), CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
 	else
 	{
@@ -1120,13 +1094,13 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	// Give the certificate a description
 	if (Description)
 		cdblob.pbData = (BYTE*)Description;
-	else if (MachineCert)
-		cdblob.pbData = (BYTE*)L"SSL Stream Server Test";
+	else if (forClient)
+		cdblob.pbData = (BYTE*)L"SSL Stream Client Test created automatically";
 	else
-		cdblob.pbData = (BYTE*)L"SSLStream Client Test";
+		cdblob.pbData = (BYTE*)L"SSLStream Server Test created automatically";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
-	if (cert.SetCertificateContextProperty(CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
+	if (CertSetCertificateContextProperty(get(pCertContext), CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
 	else
 	{
@@ -1135,11 +1109,11 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 		return 0;
 	}
 
-	// Open Personal cert store in machine profile
-	DebugMsg(("CertOpenStore to open root store... "));
+	// Open Personal certificate store for whole machine or individual user
+	DebugMsg(("Opening  root store for writingusing CertOpenStore"));
 	CertStore store;
-	if (store.CertOpenStore(MachineCert ? CERT_SYSTEM_STORE_LOCAL_MACHINE : CERT_SYSTEM_STORE_CURRENT_USER))
-		DebugMsg("Success");
+	if (store.CertOpenStore(useMachineStore ? CERT_SYSTEM_STORE_LOCAL_MACHINE : CERT_SYSTEM_STORE_CURRENT_USER))
+		DebugMsg("CertOpenStore succeeded");
 	else
 	{
 		// Error
@@ -1151,10 +1125,9 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 			DebugMsg("**** Error 0x%.8x returned by CertOpenStore", err);
 		return 0;
 	}
-
 	// Add the cert to the store
 	DebugMsg(("CertAddCertificateContextToStore... "));
-	if (store.AddCertificateContext(cert))
+	if (store.AddCertificateContext(get(pCertContext)))
 		DebugMsg("Success");
 	else
 	{
@@ -1166,7 +1139,7 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 	// Just for testing, verify that we can access cert's private key
 	DebugMsg(("CryptAcquireCertificatePrivateKey... "));
 	CSP csp;
-	if (csp.AcquirePrivateKey(cert))
+	if (csp.AcquirePrivateKey(get(pCertContext)))
 		DebugMsg("Success, private key acquired");
 	else
 	{
@@ -1174,5 +1147,5 @@ PCCERT_CONTEXT CreateCertificate(bool MachineCert, LPCWSTR Subject, LPCWSTR Frie
 		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
-	return cert.Detach();
+	return detach(pCertContext);
 }
