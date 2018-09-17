@@ -105,7 +105,7 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 	ULONGLONG endTime = GetTickCount64() + TimeOutMilliSeconds;
 	// flush to remove existing events
 	if (!FlushConsoleInputBufferAlternate(hStdin))
-		printf("FlushConsoleInputBuffer failed LastError=%i\n", GetLastError());
+		cout << "FlushConsoleInputBuffer failed LastError=" << GetLastError() << endl;
 	// Now wait for input or timeout
 	while (WaitForSingleObject(hStdin, (DWORD)max(0, endTime - GetTickCount64())) == WAIT_OBJECT_0)
 	{

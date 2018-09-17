@@ -559,9 +559,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	csc.pvCallbackData = (LPVOID)pszSubjectName;
 
 	if (!(pCertContext = SelectCertificate(&csc)))
-	{
-		printf("Select Certificate UI failed.\n");
-	}
+		DebugMsg("Select Certificate UI did not return a certificate.");
 
 	return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
 }

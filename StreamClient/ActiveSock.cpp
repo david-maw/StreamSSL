@@ -70,7 +70,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 
 	ActualSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if (ActualSocket == INVALID_SOCKET) {
-		wprintf(L"socket failed with error: %d\n", WSAGetLastError());
+		DebugMsg("socket failed with error: %d\n", WSAGetLastError());
 		return false;
 	}
 	CTime Now = CTime::GetCurrentTime();
