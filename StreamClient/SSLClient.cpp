@@ -597,7 +597,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
 		{
 			// Get the server supplied certificate in order to decide whether it is acceptable
 
-			CertContextHandle hServerCertContext;
+			ConstCertContextHandle hServerCertContext;
 
 			HRESULT hr = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_REMOTE_CERT_CONTEXT, set(hServerCertContext));
 
