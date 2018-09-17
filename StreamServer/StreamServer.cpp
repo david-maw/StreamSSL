@@ -37,6 +37,43 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 	return NULL != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
 }
 
+// Run arbitrary code and return process information
+bool RunApp(WCHAR * app, PROCESS_INFORMATION& pi)
+{ // Not strictly needed but it makes testing easier
+	STARTUPINFO si = {};
+	si.cb = sizeof si;
+
+	if (CreateProcess(app, 0, 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
+		return true;
+	else
+	{
+		cerr << "CreateProcess failed (" << GetLastError() << ").\n";
+		return false;
+	}
+}
+// Run the sample client application just to simplify testing (that way you needn't run both server and client separately)
+void RunClient()
+{
+	cout << "Initiating a client instance for testing.\n" << endl;
+	WCHAR acPathName[MAX_PATH + 1];
+	GetModuleFileName(NULL, acPathName, sizeof(acPathName));
+	CString appName(acPathName);
+	int len = appName.ReverseFind(L'\\');
+	appName = appName.Left(len + 1) + L"StreamClient.exe";
+	PROCESS_INFORMATION pi = {};
+	if (RunApp(appName.GetBuffer(), pi) && false)
+	{
+		cout << "Waiting on StreamClient" << endl;
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		wcout << "Client completed." << endl;
+		//if (PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0)) // Good
+		//	cout << "Request to terminate process has been sent!";
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+	}
+}
+
+// Main method, called first by the operating system when the codefile is run
 int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 {
 	if (!IsUserAdmin())
@@ -67,7 +104,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		cout << "Exiting worker" << endl << endl;
 	});
 
-	cout << "Listening, press any key to exit.\n" << endl;
+	RunClient();
+	cout << "Listening for a client connection, press enter key to terminate.\n" << endl;
 	getchar();
 	Listener->EndListening();
 	return 0;
