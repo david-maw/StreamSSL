@@ -50,20 +50,3 @@ private:
 	HCERTSTORE hStore = NULL;
 
 };
-
-class Cert
-{
-public:
-	Cert();
-	~Cert();
-	operator PCCERT_CONTEXT&();
-	operator bool() const;
-	PCCERT_CONTEXT Detach();
-	bool AddEnhancedKeyUsageIdentifier(LPCSTR pszUsageIdentifier);
-	bool SetCertificateContextProperty(DWORD dwPropId, DWORD dwFlags, const void *pvData);
-
-
-private:
-	PCCERT_CONTEXT pCertContext = NULL;
-
-};
