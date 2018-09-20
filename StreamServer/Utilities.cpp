@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Utilities.h"
 #include <atlconv.h>
-#include <string>
 
 // General purpose functions
 
@@ -46,12 +45,12 @@ CString WinErrorMsg(int nErrorCode)
 		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
 			NULL, nErrorCode,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-			(LPTSTR)theMsg.GetBufferSetLength(100),
+			(LPWSTR)theMsg.GetBufferSetLength(100),
 			100,
 			NULL);
 		theMsg.ReleaseBuffer();
 		if (theMsg.IsEmpty())
-			theMsg.Format(TEXT("Error code %u (0x%.8x)"), nErrorCode, nErrorCode);
+			theMsg.Format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
 	}
 	catch (...)
 	{

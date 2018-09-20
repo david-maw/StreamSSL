@@ -27,7 +27,7 @@ private:
 	int m_LastError;
 	static HRESULT InitializeClass(void);
 	HRESULT Startup(void);
-	SECURITY_STATUS SSPINegotiateLoop(TCHAR* ServerName);
+	SECURITY_STATUS SSPINegotiateLoop(WCHAR* ServerName);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]; // Enough for a whole encrypted message

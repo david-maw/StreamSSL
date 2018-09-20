@@ -85,9 +85,9 @@ UINT __cdecl CListener::ListenerWorker(LPVOID v)
 // Initialize the listener, set up the socket to listen on, or return an error
 CListener::ErrorType CListener::Initialize(int TCPSocket)
 {
-	TCHAR MsgText[100];
+	WCHAR MsgText[100];
 	CString TCPSocketText;
-	TCPSocketText.Format(_T("%i"), TCPSocket);
+	TCPSocketText.Format(L"%i", TCPSocket);
 
 	WSADATA wsadata;
 	if (WSAStartup(MAKEWORD(2, 0), &wsadata))
@@ -101,7 +101,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	Hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
 	if (GetAddrInfo(NULL, TCPSocketText, &Hints, &AddrInfo) != 0)
 	{
-		StringCchPrintf(MsgText, _countof(MsgText), _T("getaddressinfo error: %i"), GetLastError());
+		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i"), GetLastError();
 		LogWarning(MsgText);
 		return UnknownError;
 	}
@@ -116,7 +116,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		// Only support PF_INET and PF_INET6.  If something else, skip to next address.
 		if ((AI->ai_family != AF_INET) && (AI->ai_family != AF_INET6)) continue;
 
-		// StringCchPrintf(MsgText, _countof(MsgText), _T("::OnInit i = %d, ai_family = %d"), i, AI->ai_family);
+		// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit i = %d, ai_family = %d"), i, AI->ai_family;
 		// LogWarning(MsgText);
 
 		m_hSocketEvents[i] = CreateEvent(
@@ -128,14 +128,14 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		if (!(m_hSocketEvents[i]))
 			return UnknownError;
 
-		// StringCchPrintf(MsgText, _countof(MsgText), _T("::OnInit Created m_hSocketEvents[%d], handle=%d"), i, m_hSocketEvents[i]);
+		// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit Created m_hSocketEvents[%d], handle=%d"), i, m_hSocketEvents[i];
 		// LogWarning(MsgText);
 
 		m_iListenSockets[i] = WSASocket(AI->ai_family, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 		if (m_iListenSockets[i] == INVALID_SOCKET)
 			return SocketUnusable;
 
-		// StringCchPrintf(MsgText, _countof(MsgText), _T("::OnInit binding m_iListenSockets[%d] to sa_family=%u sa_data=%s len=%d"), i, AI->ai_addr->sa_family, AI->ai_addr->sa_data, AI->ai_addrlen);
+		// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit binding m_iListenSockets[%d] to sa_family=%u sa_data=%s len=%d"), i, AI->ai_addr->sa_family, AI->ai_addr->sa_data, AI->ai_addrlen;
 		// LogWarning(MsgText);
 
 		int rc = bind(m_iListenSockets[i], AI->ai_addr, (int)AI->ai_addrlen);
@@ -156,7 +156,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 
 	m_iNumListenSockets = i;
 
-	// StringCchPrintf(MsgText, _countof(MsgText), _T("::OnInit no errors, m_iNumListenSockets = %d"), m_iNumListenSockets);
+	// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit no errors, m_iNumListenSockets = %d"), m_iNumListenSockets;
 	// LogWarning(MsgText);
 
 	return NoError;
@@ -197,31 +197,31 @@ void CListener::Listen(void)
 	HANDLE hEvents[FD_SETSIZE + 1];
 	SOCKET iReadSocket = NULL;
 	DWORD dwWait;
-	//TCHAR MsgText[100];
+	//WCHAR MsgText[100];
 
 	m_WorkerThreadCount = 0;
 
 	DebugMsg("Start CListener::Listen method");
 
-	// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen m_iNumListenSockets= %d"), m_iNumListenSockets);
+	// StringCchPrintf(MsgText, _countof(MsgText), L"CListener::Listen m_iNumListenSockets= %d"), m_iNumListenSockets;
 	// LogWarning(MsgText);
 
 	hEvents[0] = m_StopEvent;
-	// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen hEvents[0] = m_StopEvent = %d"), m_StopEvent);
+	// StringCchPrintf(MsgText, _countof(MsgText), L"CListener::Listen hEvents[0] = m_StopEvent = %d"), m_StopEvent;
 	// LogWarning(MsgText);
 
 	// Add the events for each socket type (two at most, one for IPv4, one for IPv6)
 	for (int i = 0; i < m_iNumListenSockets; i++)
 	{
 		hEvents[i + 1] = m_hSocketEvents[i];
-		// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen hEvents[%d] = m_hSocketEvents[%d] = %d"), i+1, i, m_hSocketEvents[i]);
+		// StringCchPrintf(MsgText, _countof(MsgText), L"CListener::Listen hEvents[%d] = m_hSocketEvents[%d] = %d"), i+1, i, m_hSocketEvents[i];
 		// LogWarning(MsgText);
 	}
 
 	// Loop until there is a problem or the shutdown event is caused
 	while (true)
 	{
-		// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen entering WaitForMultipleObjects for %d objects"), m_iNumListenSockets+1);
+		// StringCchPrintf(MsgText, _countof(MsgText), L"CListener::Listen entering WaitForMultipleObjects for %d objects"), m_iNumListenSockets+1;
 		// LogWarning(MsgText);
 
 		dwWait = WaitForMultipleObjects(m_iNumListenSockets + 1, hEvents, false, INFINITE);
@@ -232,7 +232,7 @@ void CListener::Listen(void)
 			break; // Received a stop event
 		}
 		int iMyIndex = dwWait - 1;
-		// StringCchPrintf(MsgText, _countof(MsgText), _T("CListener::Listen event %d triggered, iMyIndex = %d"), dwWait, iMyIndex);
+		// StringCchPrintf(MsgText, _countof(MsgText), L"CListener::Listen event %d triggered, iMyIndex = %d"), dwWait, iMyIndex;
 		// LogWarning(MsgText);
 
 		WSAResetEvent(m_hSocketEvents[iMyIndex]);

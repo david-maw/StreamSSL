@@ -15,6 +15,7 @@
 //#else
 //#define DBG_NEW new
 //#endif
+
 // Define a bool to check if this is a DEBUG or RELEASE build
 #if defined(_DEBUG)
 const bool debug = true;
@@ -30,6 +31,13 @@ const bool debug = false;
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
 #endif
+#include <WS2tcpip.h>
 #define SECURITY_WIN32
 #include <security.h>
 #include <strsafe.h>
+
+// Standard C++
+#include <iostream>
+
+// Application
+#include "Utilities.h"

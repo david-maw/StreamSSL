@@ -26,7 +26,7 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 	else
 		cout << "mismatch" << endl;
 	if (false && debug && pCertContext)
-		ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
+		ShowCertInfo(pCertContext, L"Client Received Server Certificate");
 	return true; // Any certificate will do
 }
 
@@ -83,7 +83,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 	else
 		cout << ", no certificate found." << endl;
 	if (false && debug && pCertContext)
-		ShowCertInfo(pCertContext, _T("Client certificate being returned"));
+		ShowCertInfo(pCertContext, L"Client certificate being returned");
 	return Status;
 }
 
@@ -123,7 +123,7 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 	return 0;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int wmain(int argc, WCHAR * argv[])
 {
 	//_CrtSetBreakAlloc(225); // Catch a memory leak
 	CString HostName(GetHostName(ComputerNameDnsFullyQualified));
@@ -174,7 +174,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	WORD key = WaitForAnyKey(30000);
 	if (!(key == 'Q' || key == 0))
 	{
-		cout << "The the program will pause until you press a key" << endl;
+		cout << "The the program will pause until you press enter" << endl;
 		getchar();
 	}
 	return 0;

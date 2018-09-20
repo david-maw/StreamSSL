@@ -400,7 +400,7 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 
 // Negotiate a connection with the server, sending and receiving messages until the
 // negotiation succeeds or fails
-SECURITY_STATUS CSSLClient::SSPINegotiateLoop(TCHAR* ServerName)
+SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 {
 	int cbData;
 	TimeStamp            tsExpiry;

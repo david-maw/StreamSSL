@@ -61,7 +61,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	SOCKADDR_STORAGE RemoteAddr = { 0 };
 	DWORD dwLocalAddr = sizeof(LocalAddr);
 	DWORD dwRemoteAddr = sizeof(RemoteAddr);
-	TCHAR PortName[10] = { 0 };
+	WCHAR PortName[10] = { 0 };
 	timeval Timeout = { 0 };
 
 	Timeout.tv_sec = GetSendTimeoutSeconds();
@@ -76,7 +76,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	CTime Now = CTime::GetCurrentTime();
 
 	// Note that WSAConnectByName requires Vista or Server 2008
-	bSuccess = WSAConnectByName(ActualSocket, const_cast<LPTSTR>(HostName),
+	bSuccess = WSAConnectByName(ActualSocket, const_cast<LPWSTR>(HostName),
 		PortName, &dwLocalAddr,
 		(SOCKADDR*)&LocalAddr,
 		&dwRemoteAddr,

@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
+#include "Listener.h"
+#include "ISocketStream.h"
 
 using namespace std;
 
@@ -74,7 +76,7 @@ void RunClient()
 }
 
 // Main method, called first by the operating system when the codefile is run
-int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
+int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 {
 	if (!IsUserAdmin())
 		cout << "WARNING: The server is not running as an administrator." << endl;

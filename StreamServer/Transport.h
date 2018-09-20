@@ -2,6 +2,8 @@
 class CPrtMsg;
 class CListener;
 class CSSLServer;
+class CPassiveSock;
+class ISocketStream;
 
 class CTransport
 {

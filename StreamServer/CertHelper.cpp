@@ -107,8 +107,8 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
 {
 	HCERTSTORE hCertStore{};
-	TCHAR pszFriendlyNameString[128];
-	TCHAR	pszNameString[128];
+	WCHAR pszFriendlyNameString[128];
+	WCHAR	pszNameString[128];
 
 	if (pszSubjectName == NULL || _tcslen(pszSubjectName) == 0)
 	{
@@ -136,7 +136,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
 		&eku,
-		pCertContext))) // If this points to a valid certifcate it will act as starting point and also be closed
+		pCertContext))) // If this points to a valid certificate it will act as starting point and also be closed
 	{
 		//ShowCertInfo(pCertContext);
 		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
@@ -211,8 +211,8 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, boolean fUserStore)
 {
 	HCERTSTORE hCertStore;
-	TCHAR pszFriendlyNameString[128];
-	TCHAR	pszNameString[128];
+	WCHAR pszFriendlyNameString[128];
+	WCHAR	pszNameString[128];
 
 	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
 	if (FAILED(hr))
@@ -342,7 +342,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 			CertFreeCertificateContext(pCertContext);
 		pCertContext = CertDuplicateCertificateContext(pChainContext->rgpChain[0]->rgpElement[0]->pCertContext);
 		if (false && debug && pCertContext)
-			ShowCertInfo(pCertContext, _T("Certificate at the end of the chain selected"));
+			ShowCertInfo(pCertContext, L"Certificate at the end of the chain selected");
 		CertFreeCertificateChain(pChainContext);
 		Status = SEC_E_OK;
 		break;
@@ -603,7 +603,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 		&certhash,
 		NULL))                        // NULL for the first call to the
 	{
-		TCHAR pszFriendlyNameString[128];
+		WCHAR pszFriendlyNameString[128];
 		//ShowCertInfo(pCertContext);
 		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
 		{
@@ -711,7 +711,7 @@ CString GetCertName(PCCERT_CONTEXT pCertContext)
 // Display a UI with the certificate info and also write it to the debug output
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 {
-	TCHAR pszNameString[256];
+	WCHAR pszNameString[256];
 	void*            pvData;
 	DWORD            cbData;
 	DWORD            dwPropId = 0;
