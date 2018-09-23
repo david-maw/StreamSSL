@@ -406,8 +406,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 					if ((!g_ServerCreds) // No certificate handle stored
 						|| (serverName.Compare(g_ServerName) != 0)) // Requested names are different
 					{  // 
-						if (g_ServerCreds) // Certificate handle stored
-							g_pSSPI->FreeCredentialsHandle(&g_ServerCreds.get());
+						g_ServerCreds.Close(); //discard any stored certificate
 						if (serverName.IsEmpty()) // There was no hostname supplied by SNI
 							serverName = GetHostName();
 						PCCERT_CONTEXT pCertContext = NULL;
