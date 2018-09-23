@@ -45,7 +45,7 @@ bool RunApp(WCHAR * app, PROCESS_INFORMATION& pi)
 	STARTUPINFO si = {};
 	si.cb = sizeof si;
 
-	if (CreateProcess(app, 0, 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
+	if (CreateProcess(NULL, app, 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
 		return true;
 	else
 	{
@@ -54,22 +54,21 @@ bool RunApp(WCHAR * app, PROCESS_INFORMATION& pi)
 	}
 }
 // Run the sample client application just to simplify testing (that way you needn't run both server and client separately)
-void RunClient()
+void RunClient(CString toHost = L"", PROCESS_INFORMATION * ppi = NULL)
 {
 	cout << "Initiating a client instance for testing.\n" << endl;
 	WCHAR acPathName[MAX_PATH + 1];
 	GetModuleFileName(NULL, acPathName, sizeof(acPathName));
 	CString appName(acPathName);
 	int len = appName.ReverseFind(L'\\');
-	appName = appName.Left(len + 1) + L"StreamClient.exe";
-	PROCESS_INFORMATION pi = {};
-	if (RunApp(appName.GetBuffer(), pi) && false)
+	appName = appName.Left(len + 1) + L"StreamClient.exe " + toHost;
+	PROCESS_INFORMATION pi = {}, *localPpi = ppi ? ppi : &pi; // Just use a local one if one is not passed
+
+	if (RunApp(appName.GetBuffer(), *localPpi) && !ppi)
 	{
 		cout << "Waiting on StreamClient" << endl;
 		WaitForSingleObject(pi.hProcess, INFINITE);
 		wcout << "Client completed." << endl;
-		//if (PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0)) // Good
-		//	cout << "Request to terminate process has been sent!";
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
 	}
@@ -106,7 +105,16 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 		cout << "Exiting worker" << endl << endl;
 	});
 
-	RunClient();
+	PROCESS_INFORMATION pi = {};
+
+	RunClient("localhost", &pi); // run a client point it at "localhost"
+	cout << "Waiting on StreamClient to localhost" << endl;
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	cout << "Client completed." << endl;
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	RunClient(); // run a second copy, but let it default the host name
+
 	cout << "Listening for a client connection, press enter key to terminate.\n" << endl;
 	getchar();
 	Listener->EndListening();
