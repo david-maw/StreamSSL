@@ -120,7 +120,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 	if (FAILED(hr))
 		return hr;
 
-	ConstCertContextHandle hCertContext(pCertContext), hCertContextSaved;
+	CertContextHandle hCertContext(pCertContext), hCertContextSaved;
 
 	char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
 	CERT_ENHKEY_USAGE eku;
@@ -154,7 +154,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 			if (!hCertContextSaved)
 			{
 				DebugMsg("Self-signed certificate 0x%.8x was found and saved in case it is needed.", pCertContext);
-				attach(hCertContextSaved, CertDuplicateCertificateContext(pCertContext));
+				hCertContextSaved.attach(CertDuplicateCertificateContext(pCertContext));
 			}
 		}
 		else
@@ -167,18 +167,18 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 	if (pCertContext) // This means we exited after finding a perfect certificate
 	{
 		DebugMsg("Attaching context 0x%.8x", (int)pCertContext);
-		attach(hCertContext, pCertContext);
+		hCertContext.attach(pCertContext);
 	}
 
 	if (hCertContextSaved && !hCertContext)
 	{	// We have a saved self-signed certificate and nothing better 
-		DebugMsg("Self-signed certificate 0x%.8x was the best we had.", get(hCertContextSaved));
+		DebugMsg("Self-signed certificate 0x%.8x was the best we had.", hCertContextSaved.get());
 		hCertContext = std::move(hCertContextSaved);
 	}
 
 	if (hCertContext)
 	{
-		pCertContext = detach(hCertContext);
+		pCertContext = hCertContext.detach();
 		DebugMsg("CertFindServerCertificateByName returning context 0x%.8x", (int)pCertContext);
 	}
 	else
@@ -1049,7 +1049,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 
 	// Create certificate
 	DebugMsg(("CertCreateSelfSignCertificate... "));
-	ConstCertContextHandle pCertContext(CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0));
+	CertContextHandle pCertContext(CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0));
 	if (pCertContext)
 		DebugMsg("Success");
 	else
@@ -1061,7 +1061,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 
 	// Specify the allowed usage of the certificate (client or server authentication)
 	DebugMsg(("CertAddEnhancedKeyUsageIdentifier"));
-	if (CertAddEnhancedKeyUsageIdentifier(get(pCertContext), forClient ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH))
+	if (CertAddEnhancedKeyUsageIdentifier(pCertContext.get(), forClient ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH))
 		DebugMsg("Success");
 	else
 	{
@@ -1080,7 +1080,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 		cdblob.pbData = (BYTE*)L"SSLStream Testing";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
-	if (CertSetCertificateContextProperty(get(pCertContext), CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
+	if (CertSetCertificateContextProperty(pCertContext.get(), CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
 	else
 	{
@@ -1098,7 +1098,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 		cdblob.pbData = (BYTE*)L"SSLStream Server Test created automatically";
 	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
 	DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
-	if (CertSetCertificateContextProperty(get(pCertContext), CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
+	if (CertSetCertificateContextProperty(pCertContext.get(), CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
 	else
 	{
@@ -1125,7 +1125,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	}
 	// Add the cert to the store
 	DebugMsg(("CertAddCertificateContextToStore... "));
-	if (store.AddCertificateContext(get(pCertContext)))
+	if (store.AddCertificateContext(pCertContext.get()))
 		DebugMsg("Success");
 	else
 	{
@@ -1137,7 +1137,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	// Just for testing, verify that we can access cert's private key
 	DebugMsg(("CryptAcquireCertificatePrivateKey... "));
 	CSP csp;
-	if (csp.AcquirePrivateKey(get(pCertContext)))
+	if (csp.AcquirePrivateKey(pCertContext.get()))
 		DebugMsg("Success, private key acquired");
 	else
 	{
@@ -1145,5 +1145,5 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 		DebugMsg("Error 0x%.8x", GetLastError());
 		return 0;
 	}
-	return detach(pCertContext);
+	return pCertContext.detach();
 }

@@ -59,11 +59,11 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 		if FAILED(hr)
 			return hr;
 	}
-	ConstCertContextHandle hCertContext;
+	CertContextHandle hCertContext;
 	if (SelectClientCertificate)
-		hr = SelectClientCertificate(setref(hCertContext), NULL, false);
+		hr = SelectClientCertificate(*hCertContext.set(), NULL, false);
 	// If a certificate is required, it will be requested later 
-	hr = CreateCredentialsFromCertificate(set(m_ClientCreds), get(hCertContext));
+	hr = CreateCredentialsFromCertificate(set(m_ClientCreds), hCertContext.get());
 	if FAILED(hr) return hr;
 
 	if (lpBuf && (Len > 0))
@@ -597,9 +597,9 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		{
 			// Get the server supplied certificate in order to decide whether it is acceptable
 
-			ConstCertContextHandle hServerCertContext;
+			CertContextHandle hServerCertContext;
 
-			HRESULT hr = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_REMOTE_CERT_CONTEXT, set(hServerCertContext));
+			HRESULT hr = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_REMOTE_CERT_CONTEXT, hServerCertContext.set());
 
 			if (FAILED(hr))
 			{
@@ -611,12 +611,12 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 			else
 			{
 				DebugMsg("Server Certificate returned");
-				ServerCertNameMatches = MatchCertificateName(get(hServerCertContext), ATL::CW2T(ServerName));
-				hr = CertTrusted(get(hServerCertContext), false);
+				ServerCertNameMatches = MatchCertificateName(hServerCertContext.get(), ATL::CW2T(ServerName));
+				hr = CertTrusted(hServerCertContext.get(), false);
 				ServerCertTrusted = hr == S_OK;
 				bool IsServerCertAcceptable = ServerCertAcceptable == nullptr;
 				if (!IsServerCertAcceptable)
-					IsServerCertAcceptable = ServerCertAcceptable(get(hServerCertContext), ServerCertTrusted, ServerCertNameMatches);
+					IsServerCertAcceptable = ServerCertAcceptable(hServerCertContext.get(), ServerCertTrusted, ServerCertNameMatches);
 				if (!IsServerCertAcceptable)
 					return SEC_E_UNKNOWN_CREDENTIALS;
 			}
@@ -913,7 +913,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 
 	// Now go ask for the client credentials
 	PCCERT_CONTEXT pCertContext = NULL;
-	ConstCertContextHandle hCertContext;
+	CertContextHandle hCertContext;
 
 	if (SelectClientCertificate)
 		Status = SelectClientCertificate(pCertContext, &IssuerListInfo, true);
@@ -922,11 +922,11 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 		DebugMsg("Error 0x%08x selecting client certificate", Status);
 		return Status;
 	}
-	attach(hCertContext, pCertContext);
+	hCertContext.attach(pCertContext);
 	if (!hCertContext)
 		DebugMsg("No suitable client certificate is available to return to the server");
 
-	Status = CreateCredentialsFromCertificate(set(hCreds), get(hCertContext));
+	Status = CreateCredentialsFromCertificate(set(hCreds), hCertContext.get());
 
 	if (SUCCEEDED(Status) && hCreds)
 	{
