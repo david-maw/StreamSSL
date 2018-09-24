@@ -10,20 +10,14 @@ PSecurityFunctionTable CSSLClient::g_pSSPI = NULL;
 
 // Declare the Close functions for the handle classes using the global SSPI function table pointer
 
-void CredentialHandle::Close() noexcept
+void CredentialTraits::Close(Type value)
 {
-	if (*this)
-	{
-		CSSLClient::SSPI()->FreeCredentialsHandle(&m_value);
-	}
+	CSSLClient::SSPI()->FreeCredentialsHandle(&value);
 }
 
-void SecurityContextHandle::Close() noexcept
+void SecurityContextTraits::Close(Type value)
 {
-	if (*this)
-	{
-		CSSLClient::SSPI()->DeleteSecurityContext(&m_value);
-	}
+	CSSLClient::SSPI()->DeleteSecurityContext(&value);
 }
 
 // The CSSLClient class, this declares an SSL client side implementation that requires
@@ -63,7 +57,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 	if (SelectClientCertificate)
 		hr = SelectClientCertificate(*hCertContext.set(), NULL, false);
 	// If a certificate is required, it will be requested later 
-	hr = CreateCredentialsFromCertificate(set(m_ClientCreds), hCertContext.get());
+	hr = CreateCredentialsFromCertificate(m_ClientCreds.set(), hCertContext.get());
 	if FAILED(hr) return hr;
 
 	if (lpBuf && (Len > 0))
@@ -83,7 +77,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 
 	// Find out how big the header and trailer will be:
 
-	hr = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_STREAM_SIZES, &Sizes);
+	hr = g_pSSPI->QueryContextAttributes(&m_hContext.get(), SECPKG_ATTR_STREAM_SIZES, &Sizes);
 
 	if (FAILED(hr))
 	{
@@ -182,7 +176,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(&get(m_hContext), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(&m_hContext.get(), &Message, 0, NULL);
 	}
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -229,7 +223,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		Buffers[2].BufferType = SECBUFFER_EMPTY;
 		Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-		scRet = g_pSSPI->DecryptMessage(&get(m_hContext), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(&m_hContext.get(), &Message, 0, NULL);
 	}
 
 
@@ -372,7 +366,7 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 
 	Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-	scRet = g_pSSPI->EncryptMessage(&get(m_hContext), 0, &Message, 0);
+	scRet = g_pSSPI->EncryptMessage(&m_hContext.get(), 0, &Message, 0);
 
 	DebugMsg(" ");
 	DebugMsg("Plaintext message has %d bytes", Len);
@@ -433,7 +427,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	scRet = g_pSSPI->InitializeSecurityContext(
-		&get(m_ClientCreds),
+		&m_ClientCreds.get(),
 		NULL,
 		ServerName,
 		dwSSPIFlags,
@@ -441,7 +435,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		SECURITY_NATIVE_DREP,
 		NULL,
 		0,
-		set(m_hContext),
+		m_hContext.set(),
 		&OutBuffer,
 		&dwSSPIFlags,
 		&tsExpiry);
@@ -572,8 +566,8 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		// Call InitializeSecurityContext.
 		//
 
-		scRet = g_pSSPI->InitializeSecurityContext(&get(m_ClientCreds),
-			&get(m_hContext),
+		scRet = g_pSSPI->InitializeSecurityContext(&m_ClientCreds.get(),
+			&m_hContext.get(),
 			NULL,
 			dwSSPIFlags,
 			0,
@@ -599,7 +593,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 			CertContextHandle hServerCertContext;
 
-			HRESULT hr = g_pSSPI->QueryContextAttributes(&get(m_hContext), SECPKG_ATTR_REMOTE_CERT_CONTEXT, hServerCertContext.set());
+			HRESULT hr = g_pSSPI->QueryContextAttributes(&m_hContext.get(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, hServerCertContext.set());
 
 			if (FAILED(hr))
 			{
@@ -815,7 +809,7 @@ HRESULT CSSLClient::Disconnect(void)
 	OutBuffer.pBuffers = OutBuffers;
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
-	Status = g_pSSPI->ApplyControlToken(&get(m_hContext), &OutBuffer);
+	Status = g_pSSPI->ApplyControlToken(&m_hContext.get(), &OutBuffer);
 
 	if (FAILED(Status))
 	{
@@ -900,7 +894,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 	// has a DWORD value called SendTrustedIssuerList set to 0
 	//
 
-	Status = g_pSSPI->QueryContextAttributes(&get(m_hContext),
+	Status = g_pSSPI->QueryContextAttributes(&m_hContext.get(),
 		SECPKG_ATTR_ISSUER_LIST_EX,
 		(PVOID)&IssuerListInfo);
 	if (Status != SEC_E_OK)
@@ -926,7 +920,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 	if (!hCertContext)
 		DebugMsg("No suitable client certificate is available to return to the server");
 
-	Status = CreateCredentialsFromCertificate(set(hCreds), hCertContext.get());
+	Status = CreateCredentialsFromCertificate(hCreds.set(), hCertContext.get());
 
 	if (SUCCEEDED(Status) && hCreds)
 	{
