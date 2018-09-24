@@ -1,38 +1,7 @@
 #include "stdafx.h"
 #include "Listener.h"
 
-// Handy utility function to get the hostname of the host I am running on
-CString GetHostName(void)
-{
-	struct addrinfo hints, *info;
-	int gai_result;
-
-	char hostname[1024];
-	hostname[1023] = '\0';
-	gethostname(hostname, 1023);
-
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC; /*either IPV4 or IPV6*/
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_CANONNAME;
-
-	if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0)
-	{
-		fprintf(stderr, "getaddrinfo: %S\n", gai_strerror(gai_result));
-		exit(1);
-	}
-
-	if (info == NULL)
-		return hostname;
-	else
-	{
-		CString s(info->ai_canonname);
-		freeaddrinfo(info);
-		return s;
-	}
-}
-
-// CListerner object, listens for connections on one thread, and initiates a worker
+// CListener object, listens for connections on one thread, and initiates a worker
 // thread each time a client connects.
 CListener::CListener()
 	:m_StopEvent(FALSE, TRUE),
@@ -86,8 +55,7 @@ UINT __cdecl CListener::ListenerWorker(LPVOID v)
 CListener::ErrorType CListener::Initialize(int TCPSocket)
 {
 	WCHAR MsgText[100];
-	CString TCPSocketText;
-	TCPSocketText.Format(L"%i", TCPSocket);
+	std::wstring TCPSocketText = string_format(L"%i", TCPSocket);
 
 	WSADATA wsadata;
 	if (WSAStartup(MAKEWORD(2, 0), &wsadata))
@@ -99,7 +67,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	Hints.ai_family = PF_UNSPEC;
 	Hints.ai_socktype = SOCK_STREAM;
 	Hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
-	if (GetAddrInfo(NULL, TCPSocketText, &Hints, &AddrInfo) != 0)
+	if (GetAddrInfo(NULL, TCPSocketText.c_str(), &Hints, &AddrInfo) != 0)
 	{
 		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i"), GetLastError();
 		LogWarning(MsgText);

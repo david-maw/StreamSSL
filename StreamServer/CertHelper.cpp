@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <cryptuiapi.h>
+#include <string>
 #include "CertRAII.h"
 #include "SecurityHandle.h"
 
@@ -34,28 +35,23 @@ SECURITY_STATUS GetStore(HCERTSTORE &phStore, bool useUserStore)
 	return SEC_E_OK;
 }
 
-bool DnsNameMatches(CString HostName, PCWSTR pDNSName)
+// Match the required name (HostName) to the name on the certificate pRequiredName, which might be wildcarded
+bool DnsNameMatches(std::wstring HostName, PCWSTR pRequiredName)
 {
-	CString DNSName(pDNSName);
-	if (DnsNameCompare(HostName, pDNSName)) // The HostName is the DNSName
+	if (DnsNameCompare(HostName.c_str(), pRequiredName)) // The HostName is the RequiredName
 		return true;
-	else if (DNSName.Find(L'*') < 0) // The DNSName is a hostname, but did not match
+	else if (*pRequiredName != L'*') // The RequiredName is not a wildcarded hostname
 		return false;
-	else // The DNSName is wildcarded
+	else // The RequiredName is wildcarded, something like *.unisys.com (wildcards represent whole nodes)
 	{
-		int suffixLen = HostName.GetLength() - HostName.Find(L'.'); // The length of the fixed part
-		if (DNSName.GetLength() > suffixLen + 2) // the hostname domain part must be longer than the DNSName
+		std::wstring RequiredName(pRequiredName);
+		unsigned int suffixLen = HostName.length() - HostName.find(L'.'); // The length of the domain part
+		if ((RequiredName.length() != suffixLen + 1) && (RequiredName[0] != L'*')) // our wildcard names must begin with "*..."
 			return false;
-		else if (DNSName.GetLength() - DNSName.Find(L'.') != suffixLen) // The two suffix lengths must match
+		else if (RequiredName.length() - RequiredName.find(L'.') != suffixLen) // The two suffix lengths must match
 			return false;
-		else if (HostName.Right(suffixLen) != DNSName.Right(suffixLen))
-			return false;
-		else // at this point, the decision is whether the last hostname node matches the wildcard
-		{
-			DNSName = DNSName.SpanExcluding(L".");
-			CString HostShortName = HostName.SpanExcluding(L".");
-			return (S_OK == PathMatchSpecEx(HostShortName, DNSName, PMSF_NORMAL));
-		}
+		else
+			return (HostName.length() - HostName.find(L'.') == suffixLen); // if only the first node differs, we're good to go
 	}
 }
 
@@ -72,7 +68,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 		pExtension = CertFindExtension(szOID, pCertContext->pCertInfo->cExtension,
 			pCertContext->pCertInfo->rgExtension);
 	}
-	CString RequiredName(pszRequiredName);
+	std::wstring RequiredName(pszRequiredName);
 
 	// Extract the SAN information (list of names) 
 	DWORD cbStructInfo = -1;
@@ -96,10 +92,10 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 	auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
 	if (!dwCommonNameLength) // No CN found
 		return false;
-	CString CommonName;
-	CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, CommonName.GetBufferSetLength(dwCommonNameLength), dwCommonNameLength);
-	CommonName.ReleaseBufferSetLength(dwCommonNameLength);
-	return DnsNameMatches(RequiredName, CommonName);
+	std::wstring CommonName;
+	CommonName.resize(dwCommonNameLength);
+	CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, &CommonName[0], dwCommonNameLength);
+	return DnsNameMatches(RequiredName, CommonName.c_str());
 }
 
 // Select, and return a handle to a server certificate located by name
@@ -484,12 +480,12 @@ BOOL WINAPI ValidServerCert(
 )
 {
 	DWORD cbData = 0;
-	CString s = "Certificate '" + GetCertName(pCertContext) + "' ";
+	std::wstring s = std::wstring(L"Certificate '") + GetCertName(pCertContext) + L"' ";
 	if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
-		DebugMsg(s + "has wrong subject name.");
+		DebugMsg(s + L"has wrong subject name.");
 	else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
 	{
-		DebugMsg(s + "has no private key.");
+		DebugMsg(s + L"has no private key.");
 	}
 	else
 	{  // All checks passed now check Enhanced Key Usage
@@ -509,7 +505,7 @@ BOOL WINAPI ValidServerCert(
 					return TRUE; // All checks passed and the certificate is allowed to be used for server identification
 				szUsageID++;
 			}
-			DebugMsg(s + "is not allowed use for server authentication.");
+			DebugMsg(s + L"is not allowed use for server authentication.");
 		}
 	}
 	// One of the checks failed
@@ -697,19 +693,22 @@ cleanup:
 }
 
 // Helper function to return the friendly name of a certificate so it can be showed to a human 
-CString GetCertName(PCCERT_CONTEXT pCertContext)
+std::wstring GetCertName(PCCERT_CONTEXT pCertContext)
 {
-	CString certName;
-	auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, certName.GetBuffer(128), certName.GetAllocLength() - 1);
-	certName.ReleaseBuffer();
+	std::wstring certName;
+	certName.resize(128);
+	auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, &certName[0], certName.capacity());
 	if (good)
+	{
+		certName.resize(certName.find(L'\0')); // throw away characters after null
 		return certName;
+	}
 	else
 		return L"<unknown>";
 }
 
 // Display a UI with the certificate info and also write it to the debug output
-HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
+HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 {
 	WCHAR pszNameString[256];
 	void*            pvData;
@@ -722,7 +721,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title)
 		CERT_STORE_CERTIFICATE_CONTEXT,
 		pCertContext,
 		NULL,
-		CStringW(Title),
+		Title.c_str(),
 		0,
 		NULL))
 	{
@@ -994,7 +993,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	std::vector<BYTE> CertName;
 
 	// Encode certificate Subject
-	CString X500(L"CN=");
+	std::wstring X500(L"CN=");
 	if (Subject)
 		X500 += Subject;
 	else
@@ -1002,7 +1001,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	DWORD cbEncoded = 0;
 	// Find out how many bytes are needed to encode the certificate
 	DebugMsg(("CertStrToName... "));
-	if (CertStrToName(X509_ASN_ENCODING, LPCWSTR(X500), CERT_X500_NAME_STR, NULL, NULL, &cbEncoded, NULL))
+	if (CertStrToName(X509_ASN_ENCODING, X500.c_str(), CERT_X500_NAME_STR, NULL, NULL, &cbEncoded, NULL))
 		DebugMsg("Success");
 	else
 	{
@@ -1014,7 +1013,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	CertName.resize(cbEncoded);
 	// Encode the certificate
 	DebugMsg(("CertStrToName... "));
-	if (CertStrToName(X509_ASN_ENCODING, LPCWSTR(X500), CERT_X500_NAME_STR, NULL, &CertName[0], &cbEncoded, NULL))
+	if (CertStrToName(X509_ASN_ENCODING, X500.c_str(), CERT_X500_NAME_STR, NULL, &CertName[0], &cbEncoded, NULL))
 		DebugMsg("Success");
 	else
 	{

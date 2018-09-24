@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "SSLHelper.h"
+#include <vector>
+#include <locale>
+#include <codecvt>
 
 // General purpose helper class for SSL, decodes buffers for diagnostics, handles SNI
 
@@ -158,7 +161,7 @@ bool CSSLHelper::IsClientInitialize()
 }
 
 // Get SNI provided hostname
-CString CSSLHelper::GetSNI()
+std::wstring CSSLHelper::GetSNI()
 {
 	const byte * BufPtr = DataPtr;
 	if (decoded)
@@ -192,7 +195,10 @@ CString CSSLHelper::GetSNI()
 					UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
 					BufPtr += 2;
 					if (serverNameType == 0)
-						return CString((char*)BufPtr, serverNameLength);
+					{
+						CString s((char*)BufPtr, serverNameLength); // Convert utf8 to utf16
+						return s.GetBuffer();
+					}
 					BufPtr += serverNameLength;
 				}
 			}
@@ -202,5 +208,5 @@ CString CSSLHelper::GetSNI()
 			}
 		}
 	}
-	return CString();
+	return std::wstring();
 }

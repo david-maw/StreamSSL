@@ -1,9 +1,9 @@
 #pragma once
 #include <schannel.h>
 bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName);
-HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, CString Title);
+HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert);
-CString GetCertName(PCCERT_CONTEXT pCertContext);
+std::wstring GetCertName(PCCERT_CONTEXT pCertContext);
 SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName = NULL, boolean fUserStore = true);
 SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo);
 SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore = false);

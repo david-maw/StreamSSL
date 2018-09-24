@@ -45,9 +45,8 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 			m_Listener->LogWarning(L"The returned client certificate was unacceptable");
 		else
 		{
-			CString s;
-			s.Format(L"SSL could not be used, hr =0x%lx, lasterror=0x%lx"), hr, err;
-			m_Listener->LogWarning(s);
+			std::wstring s = string_format(L"SSL could not be used, hr =0x%lx, lasterror=0x%lx", hr, err);
+			m_Listener->LogWarning(s.c_str());
 		}
 	}
 }
