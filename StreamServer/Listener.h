@@ -2,6 +2,7 @@
 #include "StdAfx.h"
 #include <functional>
 #include "wincrypt.h"
+#include "Transport.h"
 
 class ISocketStream;
 

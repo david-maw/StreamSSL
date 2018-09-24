@@ -1,5 +1,5 @@
 #pragma once
-// Based on Kenny Kerr's handle class from 2011 - https://msdn.microsoft.com/%20magazine/hh288076
+// Loosely based on Kenny Kerr's handle class from 2011 - https://msdn.microsoft.com/%20magazine/hh288076
 
 template <typename T>
 struct HandleTraits
@@ -11,7 +11,17 @@ struct HandleTraits
 		return nullptr;
 	}
 
-	// static void Close(Type value) noexcept;
+	// static void Close(Type value) noexcept has to be provided, the rest can default
+
+	static bool Equal(Type left, Type right)
+	{
+		return left == right;
+	}
+
+	static bool Less(Type left, Type right)
+	{
+		return left < right;
+	}
 };
 
 
@@ -38,7 +48,7 @@ public:
 	{
 		if (this != &other)
 		{
-			attach(*this, detach(other));
+			attach(other.detach());
 		}
 
 		return *this;
@@ -54,43 +64,76 @@ public:
 		if (*this)
 		{
 			T::Close(m_value);
+			m_value = T::Invalid();
 		}
 	}
 
 	explicit operator bool() const noexcept
 	{
-		return m_value != T::Invalid();
+		return !T::Equal(m_value, T::Invalid());
 	}
 
-	friend Type get(Handle const & handle) noexcept
+	Type get() const noexcept
 	{
-		return handle.m_value;
+		return m_value;
 	}
 
-	friend Type * set(Handle & handle) noexcept
+	Type * set() noexcept
 	{
-		_ASSERTE(!handle);
-		return &handle.m_value;
+		_ASSERTE(!*this);
+		return &m_value;
 	}
 
-	friend void attach(Handle & handle, Type value) noexcept
+	void attach(Type value) noexcept
 	{
-		handle.Close();
-		handle.m_value = value;
+		Close();
+		m_value = value;
 	}
 
-	friend Type detach(Handle & handle) noexcept
+	Type detach() noexcept
 	{
-		Type value = handle.m_value;
-		handle.m_value = T::Invalid();
+		Type value = m_value;
+		m_value = T::Invalid();
 		return value;
 	}
 
+	// The syntax swap(x,y) seems more natural than x.swap(y) so use a friend function, not a method 
 	friend void swap(Handle & left, Handle & right) noexcept
 	{
-		Type temp = left.m_value;
-		left.m_value = right.m_value;
-		right.m_value = temp;
+		std::exchange(left.m_value, right.m_value);
+	}
+
+    // Define equality operators 
+	bool operator==(Handle const & right) const noexcept
+	{
+		return T::Equal(get(), right.get());
+	}
+
+	bool operator!=(Handle const & right) const noexcept
+	{
+		return !(*this == right);
+	}
+
+	// Ordering operators don't make much sense for handles, but allow STL containers
+
+	bool operator<(Handle const & right) const noexcept
+	{
+		return T::Less(get(), right.get());
+	}
+
+	bool operator>(Handle const & right) const noexcept
+	{
+		return right < *this;
+	}
+
+	bool operator<=(Handle const & right) const noexcept
+	{
+		return !(right < *this);
+	}
+
+	bool operator>=(Handle const & right) const noexcept
+	{
+		return !(*this < right);
 	}
 
 private:
@@ -98,39 +141,3 @@ private:
 	Type m_value = T::Invalid();
 
 };
-
-template <typename T>
-bool operator==(Handle<T> const & left, Handle<T> const & right) noexcept
-{
-	return get(left) == get(right);
-}
-
-template <typename T>
-bool operator!=(Handle<T> const & left, Handle<T> const & right) noexcept
-{
-	return !(left == right);
-}
-
-template <typename T>
-bool operator<(Handle<T> const & left, Handle<T> const & right) noexcept
-{
-	return get(left) < get(right);
-}
-
-template <typename T>
-bool operator>(Handle<T> const & left, Handle<T> const & right) noexcept
-{
-	return right < left;
-}
-
-template <typename T>
-bool operator<=(Handle<T> const & left, Handle<T> const & right) noexcept
-{
-	return !(right < left);
-}
-
-template <typename T>
-bool operator>=(Handle<T> const & left, Handle<T> const & right) noexcept
-{
-	return !(left < right);
-}

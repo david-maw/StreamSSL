@@ -2,14 +2,13 @@
 //
 
 #include "stdafx.h"
+#include "Utilities.h"
 #include "ActiveSock.h"
 #include "SSLClient.h"
 #include "EventWrapper.h"
-#include <atlconv.h>
-#include <string>
 #include <iostream>
 #include <iomanip>
-#include "SSLHelper.h"
+#include "CertHelper.h"
 
 using namespace std;
 
@@ -27,7 +26,7 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 	else
 		cout << "mismatch" << endl;
 	if (false && debug && pCertContext)
-		ShowCertInfo(pCertContext, _T("Client Received Server Certificate"));
+		ShowCertInfo(pCertContext, L"Client Received Server Certificate");
 	return true; // Any certificate will do
 }
 
@@ -60,7 +59,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 		if (!pCertContext)
 		{
 			cout << ", none found, creating one";
-			pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName());
+			pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName(), L"StreamSSL client", NULL, true);
 			if (pCertContext)
 				Status = S_OK;
 			else
@@ -84,7 +83,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 	else
 		cout << ", no certificate found." << endl;
 	if (false && debug && pCertContext)
-		ShowCertInfo(pCertContext, _T("Client certificate being returned"));
+		ShowCertInfo(pCertContext, L"Client certificate being returned");
 	return Status;
 }
 
@@ -106,7 +105,7 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 	ULONGLONG endTime = GetTickCount64() + TimeOutMilliSeconds;
 	// flush to remove existing events
 	if (!FlushConsoleInputBufferAlternate(hStdin))
-		printf("FlushConsoleInputBuffer failed LastError=%i\n", GetLastError());
+		cout << "FlushConsoleInputBuffer failed LastError=" << GetLastError() << endl;
 	// Now wait for input or timeout
 	while (WaitForSingleObject(hStdin, (DWORD)max(0, endTime - GetTickCount64())) == WAIT_OBJECT_0)
 	{
@@ -124,8 +123,9 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 	return 0;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int wmain(int argc, WCHAR * argv[])
 {
+	//_CrtSetBreakAlloc(225); // Catch a memory leak
 	CString HostName(GetHostName(ComputerNameDnsFullyQualified));
 	if (argc >= 2)
 		HostName.SetString(argv[1]);
@@ -133,8 +133,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CEventWrapper ShutDownEvent;
 
-	CActiveSock * pActiveSock = new CActiveSock(ShutDownEvent);
-	CSSLClient * pSSLClient = nullptr;
+	auto pActiveSock = make_unique<CActiveSock>(ShutDownEvent);
 	pActiveSock->SetRecvTimeoutSeconds(30);
 	pActiveSock->SetSendTimeoutSeconds(60);
 	wcout << "Connecting to " << HostName.GetString() << ":" << Port << endl;
@@ -143,7 +142,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		cout << "Socket connected to server, initializing SSL" << endl;
 		char Msg[100];
-		pSSLClient = new CSSLClient(pActiveSock);
+		auto pSSLClient = make_unique<CSSLClient>(pActiveSock.get());
 		pSSLClient->ServerCertAcceptable = CertAcceptable;
 		pSSLClient->SelectClientCertificate = SelectClientCertificate;
 		HRESULT hr = pSSLClient->Initialize(ATL::CT2W(HostName));
@@ -175,7 +174,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	WORD key = WaitForAnyKey(30000);
 	if (!(key == 'Q' || key == 0))
 	{
-		cout << "The the program will pause until you press a key" << endl;
+		cout << "The the program will pause until you press enter" << endl;
 		getchar();
 	}
 	return 0;

@@ -1,7 +1,62 @@
 #include "stdafx.h"
 #include "Utilities.h"
+#include <atlconv.h>
 
 // General purpose functions
+
+// Utility function to get the hostname of the host I am running on
+CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
+{
+	DWORD NameLength = 0;
+	if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+	{
+		CString ComputerName;
+		if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+		{
+			ComputerName.ReleaseBuffer();
+			return ComputerName;
+		}
+	}
+	return CString();
+}
+
+// Utility function to return the user name I'm runing under
+CString GetUserName()
+{
+	DWORD NameLength = 0;
+	if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+	{
+		CString UserName;
+		if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+		{
+			UserName.ReleaseBuffer();
+			return UserName;
+		}
+	}
+	return CString();
+}
+
+CString WinErrorMsg(int nErrorCode)
+{
+	CString theMsg;
+	// First get the message length;
+	try
+	{
+		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL, nErrorCode,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+			(LPWSTR)theMsg.GetBufferSetLength(100),
+			100,
+			NULL);
+		theMsg.ReleaseBuffer();
+		if (theMsg.IsEmpty())
+			theMsg.Format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
+	}
+	catch (...)
+	{
+	}
+	return theMsg.TrimRight();
+}
 
 //
 // Usage: SetThreadName ("MainThread"[, threadID]);

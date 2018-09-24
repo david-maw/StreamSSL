@@ -2,7 +2,8 @@
 #include <memory>
 #include <vector>
 #include "CertRAII.h"
-
+#include <Rpc.h>
+#pragma comment(lib, "Rpcrt4.lib")
 
 CSP::CSP()
 {
@@ -27,6 +28,20 @@ bool CSP::AcquirePrivateKey(PCCERT_CONTEXT pCertContext)
 
 CryptProvider::CryptProvider()
 {
+	// We always want a new keycontainer, so give it a unique name
+	UUID uuid;
+	RPC_STATUS ret_val = ::UuidCreate(&uuid);
+
+	if (ret_val == RPC_S_OK)
+	{
+		// convert UUID to LPWSTR
+		::UuidToString(&uuid, (RPC_WSTR*)&KeyContainerName);
+		if (!KeyContainerName)
+			DebugMsg("CryptProvider constructor could not initialize KeyContainerName");
+	}
+	else
+		DebugMsg("CryptProvider constructor UuidCreate failed");
+	// end of naming keycontainer
 }
 
 CryptProvider::~CryptProvider()
@@ -36,6 +51,12 @@ CryptProvider::~CryptProvider()
 		DebugMsg(("CryptReleaseContext... "));
 		CryptReleaseContext(hCryptProv, 0);
 		DebugMsg("Success");
+	}
+	if (KeyContainerName)
+	{
+		// free up the allocated string
+		::RpcStringFree((RPC_WSTR*)&KeyContainerName);
+		KeyContainerName = NULL;
 	}
 }
 
@@ -73,9 +94,8 @@ CertStore::~CertStore()
 {
 	if (hStore)
 	{
-		DebugMsg(("CertCloseStore... "));
+		DebugMsg("CertStore destructor calling CertCloseStore(0x%.8x)", hStore);
 		CertCloseStore(hStore, 0);
-		DebugMsg("Success");
 	}
 }
 
@@ -90,45 +110,13 @@ bool CertStore::AddCertificateContext(PCCERT_CONTEXT pCertContext)
 	return (FALSE != ::CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_REPLACE_EXISTING, 0));
 }
 
-// Cert class
-
-Cert::Cert()
+CertStore::operator bool() const
 {
+	return hStore != NULL;
 }
 
-Cert::~Cert()
+HCERTSTORE CertStore::get() const
 {
-	if (pCertContext)
-	{
-		DebugMsg(("Destructor calling CertFreeCertificateContext... "));
-		CertFreeCertificateContext(pCertContext);
-		DebugMsg("Success");
-	}
+	return hStore;
 }
 
-Cert::operator PCCERT_CONTEXT&()
-{
-	return pCertContext;
-}
-
-PCCERT_CONTEXT Cert::Detach()
-{
-	PCCERT_CONTEXT p = pCertContext;
-	pCertContext = NULL;
-	return p;
-}
-
-Cert::operator bool() const
-{
-	return pCertContext != NULL;
-}
-
-bool Cert::AddEnhancedKeyUsageIdentifier(LPCSTR pszUsageIdentifier)
-{
-	return FALSE != CertAddEnhancedKeyUsageIdentifier(pCertContext, pszUsageIdentifier);
-}
-
-bool Cert::SetCertificateContextProperty(DWORD dwPropId, DWORD dwFlags, const void *pvData)
-{
-	return FALSE != CertSetCertificateContextProperty(pCertContext, dwPropId, dwFlags, pvData);
-}

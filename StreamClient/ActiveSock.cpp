@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include <process.h>
 #include <stdlib.h>
 #include <WS2tcpip.h>
@@ -60,7 +61,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	SOCKADDR_STORAGE RemoteAddr = { 0 };
 	DWORD dwLocalAddr = sizeof(LocalAddr);
 	DWORD dwRemoteAddr = sizeof(RemoteAddr);
-	TCHAR PortName[10] = { 0 };
+	WCHAR PortName[10] = { 0 };
 	timeval Timeout = { 0 };
 
 	Timeout.tv_sec = GetSendTimeoutSeconds();
@@ -69,13 +70,13 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 
 	ActualSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if (ActualSocket == INVALID_SOCKET) {
-		wprintf(L"socket failed with error: %d\n", WSAGetLastError());
+		DebugMsg("socket failed with error: %d\n", WSAGetLastError());
 		return false;
 	}
 	CTime Now = CTime::GetCurrentTime();
 
 	// Note that WSAConnectByName requires Vista or Server 2008
-	bSuccess = WSAConnectByName(ActualSocket, const_cast<LPTSTR>(HostName),
+	bSuccess = WSAConnectByName(ActualSocket, const_cast<LPWSTR>(HostName),
 		PortName, &dwLocalAddr,
 		(SOCKADDR*)&LocalAddr,
 		&dwRemoteAddr,

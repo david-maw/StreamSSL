@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
 #include <wintrust.h>
@@ -24,10 +25,8 @@ public:
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
-	SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext);
+	CredHandle hServerCreds;
 	static PSecurityFunctionTable g_pSSPI;
-	static CredentialHandle g_ServerCreds;
-	static CString g_ServerName;
 	CPassiveSock * m_SocketStream;
 	int m_LastError;
 	static HRESULT InitializeClass(void);
