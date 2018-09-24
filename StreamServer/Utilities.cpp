@@ -1,61 +1,87 @@
 #include "stdafx.h"
 #include "Utilities.h"
 #include <atlconv.h>
+#include <stdarg.h>  // For va_start, etc.
+#include <memory>    // For std::unique_ptr
 
 // General purpose functions
 
+std::wstring& rtrim(std::wstring& str, const std::wstring& chars = L"\t\n\v\f\r ")
+{
+	str.erase(str.find_last_not_of(chars) + 1);
+	return str;
+}
+
+std::wstring string_format(const std::wstring fmt_str, ...) {
+	int final_n, n = ((int)fmt_str.size()) * 2; /* Reserve two times as much as the length of the fmt_str */
+	if (n < 10) n = 10;
+	std::unique_ptr<WCHAR[]> formatted;
+	va_list ap;
+	while (1) {
+		formatted.reset(new WCHAR[n]); /* Wrap the plain char array into the unique_ptr */
+		wcscpy_s(&formatted[0], n, fmt_str.c_str());
+		va_start(ap, fmt_str);
+		final_n = _vsnwprintf_s(&formatted[0],n, n, fmt_str.c_str(), ap);
+		va_end(ap);
+		if (final_n < 0 || final_n >= n)
+			n += abs(final_n - n + 1);
+		else
+			break;
+	}
+	return std::wstring(formatted.get());
+}
 // Utility function to get the hostname of the host I am running on
-CString GetHostName(COMPUTER_NAME_FORMAT WhichName)
+std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName)
 {
 	DWORD NameLength = 0;
 	if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
 	{
-		CString ComputerName;
-		if (1 == ::GetComputerNameEx(WhichName, ComputerName.GetBufferSetLength(NameLength), &NameLength))
+		std::wstring ComputerName;
+		ComputerName.resize(NameLength);
+		if (1 == ::GetComputerNameEx(WhichName, &ComputerName[0], &NameLength))
 		{
-			ComputerName.ReleaseBuffer();
 			return ComputerName;
 		}
 	}
-	return CString();
+	return std::wstring();
 }
 
 // Utility function to return the user name I'm runing under
-CString GetUserName()
+std::wstring GetUserName()
 {
 	DWORD NameLength = 0;
 	if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
 	{
-		CString UserName;
-		if (1 == ::GetUserName(UserName.GetBufferSetLength(NameLength), &NameLength))
+		std::wstring UserName;
+		UserName.resize(NameLength);
+		if (1 == ::GetUserName(&UserName[0], &NameLength))
 		{
-			UserName.ReleaseBuffer();
 			return UserName;
 		}
 	}
-	return CString();
+	return std::wstring();
 }
 
-CString WinErrorMsg(int nErrorCode)
+std::wstring WinErrorMsg(int nErrorCode)
 {
-	CString theMsg;
+	std::wstring theMsg;
+	theMsg.resize(100);
 	// First get the message length;
 	try
 	{
 		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
 			NULL, nErrorCode,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-			(LPWSTR)theMsg.GetBufferSetLength(100),
+			&theMsg[0],
 			100,
 			NULL);
-		theMsg.ReleaseBuffer();
-		if (theMsg.IsEmpty())
-			theMsg.Format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
+		if (theMsg.empty())
+			theMsg = string_format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
 	}
 	catch (...)
 	{
 	}
-	return theMsg.TrimRight();
+	return rtrim(theMsg);
 }
 
 //
@@ -124,6 +150,22 @@ void DebugMsg(const WCHAR* pszFormat, ...)
 		OutputDebugStringW(buf);
 	}
 }
+
+void DebugMsg(const std::wstring pszFormat, ...)
+{
+	if (debug)
+	{
+		WCHAR buf[1024];
+		StringCchPrintfW(buf, sizeof(buf) / sizeof(WCHAR), L"(%lu): ", GetCurrentThreadId());
+		va_list arglist;
+		va_start(arglist, pszFormat);
+		StringCchVPrintfW(&buf[wcslen(buf)], sizeof(buf) / sizeof(WCHAR), pszFormat.c_str(), arglist);
+		va_end(arglist);
+		StringCchCatW(buf, sizeof(buf) / sizeof(WCHAR), L"\n");
+		OutputDebugStringW(buf);
+	}
+}
+
 
 static void PrintHexDumpActual(DWORD length, const void * const buf, const bool verbose)
 {

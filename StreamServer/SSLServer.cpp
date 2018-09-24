@@ -399,7 +399,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 				SSLHelper.TraceHandshake();
 				if (SSLHelper.IsClientInitialize())
 				{  // Figure out what certificate we might want to use, either using SNI or the local host name
-					CString serverName = SSLHelper.GetSNI();
+					std::wstring serverName = SSLHelper.GetSNI();
 					scRet = GetCredHandleFor(serverName, SelectServerCert, &hServerCreds);
 				}
 			}

@@ -8,7 +8,7 @@
 // Create credentials (a handle to a credential context) from a certificate
 SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
 {
-	DebugMsg("CreateCredentialsFromCertificate 0x%.8x '%S'.", pCertContext, GetCertName(pCertContext));
+	DebugMsg("CreateCredentialsFromCertificate 0x%.8x '%S'.", pCertContext, GetCertName(pCertContext).c_str());
 
 	// Build Schannel credential structure.
 	SCHANNEL_CRED   SchannelCred = { 0 };
@@ -47,15 +47,15 @@ SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CON
 
 // Global items used by the GetCredHandleFor function
 std::mutex GetCredHandleForLock;
-std::unordered_map<std::string, CredentialHandle> credMap = std::unordered_map<std::string, CredentialHandle>();
+std::unordered_map<std::wstring, CredentialHandle> credMap = std::unordered_map<std::wstring, CredentialHandle>();
 
-SECURITY_STATUS GetCredHandleFor(CString serverName, SelectServerCertType SelectServerCert, PCredHandle phCreds)
+SECURITY_STATUS GetCredHandleFor(std::wstring serverName, SelectServerCertType SelectServerCert, PCredHandle phCreds)
 {
-	std::string localServerName;
-	if (serverName.IsEmpty()) // There was no hostname supplied
-		localServerName = CW2A(GetHostName());
+	std::wstring localServerName;
+	if (serverName.empty()) // There was no hostname supplied
+		localServerName = GetHostName();
 	else
-		localServerName = CW2A(serverName);
+		localServerName = serverName;
 
 	std::lock_guard<std::mutex> lock(GetCredHandleForLock); // unordered_map is not thread safe, so make this function single thread
 
@@ -68,7 +68,7 @@ SECURITY_STATUS GetCredHandleFor(CString serverName, SelectServerCertType Select
 		SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
 		if (SelectServerCert)
 		{
-			status = SelectServerCert(pCertContext, (LPCTSTR)serverName);
+			status = SelectServerCert(pCertContext, serverName.c_str());
 			if (FAILED(status))
 			{
 				DebugMsg("SelectServerCert returned an error = 0x%08x", status);
@@ -76,7 +76,7 @@ SECURITY_STATUS GetCredHandleFor(CString serverName, SelectServerCertType Select
 			}
 		}
 		else
-			status = CertFindServerCertificateByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
+			status = CertFindServerCertificateByName(pCertContext, serverName.c_str()); // Add "true" to look in user store, "false", or nothing looks in machine store
 		if (SUCCEEDED(status))
 		{
 			CredHandle hServerCred{};

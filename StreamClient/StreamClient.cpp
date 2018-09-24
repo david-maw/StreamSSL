@@ -20,7 +20,7 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 		cout << "A trusted";
 	else
 		cout << "An untrusted";
-	wcout << " server certificate called \"" << (LPCWSTR)GetCertName(pCertContext) << "\" was returned with a name "; // wcout for WCHAR* handling
+	wcout << " server certificate called \"" << GetCertName(pCertContext).c_str() << "\" was returned with a name "; // wcout for WCHAR* handling
 	if (matchingName)
 		cout << "match" << endl;
 	else
@@ -59,7 +59,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 		if (!pCertContext)
 		{
 			cout << ", none found, creating one";
-			pCertContext = CreateCertificate(false, GetUserName() + L" at " + GetHostName(), L"StreamSSL client", NULL, true);
+			pCertContext = CreateCertificate(false, (GetUserName() + L" at " + GetHostName()).c_str(), L"StreamSSL client", NULL, true);
 			if (pCertContext)
 				Status = S_OK;
 			else
@@ -79,7 +79,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
 	}
 	if (pCertContext)
-		wcout << ", selected name: " << (LPCWSTR)GetCertName(pCertContext) << endl; // wcout for WCHAR* handling
+		wcout << ", selected name: " << GetCertName(pCertContext).c_str() << endl; // wcout for WCHAR* handling
 	else
 		cout << ", no certificate found." << endl;
 	if (false && debug && pCertContext)
@@ -126,9 +126,9 @@ WORD WaitForAnyKey(DWORD TimeOutMilliSeconds = 5000)
 int wmain(int argc, WCHAR * argv[])
 {
 	//_CrtSetBreakAlloc(225); // Catch a memory leak
-	CString HostName(GetHostName(ComputerNameDnsFullyQualified));
+	std::wstring HostName(GetHostName(ComputerNameDnsFullyQualified));
 	if (argc >= 2)
-		HostName.SetString(argv[1]);
+		HostName = std::wstring(argv[1]);
 	int Port = 41000;
 
 	CEventWrapper ShutDownEvent;
@@ -136,8 +136,8 @@ int wmain(int argc, WCHAR * argv[])
 	auto pActiveSock = make_unique<CActiveSock>(ShutDownEvent);
 	pActiveSock->SetRecvTimeoutSeconds(30);
 	pActiveSock->SetSendTimeoutSeconds(60);
-	wcout << "Connecting to " << HostName.GetString() << ":" << Port << endl;
-	bool b = pActiveSock->Connect(HostName, Port);
+	wcout << "Connecting to " << HostName.c_str() << ":" << Port << endl;
+	bool b = pActiveSock->Connect(HostName.c_str(), Port);
 	if (b)
 	{
 		cout << "Socket connected to server, initializing SSL" << endl;
@@ -145,7 +145,7 @@ int wmain(int argc, WCHAR * argv[])
 		auto pSSLClient = make_unique<CSSLClient>(pActiveSock.get());
 		pSSLClient->ServerCertAcceptable = CertAcceptable;
 		pSSLClient->SelectClientCertificate = SelectClientCertificate;
-		HRESULT hr = pSSLClient->Initialize(ATL::CT2W(HostName));
+		HRESULT hr = pSSLClient->Initialize(HostName.c_str());
 		if (SUCCEEDED(hr))
 		{
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()

@@ -20,7 +20,7 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubje
 	if (!pCertContext) // If we don't already have a certificate, try and select a likely looking one
 		status = CertFindServerCertificateByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
 	if (pCertContext)
-		wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
+		wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
 	// Uncomment the next 2 lines if you want to see details of the selected certificate
 	//if (pCertContext)
 	//   ShowCertInfo(pCertContext, "Server Certificate In Use");
@@ -35,17 +35,17 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 		cout << "A trusted";
 	else
 		cout << "An untrusted";
-	wcout << " client certificate was returned for \"" << (LPCWSTR)GetCertName(pCertContext) << "\"" << endl;
+	wcout << " client certificate was returned for \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
 	return NULL != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
 }
 
 // Run arbitrary code and return process information
-bool RunApp(WCHAR * app, PROCESS_INFORMATION& pi)
+bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 { // Not strictly needed but it makes testing easier
 	STARTUPINFO si = {};
 	si.cb = sizeof si;
 
-	if (CreateProcess(NULL, app, 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
+	if (CreateProcess(NULL, &app[0], 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
 		return true;
 	else
 	{
@@ -54,17 +54,17 @@ bool RunApp(WCHAR * app, PROCESS_INFORMATION& pi)
 	}
 }
 // Run the sample client application just to simplify testing (that way you needn't run both server and client separately)
-void RunClient(CString toHost = L"", PROCESS_INFORMATION * ppi = NULL)
+void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = NULL)
 {
 	cout << "Initiating a client instance for testing.\n" << endl;
 	WCHAR acPathName[MAX_PATH + 1];
 	GetModuleFileName(NULL, acPathName, sizeof(acPathName));
-	CString appName(acPathName);
-	int len = appName.ReverseFind(L'\\');
-	appName = appName.Left(len + 1) + L"StreamClient.exe " + toHost;
+	std::wstring appName(acPathName);
+	int len = appName.find_last_of(L'\\');
+	appName = appName.substr(0, len + 1) + L"StreamClient.exe " + toHost;
 	PROCESS_INFORMATION pi = {}, *localPpi = ppi ? ppi : &pi; // Just use a local one if one is not passed
 
-	if (RunApp(appName.GetBuffer(), *localPpi) && !ppi)
+	if (RunApp(appName, *localPpi) && !ppi)
 	{
 		cout << "Waiting on StreamClient" << endl;
 		WaitForSingleObject(pi.hProcess, INFINITE);
@@ -87,7 +87,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	cout << "Starting to listen on port " << Port << ", will find certificate for first connection." << endl;
 	Listener->BeginListening([](ISocketStream * const StreamSock) {
 		// This is the code to be executed each time a socket is opened
-		CString s;
+		std::wstring s;
 		char MsgText[100]; // Because the simple text messages we exchange are char not wchar
 
 		cout << "A connection has been made, worker started, sending hello" << endl;
@@ -107,7 +107,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 
 	PROCESS_INFORMATION pi = {};
 
-	RunClient("localhost", &pi); // run a client point it at "localhost"
+	RunClient(L"localhost", &pi); // run a client point it at "localhost"
 	cout << "Waiting on StreamClient to localhost" << endl;
 	WaitForSingleObject(pi.hProcess, INFINITE);
 	cout << "Client completed." << endl;
