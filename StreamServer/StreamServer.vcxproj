@@ -94,6 +94,7 @@
     <ClInclude Include="Listener.h" />
     <ClInclude Include="PassiveSock.h" />
     <ClInclude Include="SecurityHandle.h" />
+    <ClInclude Include="ServerCert.h" />
     <ClInclude Include="SSLServer.h" />
     <ClInclude Include="SSLHelper.h" />
     <ClInclude Include="stdafx.h" />
@@ -105,6 +106,7 @@
     <ClCompile Include="CertRAII.cpp" />
     <ClCompile Include="Listener.cpp" />
     <ClCompile Include="PassiveSock.cpp" />
+    <ClCompile Include="ServerCert.cpp" />
     <ClCompile Include="SSLServer.cpp" />
     <ClCompile Include="SSLHelper.cpp" />
     <ClCompile Include="stdafx.cpp">

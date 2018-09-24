@@ -2,13 +2,10 @@
 #include "SSLServer.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
+#include "ServerCert.h"
 
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
-// Cached server credentials (a handle to a certificate), usually these do not change 
-// because the server name does not change, but occasionally they may change due to SNI
-CredentialHandle CSSLServer::g_ServerCreds;
-CString CSSLServer::g_ServerName = CString();
 
 // Declare the Close functions for the handle classes using the global SSPI function table pointer
 
@@ -403,38 +400,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 				if (SSLHelper.IsClientInitialize())
 				{  // Figure out what certificate we might want to use, either using SNI or the local host name
 					CString serverName = SSLHelper.GetSNI();
-					if ((!g_ServerCreds) // No certificate handle stored
-						|| (serverName.Compare(g_ServerName) != 0)) // Requested names are different
-					{  // 
-						g_ServerCreds.Close(); //discard any stored certificate
-						if (serverName.IsEmpty()) // There was no hostname supplied by SNI
-							serverName = GetHostName();
-						PCCERT_CONTEXT pCertContext = NULL;
-						SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
-						if (SelectServerCert)
-						{
-							status = SelectServerCert(pCertContext, (LPCTSTR)serverName);
-							if (FAILED(status))
-							{
-								DebugMsg("SelectServerCert returned an error = 0x%08x", status);
-								scRet = SEC_E_INTERNAL_ERROR;
-								break;
-							}
-						}
-						else
-							status = CertFindServerCertificateByName(pCertContext, (LPCTSTR)serverName); // Add "true" to look in user store, "false", or nothing looks in machine store
-						g_ServerName = (SUCCEEDED(status)) ? serverName : CString();
-						if (SUCCEEDED(status))
-						{
-							status = CreateCredentialsFromCertificate(g_ServerCreds.set(), pCertContext);
-						}
-						if (FAILED(status))
-						{
-							DebugMsg("Failed handling server initialization, error = 0x%08x", status);
-							scRet = SEC_E_INTERNAL_ERROR;
-							break;
-						}
-					}
+					scRet = GetCredHandleFor(serverName, SelectServerCert, &hServerCreds);
 				}
 			}
 		}
@@ -471,7 +437,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		OutBuffers[0].cbBuffer = 0;
 
 		scRet = g_pSSPI->AcceptSecurityContext(
-			&g_ServerCreds.get(),								// Which certificate to use, already established
+			&hServerCreds,									// Which certificate to use, already established
 			ContextHandleValid ? &m_hContext.get() : NULL,	// The context handle if we have one, ask to make one if this is first call
 			&InBuffer,										// Input buffer list
 			dwSSPIFlags,									// What we require of the connection
@@ -658,7 +624,7 @@ HRESULT CSSLServer::Disconnect(void)
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	Status = g_pSSPI->AcceptSecurityContext(
-		&g_ServerCreds.get(),			// Which certificate to use, already established
+		&hServerCreds,				// Which certificate to use, already established
 		&m_hContext.get(),				// The context handle
 		NULL,							// Input buffer list
 		dwSSPIFlags,				// What we require of the connection
@@ -698,45 +664,6 @@ HRESULT CSSLServer::Disconnect(void)
 	}
 	m_SocketStream->Disconnect();
 	return S_OK;
-}
-// Create credentials (a handle to a credential context) from a certificate
-SECURITY_STATUS CSSLServer::CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
-{
-	DebugMsg("CreateCredentialsFromCertificate 0x%.8x '%S'.", pCertContext, GetCertName(pCertContext));
-
-	// Build Schannel credential structure.
-	SCHANNEL_CRED   SchannelCred = { 0 };
-	SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
-	SchannelCred.cCreds = 1;
-	SchannelCred.paCred = &pCertContext;
-	SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_SERVER;
-	SchannelCred.dwFlags = SCH_USE_STRONG_CRYPTO;
-
-	SECURITY_STATUS Status;
-	TimeStamp       tsExpiry;
-	// Get a handle to the SSPI credential
-	Status = g_pSSPI->AcquireCredentialsHandle(
-		NULL,                   // Name of principal
-		UNISP_NAME,           // Name of package
-		SECPKG_CRED_INBOUND,    // Flags indicating use
-		NULL,                   // Pointer to logon ID
-		&SchannelCred,          // Package specific data
-		NULL,                   // Pointer to GetKey() func
-		NULL,                   // Value to pass to GetKey()
-		phCreds,                // (out) Cred Handle
-		&tsExpiry);             // (out) Lifetime (optional)
-
-	if (Status != SEC_E_OK)
-	{
-		DWORD dw = GetLastError();
-		if (Status == SEC_E_UNKNOWN_CREDENTIALS)
-			DebugMsg("**** Error: 'Unknown Credentials' returned by AcquireCredentialsHandle. Be sure app has administrator rights. LastError=%d", dw);
-		else
-			DebugMsg("**** Error 0x%x returned by AcquireCredentialsHandle. LastError=%d.", Status, dw);
-		return Status;
-	}
-
-	return SEC_E_OK;
 }
 
 // End of CSSLServer declarations
