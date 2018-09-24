@@ -16,24 +16,22 @@ static char THIS_FILE[] = __FILE__;
 CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires a socket already assigned
 	IsConnected(false)
 	, m_Listener(Listener)
-	, SSLServer(NULL)
 {
-	PassiveSock = new CPassiveSock(s, Listener->m_StopEvent);
-	SocketStream = PassiveSock;
+	PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
+	SocketStream = PassiveSock.get();
 	PassiveSock->SetTimeoutSeconds(60);
-	SSLServer = new CSSLServer(PassiveSock);
+	SSLServer = std::make_unique<CSSLServer>(PassiveSock.get());
 	SSLServer->SelectServerCert = Listener->SelectServerCert;
 	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
 	HRESULT hr = SSLServer->Initialize();
 	if SUCCEEDED(hr)
 	{
-		SocketStream = SSLServer;
+		SocketStream = SSLServer.get();
 		IsConnected = true;
 	}
 	else
 	{
 		int err = SSLServer->GetLastError();
-		delete SSLServer;
 		SSLServer = NULL;
 		if (hr == SEC_E_INVALID_TOKEN)
 			m_Listener->LogWarning(L"SSL token invalid, perhaps the client rejected our certificate");
@@ -56,8 +54,6 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 
 CTransport::~CTransport()
 {
-	delete SSLServer;
-	delete PassiveSock;
 }
 
 int CTransport::Recv(void * const lpBuf, const int MaxLen)

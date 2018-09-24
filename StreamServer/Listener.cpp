@@ -64,7 +64,7 @@ CListener::~CListener(void)
 UINT __cdecl CListener::Worker(void * v)
 {
 	CTransport * Transport = reinterpret_cast<CTransport*>(v);
-	CListener * Listener = Transport->m_Listener;
+	CListener * Listener = Transport->m_Listener.release();
 
 	SetThreadName("Connection Worker");
 	(Listener->m_actualwork)(Transport->SocketStream);

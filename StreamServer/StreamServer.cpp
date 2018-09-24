@@ -80,7 +80,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	if (!IsUserAdmin())
 		cout << "WARNING: The server is not running as an administrator." << endl;
 	const int Port = 41000;
-	unique_ptr<CListener> Listener(new CListener());
+	auto Listener = std::make_unique<CListener>();
 	Listener->SelectServerCert = SelectServerCert;
 	Listener->ClientCertAcceptable = ClientCertAcceptable;
 	Listener->Initialize(Port);
