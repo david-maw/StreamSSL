@@ -25,19 +25,19 @@ public:
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
-	CredHandle hServerCreds;
+	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
 	CPassiveSock * m_SocketStream;
-	int m_LastError;
+	int m_LastError{};
 	static HRESULT InitializeClass(void);
 	HRESULT Startup(void);
 	bool SSPINegotiateLoop(void);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
-	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]; // Enough for a whole encrypted message
-	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]; // Enough for two whole messages so we don't need to move data around in buffers
-	DWORD readBufferBytes;
-	void * readPtr;
+	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
+	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
+	DWORD readBufferBytes{};
+	void* readPtr{};
 	SecurityContextHandle m_hContext;
-	SecPkgContext_StreamSizes Sizes;
+	SecPkgContext_StreamSizes Sizes{};
 };

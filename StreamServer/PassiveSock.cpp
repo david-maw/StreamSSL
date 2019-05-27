@@ -13,15 +13,13 @@ static char THIS_FILE[] = __FILE__;
 
 CPassiveSock::CPassiveSock(SOCKET s, HANDLE hServerStopEvent)
 {
-	LastError = 0;
-	RecvInitiated = false;
-	TimeoutSeconds = 1; // Default timeout is 1 seconds, encourages callers to set it
 	ActualSocket = s;
+	ZeroMemory(&os, sizeof(os));
 	read_event = WSACreateEvent();  // if create fails we should return an error
 	WSAResetEvent(read_event);
 	write_event = WSACreateEvent();  // if create fails we should return an error
 	WSAResetEvent(write_event);
-	int rc = true;
+	int rc = 1;
 	setsockopt(ActualSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&rc, sizeof(int));
 	m_hStopEvent = hServerStopEvent;
 }
@@ -154,7 +152,6 @@ HRESULT CPassiveSock::Disconnect(void)
 //sends a message, or part of one
 int CPassiveSock::Send(const void * const lpBuf, const int Len)
 {
-	WSAOVERLAPPED os;
 	WSABUF buffers[2];
 	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD

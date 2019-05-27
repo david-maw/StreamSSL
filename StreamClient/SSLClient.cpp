@@ -23,11 +23,8 @@ void SecurityContextTraits::Close(Type value)
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)
-	:readBufferBytes(0)
-	, plainTextBytes(0)
-	, readPtr(readBuffer)
-	, m_SocketStream(SocketStream)
-	, m_LastError(0)
+	:readPtr(readBuffer)
+	,m_SocketStream(SocketStream)
 {
 }
 
@@ -53,6 +50,8 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 		if FAILED(hr)
 			return hr;
 	}
+	if (!g_pSSPI)
+		return E_POINTER;
 	CertContextHandle hCertContext;
 	if (SelectClientCertificate)
 		hr = SelectClientCertificate(*hCertContext.set(), NULL, false);
@@ -77,7 +76,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 
 	// Find out how big the header and trailer will be:
 
-	hr = g_pSSPI->QueryContextAttributes(&m_hContext.get(), SECPKG_ATTR_STREAM_SIZES, &Sizes);
+	hr = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_STREAM_SIZES, &Sizes);
 
 	if (FAILED(hr))
 	{
@@ -176,7 +175,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(&m_hContext.get(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
 	}
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -223,7 +222,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		Buffers[2].BufferType = SECBUFFER_EMPTY;
 		Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-		scRet = g_pSSPI->DecryptMessage(&m_hContext.get(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
 	}
 
 
@@ -366,7 +365,7 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 
 	Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-	scRet = g_pSSPI->EncryptMessage(&m_hContext.get(), 0, &Message, 0);
+	scRet = g_pSSPI->EncryptMessage(m_hContext.getunsaferef(), 0, &Message, 0);
 
 	DebugMsg(" ");
 	DebugMsg("Plaintext message has %d bytes", Len);
@@ -403,7 +402,6 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	SecBufferDesc        OutBuffer;
 	SecBuffer            InBuffers[2];
 	SecBuffer            OutBuffers[1];
-	DWORD                err = 0;
 	DWORD                dwSSPIFlags = 0;
 
 	dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
@@ -427,6 +425,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	scRet = g_pSSPI->InitializeSecurityContext(
+#pragma warning (suppress: 4238)
 		&m_ClientCreds.get(),
 		NULL,
 		ServerName,
@@ -450,7 +449,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
 	{
 		cbData = m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
-		if (cbData != OutBuffers[0].cbBuffer)
+		if (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer)
 		{
 			DebugMsg("**** Error %d sending data to server (1)", WSAGetLastError());
 			g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -566,8 +565,8 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		// Call InitializeSecurityContext.
 		//
 
-		scRet = g_pSSPI->InitializeSecurityContext(&m_ClientCreds.get(),
-			&m_hContext.get(),
+		scRet = g_pSSPI->InitializeSecurityContext(m_ClientCreds.getunsaferef(),
+			m_hContext.getunsaferef(),
 			NULL,
 			dwSSPIFlags,
 			0,
@@ -593,7 +592,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 			CertContextHandle hServerCertContext;
 
-			HRESULT hr = g_pSSPI->QueryContextAttributes(&m_hContext.get(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, hServerCertContext.set());
+			HRESULT hr = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, hServerCertContext.set());
 
 			if (FAILED(hr))
 			{
@@ -621,7 +620,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 				if (cbData == SOCKET_ERROR || cbData == 0)
 				{
 					DWORD err = m_SocketStream->GetLastError();
-					if (err = WSAECONNRESET)
+					if (err == WSAECONNRESET)
 						DebugMsg("**** Server closed the connection unexpectedly");
 					else
 						DebugMsg("**** Error %d sending data to server (2)", err);
@@ -809,7 +808,7 @@ HRESULT CSSLClient::Disconnect(void)
 	OutBuffer.pBuffers = OutBuffers;
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
-	Status = g_pSSPI->ApplyControlToken(&m_hContext.get(), &OutBuffer);
+	Status = g_pSSPI->ApplyControlToken(m_hContext.getunsaferef(), &OutBuffer);
 
 	if (FAILED(Status))
 	{
@@ -894,7 +893,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 	// has a DWORD value called SendTrustedIssuerList set to 0
 	//
 
-	Status = g_pSSPI->QueryContextAttributes(&m_hContext.get(),
+	Status = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(),
 		SECPKG_ATTR_ISSUER_LIST_EX,
 		(PVOID)&IssuerListInfo);
 	if (Status != SEC_E_OK)

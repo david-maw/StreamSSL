@@ -44,14 +44,17 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 	if (Required)
 	{
 		// A client certificate must be returned or the handshake will fail
-		if (pIssuerListInfo && pIssuerListInfo->cIssuers == 0)
-			cout << "Client certificate required, issuer list is empty";
-		else
+		if (pIssuerListInfo)
 		{
-			cout << "Client certificate required, issuer list provided";
-			Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
-			if (!pCertContext)
-				cout << " but no certificates matched";
+			if (pIssuerListInfo->cIssuers == 0)
+				cout << "Client certificate required, issuer list is empty";
+			else
+			{
+				cout << "Client certificate required, issuer list provided";
+				Status = CertFindFromIssuerList(pCertContext, *pIssuerListInfo);
+				if (!pCertContext)
+					cout << " but no certificates matched";
+			}
 		}
 		if (!pCertContext)
 			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate, regardless of issuer
@@ -92,8 +95,8 @@ BOOL FlushConsoleInputBufferAlternate(HANDLE h)
 	// but by July 2018 it was working again, so, for example version 10.0.17134 works.
 	INPUT_RECORD inRec;
 	DWORD recsRead;
-	BOOL rslt = true;
-	while (rslt && (rslt = GetNumberOfConsoleInputEvents(h, &recsRead)) && (recsRead > 0))
+	BOOL rslt = TRUE;
+	while (rslt && ((rslt = GetNumberOfConsoleInputEvents(h, &recsRead)) == TRUE) && (recsRead > 0))
 		rslt = ReadConsoleInput(h, &inRec, 1, &recsRead);
 	return rslt;
 }
@@ -137,7 +140,7 @@ int wmain(int argc, WCHAR * argv[])
 	pActiveSock->SetRecvTimeoutSeconds(30);
 	pActiveSock->SetSendTimeoutSeconds(60);
 	wcout << "Connecting to " << HostName.c_str() << ":" << Port << endl;
-	bool b = pActiveSock->Connect(HostName.c_str(), Port);
+	bool b = pActiveSock->Connect(HostName.c_str(), static_cast<USHORT>(Port));
 	if (b)
 	{
 		cout << "Socket connected to server, initializing SSL" << endl;
@@ -175,7 +178,7 @@ int wmain(int argc, WCHAR * argv[])
 	if (!(key == 'Q' || key == 0))
 	{
 		cout << "The the program will pause until you press enter" << endl;
-		getchar();
+		key = (WORD)getchar(); // Assign result to avoid warning
 	}
 	return 0;
 }

@@ -29,8 +29,8 @@ CActiveSock::CActiveSock(HANDLE StopEvent)
 		DebugMsg("Error %d returned by WSAStartup", GetLastError());
 		throw "WSAStartup error";
 	}
-	LastError = 0;
-	RecvInitiated = false;
+	ZeroMemory(&os, sizeof(os));
+	ActualSocket = INVALID_SOCKET;
 	RecvTimeoutSeconds = 1; // Default timeout is 1 seconds, encourages callers to set it
 	SendTimeoutSeconds = 1; // Default timeout is 1 seconds, encourages callers to set it
 	read_event = WSACreateEvent();  // if create fails we should return an error
@@ -293,7 +293,6 @@ bool CActiveSock::Close(void)
 //sends a message, or part of one
 int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 {
-	WSAOVERLAPPED os;
 	WSABUF buffer;
 	DWORD bytes_sent = 0;
 

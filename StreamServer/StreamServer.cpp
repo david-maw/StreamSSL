@@ -44,7 +44,8 @@ bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 { // Not strictly needed but it makes testing easier
 	STARTUPINFO si = {};
 	si.cb = sizeof si;
-
+	ZeroMemory(&pi, sizeof(pi));
+#pragma warning(suppress:6335)
 	if (CreateProcess(NULL, &app[0], 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
 		return true;
 	else
@@ -58,13 +59,13 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = NULL)
 {
 	cout << "Initiating a client instance for testing.\n" << endl;
 	WCHAR acPathName[MAX_PATH + 1];
-	GetModuleFileName(NULL, acPathName, sizeof(acPathName));
+	GetModuleFileName(NULL, acPathName, _countof(acPathName));
 	std::wstring appName(acPathName);
 	int len = appName.find_last_of(L'\\');
 	appName = appName.substr(0, len + 1) + L"StreamClient.exe " + toHost;
 	PROCESS_INFORMATION pi = {}, *localPpi = ppi ? ppi : &pi; // Just use a local one if one is not passed
 
-	if (RunApp(appName, *localPpi) && !ppi)
+	if (RunApp(appName, *localPpi) && !ppi && pi.hProcess && pi.hThread)
 	{
 		cout << "Waiting on StreamClient" << endl;
 		WaitForSingleObject(pi.hProcess, INFINITE);
@@ -77,6 +78,9 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = NULL)
 // Main method, called first by the operating system when the codefile is run
 int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 {
+	UNREFERENCED_PARAMETER(argc);
+	UNREFERENCED_PARAMETER(argv);
+	UNREFERENCED_PARAMETER(envp);
 	if (!IsUserAdmin())
 		cout << "WARNING: The server is not running as an administrator." << endl;
 	const int Port = 41000;
@@ -111,12 +115,14 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	PROCESS_INFORMATION pi = {};
 
 	RunClient(L"localhost", &pi); // run a client point it at "localhost"
-	cout << "Waiting on StreamClient to localhost" << endl;
-	WaitForSingleObject(pi.hProcess, INFINITE);
-	cout << "Client completed." << endl;
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-
+	if (pi.hProcess && pi.hThread)
+	{
+		cout << "Waiting on StreamClient to localhost" << endl;
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		cout << "Client completed." << endl;
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+	}
 	// Run additional copies, do not wait, and let the hostname default
 	PROCESS_INFORMATION pi1 = {};
 	RunClient(L"", &pi1); 
@@ -126,6 +132,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	//RunClient(L"", &pi3);
 
 	cout << "Additional test clients initiated, press enter key to terminate server." << endl << endl;
+#pragma warning(suppress: 6031) // Do not care about unchecked result
 	getchar();
 	Listener->EndListening();
 	return 0;

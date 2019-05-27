@@ -84,6 +84,12 @@ public:
 		return &m_value;
 	}
 
+	Type* getunsaferef() const noexcept
+	{
+		//_ASSERTE(bool(*this));
+		return const_cast<Type*>(&m_value);
+	}
+
 	void attach(Type value) noexcept
 	{
 		Close();

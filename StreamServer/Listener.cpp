@@ -69,7 +69,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	Hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
 	if (GetAddrInfo(NULL, TCPSocketText.c_str(), &Hints, &AddrInfo) != 0)
 	{
-		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i"), GetLastError();
+		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i", GetLastError());
 		LogWarning(MsgText);
 		return UnknownError;
 	}

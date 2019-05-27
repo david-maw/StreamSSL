@@ -7,17 +7,11 @@
 // General purpose helper class for SSL, decodes buffers for diagnostics, handles SNI
 
 CSSLHelper::CSSLHelper(const byte * BufPtr, const int BufBytes) :
-	contentType(0),
-	major(0),
-	minor(0),
-	length(0),
-	handshakeType(0),
-	handshakeLength(0),
 	OriginalBufPtr(BufPtr),
 	DataPtr(BufPtr),
 	MaxBufBytes(BufBytes)
 {
-	decoded = (BufPtr != nullptr) && CanDecode();
+	decoded = BufPtr && CanDecode();
 }
 
 CSSLHelper::~CSSLHelper()
@@ -110,7 +104,7 @@ void CSSLHelper::TraceHandshake()
 		BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
 		UINT8 compressionMethodsLength = *BufPtr;
 		BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
-		bool extensionsPresent = BufPtr < BufEnd;
+		//bool extensionsPresent = BufPtr < BufEnd;
 		UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
 		BufPtr += 2;
 		if (extensionsLength == BufEnd - BufPtr)
@@ -175,8 +169,8 @@ std::wstring CSSLHelper::GetSNI()
 		BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
 		UINT8 compressionMethodsLength = *BufPtr;
 		BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
-		bool extensionsPresent = BufPtr < BufEnd;
-		UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+		//bool extensionsPresent = BufPtr < BufEnd;
+		//UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
 		BufPtr += 2;
 		while (BufPtr < BufEnd)
 		{

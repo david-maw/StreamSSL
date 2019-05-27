@@ -71,7 +71,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 	std::wstring RequiredName(pszRequiredName);
 
 	// Extract the SAN information (list of names) 
-	DWORD cbStructInfo = -1;
+	DWORD cbStructInfo = 0;
 	if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
 		pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
 	{
@@ -135,13 +135,13 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		pCertContext))) // If this points to a valid certificate it will act as starting point and also be closed
 	{
 		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, _countof(pszFriendlyNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
 		DebugMsg("Certificate 0x%.8x '%S' is allowed to be used for server authentication.", (int)pCertContext, pszFriendlyNameString);
-		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
+		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, _countof(pszNameString)))
 			DebugMsg("CertGetNameString failed getting subject name.");
 		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
 			DebugMsg("Certificate 0x%.8x has wrong subject name.", pCertContext);
@@ -237,13 +237,13 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 		pCertContextCurrent)))
 	{
 		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, _countof(pszFriendlyNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
 		DebugMsg("Certificate '%S' is allowed to be used for client authentication.", pszFriendlyNameString);
-		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, sizeof(pszNameString)))
+		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, _countof(pszNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting subject name.");
 			continue;
@@ -409,7 +409,7 @@ int hex_char_to_int(char c) {
 std::vector<byte> hexToBinary(const char * const str)
 {
 	std::vector<byte> boutput(20);
-	int nibbleValue = -1;
+	byte nibbleValue = 0;
 	byte byteValue = 0;
 	auto it = boutput.begin();
 	const char * p = str;
@@ -417,7 +417,7 @@ std::vector<byte> hexToBinary(const char * const str)
 
 	while (*p != 0 && str - p < 40 && it != boutput.end())
 	{
-		nibbleValue = hex_char_to_int(*p++);
+		nibbleValue = static_cast<byte>(hex_char_to_int(*p++));
 		if (nibbleValue >= 0)
 		{
 			highOrder = !highOrder;
@@ -427,7 +427,7 @@ std::vector<byte> hexToBinary(const char * const str)
 			}
 			else
 			{
-				*it = static_cast<byte>(byteValue | nibbleValue);
+				*it = byteValue | nibbleValue;
 				it++;
 			}
 		}
@@ -479,6 +479,7 @@ BOOL WINAPI ValidServerCert(
 	void			*pvCallbackData // Passes in the required name
 )
 {
+	UNREFERENCED_PARAMETER(pfInitialSelectedCert);
 	DWORD cbData = 0;
 	std::wstring s = std::wstring(L"Certificate '") + GetCertName(pCertContext) + L"' ";
 	if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
@@ -536,7 +537,10 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	if (!SelectCertificate)
 	{  // Not linked yet, find the function in the DLL
 		HINSTANCE CryptUIDLL = LoadLibrary(L"CryptUI.dll");
-		SelectCertificate = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+		if (CryptUIDLL)
+			SelectCertificate = (CryptUIDlgSelectCertificate)GetProcAddress(CryptUIDLL, "CryptUIDlgSelectCertificateW");
+		else
+			return E_NOINTERFACE;
 		// Do not call FreeLibrary because the function may be called again later
 	}
 
@@ -554,7 +558,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	csc.rghDisplayStores = &tempStore;
 	csc.pvCallbackData = (LPVOID)pszSubjectName;
 
-	if (!(pCertContext = SelectCertificate(&csc)))
+	if ((pCertContext = SelectCertificate(&csc))==0)
 		DebugMsg("Select Certificate UI did not return a certificate.");
 
 	return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
@@ -589,19 +593,18 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 	certhash.cbData = b.size();
 	certhash.pbData = &b[0];
 
-	PCCERT_CONTEXT  pDesiredCert = NULL;
 	// Now search the selected store for the certificate
-	if (pCertContext = CertFindCertificateInStore(
+	if ((pCertContext = CertFindCertificateInStore(
 		hCertStore,
 		X509_ASN_ENCODING,             // Use X509_ASN_ENCODING
 		0,                            // No dwFlags needed 
 		CERT_FIND_SHA1_HASH, // Find a certificate with a SHA1 hash that matches the next parameter
 		&certhash,
-		NULL))                        // NULL for the first call to the
+		NULL)) !=0)                        // NULL for the first call to the
 	{
 		WCHAR pszFriendlyNameString[128];
 		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, sizeof(pszFriendlyNameString)))
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, _countof(pszFriendlyNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			return HRESULT_FROM_WIN32(GetLastError());
@@ -710,9 +713,9 @@ std::wstring GetCertName(PCCERT_CONTEXT pCertContext)
 // Display a UI with the certificate info and also write it to the debug output
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 {
-	WCHAR pszNameString[256];
+	WCHAR pszNameString[256] {};
 	void*            pvData;
-	DWORD            cbData;
+	DWORD            cbData {};
 	DWORD            dwPropId = 0;
 
 
@@ -723,7 +726,8 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 		NULL,
 		Title.c_str(),
 		0,
-		NULL))
+		pszNameString // Dummy parameter just to avoid a warning
+	))
 	{
 		DebugMsg("UI failed.");
 	}
@@ -957,7 +961,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 		DebugMsg(("CryptAcquireContext create new container... "));
 		if (!cryptprovider.AcquireContext(CRYPT_NEWKEYSET | CRYPT_MACHINE_KEYSET))
 		{
-			int err = GetLastError();
+			err = GetLastError();
 
 			if (err == NTE_EXISTS)
 				DebugMsg("**** CryptAcquireContext failed with 'already exists', are you running as administrator");

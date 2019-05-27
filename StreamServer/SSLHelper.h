@@ -5,12 +5,12 @@ class CSSLHelper
 private:
 	const byte * const OriginalBufPtr;
 	const byte * DataPtr; // Points to data inside message
-	const byte * BufEnd;
+	const byte* BufEnd = nullptr;
 	const int MaxBufBytes;
-	UINT8 contentType, major, minor;
-	UINT16 length;
-	UINT8 handshakeType;
-	UINT16 handshakeLength;
+	UINT8 contentType = 0, major = 0, minor = 0;
+	UINT16 length = 0;
+	UINT8 handshakeType = 0;
+	UINT16 handshakeLength = 0;
 	bool CanDecode();
 	bool decoded;
 public:

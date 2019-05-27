@@ -26,10 +26,10 @@ private:
 	WSAEVENT write_event;
 	WSAEVENT read_event;
 	WSAOVERLAPPED os;
-	bool RecvInitiated;
+	bool RecvInitiated = false;
 	SOCKET ActualSocket;
-	int LastError;
-	int TimeoutSeconds;
+	int LastError = 0;
+	int TimeoutSeconds = 1;
 	HANDLE m_hStopEvent;
 };
 

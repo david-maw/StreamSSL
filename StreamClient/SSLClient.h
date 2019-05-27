@@ -30,15 +30,15 @@ private:
 	SECURITY_STATUS SSPINegotiateLoop(WCHAR* ServerName);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
-	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]; // Enough for a whole encrypted message
-	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]; // Enough for two whole messages so we don't need to move data around in buffers
-	DWORD readBufferBytes;
-	CHAR plainText[MaxMsgSize * 2]; // Extra plaintext data not yet delivered
-	CHAR * plainTextPtr;
-	DWORD plainTextBytes;
-	void * readPtr;
+	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
+	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
+	DWORD readBufferBytes = 0;
+	CHAR plainText[MaxMsgSize * 2]{}; // Extra plaintext data not yet delivered
+	CHAR * plainTextPtr =  nullptr;
+	DWORD plainTextBytes = 0;
+	void * readPtr = nullptr;
 	SecurityContextHandle m_hContext;
-	SecPkgContext_StreamSizes Sizes;
+	SecPkgContext_StreamSizes Sizes{};
 	static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
 	SECURITY_STATUS GetNewClientCredentials();
 	bool ServerCertNameMatches;

@@ -37,10 +37,10 @@ private:
 	static WSADATA WsaData;
 	WSAEVENT write_event;
 	WSAEVENT read_event;
-	WSAOVERLAPPED os;
-	bool RecvInitiated;
+	WSAOVERLAPPED os{};
+	bool RecvInitiated = false;
 	SOCKET ActualSocket;
-	DWORD LastError;
+	DWORD LastError = 0;
 	int SendTimeoutSeconds, RecvTimeoutSeconds;
 	HANDLE m_hStopEvent;
 };

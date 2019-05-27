@@ -18,8 +18,8 @@ public:
 	CListener();
 	~CListener();
 private:
-	SOCKET m_iListenSockets[FD_SETSIZE];
-	HANDLE m_hSocketEvents[FD_SETSIZE];
+	SOCKET m_iListenSockets[FD_SETSIZE]{};
+	HANDLE m_hSocketEvents[FD_SETSIZE]{};
 	int m_iNumListenSockets;
 	CCriticalSection m_TransportCountLock;
 	CWinThread * m_ListenerThread;
