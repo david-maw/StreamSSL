@@ -193,7 +193,7 @@ ModelManifest.xml
 # Zip files 
 *.zip
 # build artifacts
-/.vs/
+*.vs/
 /Zipped/
 /StreamSSL.VC.db
 /.vs5/
