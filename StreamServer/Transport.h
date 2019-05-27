@@ -17,6 +17,6 @@ public:
 	int Recv(void * const lpBuf, const int Len);
 	CTransport(SOCKET s, CListener * Listener);
 	virtual ~CTransport();
-	std::unique_ptr<CListener> m_Listener;
+	CListener* m_Listener;
 	int Send(const void * const lpBuf, const int RequestedLen);
 };

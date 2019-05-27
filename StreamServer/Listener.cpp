@@ -18,7 +18,7 @@ CListener::CListener()
 
 CListener::~CListener(void)
 {
-	EndListening();
+	m_ListenerThread = NULL;
 	for (int i = 0; i < FD_SETSIZE; i++)
 	{
 		if (m_iListenSockets[i] != INVALID_SOCKET)
@@ -33,7 +33,7 @@ CListener::~CListener(void)
 UINT __cdecl CListener::Worker(void * v)
 {
 	CTransport * Transport = reinterpret_cast<CTransport*>(v);
-	CListener * Listener = Transport->m_Listener.release();
+	CListener * Listener = Transport->m_Listener;
 
 	SetThreadName("Connection Worker");
 	(Listener->m_actualwork)(Transport->SocketStream);
