@@ -103,7 +103,10 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 		else
 			cout << "No response data received " << endl;
 		cout << "Exiting worker" << endl << endl;
-	});
+		cout << "Listening for client connections, press enter key to terminate." << endl << endl;
+		});
+
+	cout << "Listening for client connections." << endl << endl;
 
 	PROCESS_INFORMATION pi = {};
 
@@ -113,9 +116,16 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	cout << "Client completed." << endl;
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
-	RunClient(); // run a second copy, but let it default the host name
 
-	cout << "Listening for a client connection, press enter key to terminate.\n" << endl;
+	// Run additional copies, do not wait, and let the hostname default
+	PROCESS_INFORMATION pi1 = {};
+	RunClient(L"", &pi1); 
+	//PROCESS_INFORMATION pi2 = {};
+	//RunClient(L"", &pi2);
+	//PROCESS_INFORMATION pi3 = {};
+	//RunClient(L"", &pi3);
+
+	cout << "Additional test clients initiated, press enter key to terminate server." << endl << endl;
 	getchar();
 	Listener->EndListening();
 	return 0;

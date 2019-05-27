@@ -5,7 +5,7 @@
 // thread each time a client connects.
 CListener::CListener()
 	:m_StopEvent(FALSE, TRUE),
-	m_WorkerThreadCount(0),
+	m_TransportCount(0),
 	m_ListenerThread(NULL),
 	m_iNumListenSockets(0)
 {
@@ -137,6 +137,13 @@ void CListener::BeginListening(std::function<void(ISocketStream * StreamSock)> a
 	m_ListenerThread = AfxBeginThread(ListenerWorker, this);
 }
 
+void CListener::IncrementTransportCount(int i)
+{
+	m_TransportCountLock.Lock();
+	m_TransportCount += i;
+	m_TransportCountLock.Unlock();
+}
+
 // Stop listening, tells the listener thread it can stop, then waits for it to terminate
 void CListener::EndListening(void)
 {
@@ -167,7 +174,7 @@ void CListener::Listen(void)
 	DWORD dwWait;
 	//WCHAR MsgText[100];
 
-	m_WorkerThreadCount = 0;
+	m_TransportCount = 0;
 
 	DebugMsg("Start CListener::Listen method");
 
@@ -221,16 +228,17 @@ void CListener::Listen(void)
 			delete Transport;
 		iReadSocket = INVALID_SOCKET;
 	}
-	// There has been a problem, wait for all the worker threads to terminate
+	// Either we're done, or there has been a problem, wait for all the worker threads to terminate
 	Sleep(500);
-	m_WorkerThreadLock.Lock();
-	while (m_WorkerThreadCount)
+	m_TransportCountLock.Lock();
+	while (m_TransportCount)
 	{
-		m_WorkerThreadLock.Unlock();
+		m_TransportCountLock.Unlock();
 		Sleep(1000);
-		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", m_WorkerThreadCount);
-		m_WorkerThreadLock.Lock();
+		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", m_TransportCount);
+		m_TransportCountLock.Lock();
 	};
+	m_TransportCountLock.Unlock();
 	if ((iReadSocket != NULL) && (iReadSocket != INVALID_SOCKET))
 		closesocket(iReadSocket);
 	DebugMsg("End Listen method");

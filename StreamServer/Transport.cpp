@@ -17,6 +17,7 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 	IsConnected(false)
 	, m_Listener(Listener)
 {
+	Listener ->IncrementTransportCount();
 	PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
 	SocketStream = PassiveSock.get();
 	PassiveSock->SetTimeoutSeconds(60);
@@ -53,6 +54,7 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 
 CTransport::~CTransport()
 {
+	m_Listener -> IncrementTransportCount(-1);
 }
 
 int CTransport::Recv(void * const lpBuf, const int MaxLen)
