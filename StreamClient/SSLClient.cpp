@@ -111,13 +111,11 @@ DWORD CSSLClient::GetLastError(void)
 	else
 		return m_SocketStream->GetLastError();
 }
-
-// Because SSL is message oriented these calls send (or receive) a whole message
 int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 {
 	if (plainTextBytes > 0)
 	{	// There are stored bytes, just return them
-		DebugMsg("There is cached plaintext %d bytes", plainTextBytes);
+		DebugMsg("There are cached plaintext %d bytes", plainTextBytes);
 		if (false) PrintHexDump(plainTextBytes, plainTextPtr);
 
 		// Move the data to the output stream
@@ -142,7 +140,21 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		}
 	}
 
-	// plainTextBytes == 0 at this point
+	// plainTextBytes == 0 at this point, so we would actually need to read data from the network
+
+	if (m_encrypting)
+		return RecvPartialEncrypted(lpBuf, Len);
+	else
+	{
+		DebugMsg("Receive can only be called when encrypting");
+		m_LastError = ERROR_FILE_NOT_ENCRYPTED;
+		return SOCKET_ERROR;
+	}
+}
+
+// Because SSL is message oriented these calls send (or receive) a whole message
+int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
+{
 
 	INT err;
 	INT i;
@@ -231,6 +243,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 	else if (scRet == SEC_I_CONTEXT_EXPIRED)
 	{
 		DebugMsg("Server signalled end of session");
+		m_encrypting = false;
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}
@@ -323,6 +336,13 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
+
+	if (!m_encrypting)
+	{
+		DebugMsg("Send can only be called when encrypting");
+		m_LastError = ERROR_FILE_NOT_ENCRYPTED;
+		return SOCKET_ERROR;
+	}
 
 	INT err;
 
@@ -772,14 +792,16 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	// Delete the security context in the case of a fatal error.
 	if (FAILED(scRet))
 		m_hContext.Close();
+	else
+		m_encrypting = true;
 
 	return scRet;
 }
 
-bool CSSLClient::Close()
+bool CSSLClient::Close(bool closeUnderlyingSocket)
 {
 	Disconnect();
-	return m_SocketStream->Close();
+	return closeUnderlyingSocket ? m_SocketStream->Close() : true;
 }
 
 HRESULT CSSLClient::Disconnect(void)
@@ -792,6 +814,7 @@ HRESULT CSSLClient::Disconnect(void)
 	SecBufferDesc   OutBuffer;
 	SecBuffer       OutBuffers[1];
 	DWORD           dwSSPIFlags;
+	TimeStamp       tsExpiry;
 	DWORD           Status;
 
 	//
@@ -835,6 +858,30 @@ HRESULT CSSLClient::Disconnect(void)
 	OutBuffer.pBuffers = OutBuffers;
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
+	Status = g_pSSPI->InitializeSecurityContext(
+		m_ClientCreds.getunsaferef(),	// Which certificate to use, already established
+		m_hContext.getunsaferef(),		// The context handle
+		NULL,
+		dwSSPIFlags,
+		0,
+		SECURITY_NATIVE_DREP,
+		& OutBuffer,
+		0,
+		NULL,
+		& OutBuffer,
+		& dwSSPIFlags,
+		& tsExpiry);
+
+	// We expect SEC_E_OK here, though in theory it could return SEC_I_CONTEXTEXPIRED or even
+	// SEC_I_CONTINUE_NEEDED to indicate that additional shutdown messages are needed. However
+	// we know SSL shuts down with a single message so it is ok just to expect SEC_E_OK.
+
+	if (FAILED(Status))
+	{
+		DebugMsg("**** Error 0x%x returned by AcceptSecurityContext", Status);
+		return Status;
+	}
+
 	pbMessage = (PBYTE)OutBuffers[0].pvBuffer;
 	cbMessage = OutBuffers[0].cbBuffer;
 
@@ -853,12 +900,10 @@ HRESULT CSSLClient::Disconnect(void)
 			return Status;
 		}
 
-		DebugMsg("Sending Close Notify");
-		DebugMsg("%d bytes of handshake data sent", cbData);
-
+		DebugMsg("Sending Close Notify. %d bytes of data sent", cbData);
 		if (true)
 		{
-			PrintHexDump(cbData, pbMessage);
+			PrintHexDump(cbData, pbMessage, true);
 			DebugMsg("\n");
 		}
 

@@ -143,6 +143,7 @@ int wmain(int argc, WCHAR * argv[])
 	bool b = pActiveSock->Connect(HostName.c_str(), static_cast<USHORT>(Port));
 	if (b)
 	{
+		// Drive the server side by sending messages it expects
 		cout << "Socket connected to server, initializing SSL" << endl;
 		char Msg[100];
 		auto pSSLClient = make_unique<CSSLClient>(pActiveSock.get());
@@ -154,19 +155,33 @@ int wmain(int argc, WCHAR * argv[])
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
 			cout << "Sending greeting" << endl;
-			if (pSSLClient->SendPartial("Hello from client", 17) != 17)
+			CStringA sentMsg("Hello from client");
+			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 				cout << "Wrong number of characters sent" << endl;
-			cout << "Listening for messages from server" << endl;
+			cout << "Listening for message from server" << endl;
 			int len = 0;
-			while (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
-				cout << "Received " << CStringA(Msg, len) << endl;
-			pSSLClient->Close();
+			if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
+			{
+				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
+				cout << "Shutting down SSL" << endl;
+				pSSLClient->Close(false);
+				// The TCP connection still exists and can be used to send messages, though
+				// this is rarely done, here's an example of doing it
+				cout << "Sending unencrypted data" << endl;
+				sentMsg = "Unencrypted data from client";
+				if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+					cout << "Wrong number of characters sent" << endl;
+				else
+					::Sleep(1000); // Give the final message time to arrive at the server
+			}
+			else
+				cout << "Recv reported an error" << endl;
 		}
 		else
 		{
 			cout << "SSL client initialize failed" << endl;
 		}
-		::SetEvent(ShutDownEvent);
+		::SetEvent(ShutDownEvent); // Used to early exit any async send or receive that are in process
 		pActiveSock->Close();
 	}
 	else

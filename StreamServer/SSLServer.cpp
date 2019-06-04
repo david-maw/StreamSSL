@@ -114,8 +114,57 @@ int CSSLServer::GetLastError(void)
 		return m_SocketStream->GetLastError();
 }
 
+int CSSLServer::Recv(void* const lpBuf, const int Len)
+{
+	if (m_encrypting)
+		return RecvEncrypted(lpBuf, Len);
+	else
+	{
+		// Not currently encrypting, just receive from the socket
+		DebugMsg("Recv called and we are not encrypting");
+		if (readBufferBytes > 0)
+		{	// There is already data in the buffer, so process it first
+			DebugMsg("Using the saved %d bytes from client, which may well be encrypted", readBufferBytes);
+			PrintHexDump(readBufferBytes, readPtr);
+			if (Len >= int(readBufferBytes))
+			{
+				memcpy_s(lpBuf, Len, readPtr, readBufferBytes);
+				int i = readBufferBytes;
+				readBufferBytes = 0;
+				return i;
+			}
+			else
+			{	// More bytes were decoded than the caller requested, so return an error
+				m_LastError = WSAEMSGSIZE;
+				return SOCKET_ERROR;
+			}
+		}
+		else
+		{
+			int err = m_SocketStream->Recv(lpBuf, Len);
+			m_LastError = 0; // Means use the one from m_SocketStream
+			if ((err == SOCKET_ERROR) || (err == 0))
+			{
+				if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+					DebugMsg("Recv timed out");
+				else if (WSAECONNRESET == m_SocketStream->GetLastError())
+					DebugMsg("Recv failed, the socket was closed by the other host");
+				else
+					DebugMsg("Recv failed: %ld", m_SocketStream->GetLastError());
+				return SOCKET_ERROR;
+			}
+			else
+			{
+				DebugMsg("Received %d unencrypted bytes from client", err);
+				PrintHexDump(err, lpBuf);
+				return err; // normal case, returns received message length
+			}
+		}
+	}
+}
+
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
-int CSSLServer::Recv(void * const lpBuf, const int Len)
+int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
 {
 	INT err;
 	INT i;
@@ -150,6 +199,7 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		readBufferBytes = 0; // We have consumed them
 	}
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -167,7 +217,7 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 			return SOCKET_ERROR;
 		}
 		DebugMsg(" ");
-		DebugMsg("Received %d (request) bytes from client", err);
+		DebugMsg("Received %d encrypted bytes from client", err);
 		PrintHexDump(err, (CHAR*)readPtr + readBufferBytes);
 		readBufferBytes += err;
 
@@ -179,55 +229,87 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 		Buffers[2].BufferType = SECBUFFER_EMPTY;
 		Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+
+		// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
+		// shutdown message with other data concatenated
+		const int headerLen = 5, shutdownLen = 26;
+		if (((CHAR*)readPtr)[0] == 21 // Alert message type
+			&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
+			&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
+			&& ((CHAR*)readPtr)[5] == 0 // it is a "close notify" (aka shutdown) message
+			)
+		{
+			DebugMsg("Looks like a concatenated shutdown message and something else");
+			PrintHexDump(err, readPtr, true);
+			Buffers[0].cbBuffer = shutdownLen + headerLen;
+			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+			if (scRet == SEC_I_CONTEXT_EXPIRED)
+			{
+				Buffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
+				Buffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
+				Buffers[1].BufferType = SECBUFFER_EXTRA;
+			}
+		}
+		else // The normal case
+			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
 	}
 
+	PSecBuffer pDataBuffer(NULL); // Points to databuffer if there is one
 
 	if (scRet == SEC_E_OK)
+	{
 		DebugMsg("Decrypted message from client.");
+		// Locate the data buffer because the decrypted data is placed there. It's almost certainly
+		// the second buffer (index 1) and we start there, but search all but the first just in case...
+
+		for (i = 1; i < 4; i++)
+		{
+			if (Buffers[i].BufferType == SECBUFFER_DATA)
+			{
+				pDataBuffer = &Buffers[i];
+				break;
+			}
+		}
+
+		if (!pDataBuffer)
+		{
+			DebugMsg("No data returned");
+			m_LastError = WSASYSCALLFAILURE;
+			return SOCKET_ERROR;
+		}
+		DebugMsg(" ");
+		DebugMsg("Decrypted message has %d bytes", pDataBuffer->cbBuffer);
+		PrintHexDump(pDataBuffer->cbBuffer, pDataBuffer->pvBuffer);
+
+		// Move the data to the output stream
+
+		if (Len >= int(pDataBuffer->cbBuffer))
+			memcpy_s(lpBuf, Len, pDataBuffer->pvBuffer, pDataBuffer->cbBuffer);
+		else
+		{	// More bytes were decoded than the caller requested, so return an error
+			m_LastError = WSAEMSGSIZE;
+			return SOCKET_ERROR;
+		}
+	}
+	else if (scRet == SEC_I_CONTEXT_EXPIRED)
+	{
+		DebugMsg("Notified that SSL disabled");
+		m_LastError = scRet;
+		m_encrypting = false;
+	}
 	else
 	{
 		DebugMsg("Couldn't decrypt, error %lx", scRet);
-		m_LastError = scRet;
-		return SOCKET_ERROR;
-	}
-
-	// Locate the data buffer because the decrypted data is placed there. It's almost certainly
-	// the second buffer (index 1) and we start there, but search all but the first just in case...
-	PSecBuffer pDataBuffer(NULL);
-
-	for (i = 1; i < 4; i++)
-	{
-		if (Buffers[i].BufferType == SECBUFFER_DATA)
-		{
-			pDataBuffer = &Buffers[i];
-			break;
-		}
-	}
-
-	if (!pDataBuffer)
-	{
-		DebugMsg("No data returned");
-		m_LastError = WSASYSCALLFAILURE;
-		return SOCKET_ERROR;
-	}
-	DebugMsg(" ");
-	DebugMsg("Decrypted message has %d bytes", pDataBuffer->cbBuffer);
-	PrintHexDump(pDataBuffer->cbBuffer, pDataBuffer->pvBuffer);
-
-	// Move the data to the output stream
-
-	if (Len >= int(pDataBuffer->cbBuffer))
-		memcpy_s(lpBuf, Len, pDataBuffer->pvBuffer, pDataBuffer->cbBuffer);
-	else
-	{	// More bytes were decoded than the caller requested, so return an error
-		m_LastError = WSAEMSGSIZE;
+		
+		readBufferBytes = 0; // Assume they have all been consumed
 		return SOCKET_ERROR;
 	}
 
 	// See if there was any extra data read beyond what was needed for the message we are handling
-	// TCP can sometime merge multiple messages into a single one, if there is, it will amost 
+	// TCP can sometime merge multiple messages into a single one, if there is, it will almost 
 	// certainly be in the fourth buffer (index 3), but search all but the first, just in case.
+	// This does not work with a shutdown message - if it is concatenated with a following plaintext
+	// the decryption just fails with a "cannot decrypt" error, which is why it has special handling above.
 	PSecBuffer pExtraDataBuffer(NULL);
 
 	for (i = 1; i < 4; i++)
@@ -242,19 +324,19 @@ int CSSLServer::Recv(void * const lpBuf, const int Len)
 	if (pExtraDataBuffer)
 	{	// More data was read than is needed, this happens sometimes with TCP
 		DebugMsg(" ");
-		DebugMsg("Some extra ciphertext was read (%d bytes)", pExtraDataBuffer->cbBuffer);
+		DebugMsg("Some extra data was read (%d bytes)", pExtraDataBuffer->cbBuffer);
 		// Remember where the data is for next time
 		readBufferBytes = pExtraDataBuffer->cbBuffer;
 		readPtr = pExtraDataBuffer->pvBuffer;
 	}
 	else
 	{
-		DebugMsg("No extra ciphertext was read");
+		DebugMsg("No extra data was read");
 		readBufferBytes = 0;
 		readPtr = readBuffer;
 	}
 
-	return pDataBuffer->cbBuffer;
+	return (pDataBuffer) ? pDataBuffer->cbBuffer : 0;
 }
 
 // Send an encrypted message containing an encrypted version of 
@@ -263,6 +345,13 @@ int CSSLServer::Send(const void * const lpBuf, const int Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
+
+	if (!m_encrypting)
+	{
+		DebugMsg("Send can only be called when encrypting");
+		m_LastError = ERROR_FILE_NOT_ENCRYPTED;
+		return SOCKET_ERROR;
+	}
 
 	INT err;
 
@@ -344,6 +433,12 @@ bool CSSLServer::SSPINegotiateLoop(void)
 	DWORD                err = 0;
 	DWORD                dwSSPIOutFlags = 0;
 	bool				 ContextHandleValid = (bool)m_hContext;
+
+	if (m_encrypting)
+	{
+		DebugMsg("SSPINegotiateLoop called twice");
+		return false;
+	}
 
 	DWORD dwSSPIFlags =
 		ASC_REQ_SEQUENCE_DETECT |
@@ -522,6 +617,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 				DebugMsg("Handshake worked, no extra bytes received");
 			}
 			m_LastError = 0;
+			m_encrypting = true;
 			return true; // The normal exit
 		}
 		else if (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -560,16 +656,25 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		}
 	} // while loop
 
-	// Somthing is wrong, we exited the loop abnormally
+	// Something is wrong, we exited the loop abnormally
 	DebugMsg("Unexpected scRet value %lx", scRet);
 	m_LastError = scRet;
 	return false;
 }
 
-// In theory a connection may switch in and out of SSL mode.
-// This stops SSL, but it has not been tested
+// In theory a connection may switch in and out of SSL mode but
+// that's rare and this implementation does not support it (it's 
+// challenging to separate the SSL shutdown message from unencrypted
+// messages following it). So, this just sends a shutdown message.
 HRESULT CSSLServer::Disconnect(void)
 {
+
+	if (!m_encrypting)
+	{
+		DebugMsg("Disconnect called when we are not encrypting");
+		return E_NOT_VALID_STATE;
+	}
+
 	DWORD           dwType;
 	PBYTE           pbMessage;
 	DWORD           cbMessage;
@@ -659,11 +764,11 @@ HRESULT CSSLServer::Disconnect(void)
 			return HRESULT_FROM_WIN32(Status);
 		}
 
+		m_encrypting = false;
 		DebugMsg(" ");
 		DebugMsg("%d bytes of data sent to notify SCHANNEL_SHUTDOWN", cbData);
 		PrintHexDump(cbData, pbMessage);
 	}
-	m_SocketStream->Disconnect();
 	return S_OK;
 }
 

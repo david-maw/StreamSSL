@@ -11,9 +11,10 @@ using namespace std;
 // This is called SNI (Server Name Indication) and it is a relatively new SSL feature
 SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)
 {
-	SECURITY_STATUS status;
+	SECURITY_STATUS status = SEC_E_INVALID_HANDLE;
 
-	status = CertFindServerCertificateUI(pCertContext, pszSubjectName, false);
+	// The next line invokes a UI to let the user select a certificate manually
+	//status = CertFindServerCertificateUI(pCertContext, pszSubjectName, false);
 	if (!pCertContext) // If we don't already have a certificate, try and select a specific one
 		status = CertFindCertificateBySignature(pCertContext,
 			"a9 f4 6e bf 4e 1d 6d 67 2d 2b 39 14 ee ee 58 97 d1 d7 e9 d0", true);  // "true" looks in user store, "false", or nothing looks in machine store
@@ -90,22 +91,61 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	Listener->Initialize(Port);
 	cout << "Starting to listen on port " << Port << ", will find certificate for first connection." << endl;
 	Listener->BeginListening([](ISocketStream * const StreamSock) {
-		// This is the code to be executed each time a socket is opened
+		// This is the code to be executed each time a socket is opened, basically
+		// the client drives, this server code listens and responds
 		std::wstring s;
 		char MsgText[100]; // Because the simple text messages we exchange are char not wchar
+		int len = 0;
 
-		cout << "A connection has been made, worker started, sending hello" << endl;
-		StreamSock->Send("Hello from server", 17);
-		int len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1);
+		CStringA sentMsg("Hello from server");
+		cout << "A connection has been made, worker started, sending '" << sentMsg <<"'" << endl;
+		if ((len =StreamSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength())) != sentMsg.GetLength())
+			cout << "Wrong number of characters sent" << endl;
+		if (len < 0)
+		{
+			if (StreamSock->GetLastError() == ERROR_FILE_NOT_ENCRYPTED)
+				cout << "Send cannot be used unless encrypting" << endl;
+			else
+				cout << "Send returned an error" << endl;
+		}
+		len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1);
 		if (len > 0)
 		{
 			MsgText[len] = '\0'; // Terminate the string, for convenience
 			cout << "Received " << MsgText << endl;
-			cout << "Sending goodbye from server" << endl;
+			// At this point the client is just waiting for a message or for the connection to close
+			cout << "Sending 'Goodbye from server' and listening for client messages" << endl;
 			StreamSock->Send("Goodbye from server", 19);
+			//::Sleep(1000); // Give incoming messages chance to pile up
+			// Now loop receiving and decrypting messages until an error (probably SSL shutdown) is received
+			while ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) > 0)
+			{
+				MsgText[len] = '\0'; // Terminate the string, for convenience
+				cout << "Received " << MsgText << endl;
+			}
+			if (StreamSock->GetLastError() == SEC_I_CONTEXT_EXPIRED)
+			{
+				cout << "Recv returned notification that SSL shut down" << endl;
+				// Now loop receiving any unencrypted messages until an error (probably socket shutdown) is received
+				while ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) > 0)
+				{
+					MsgText[len] = '\0'; // Terminate the string, for convenience
+					cout << "Received plaintext '" << MsgText << "'" << endl;
+				}
+				if (StreamSock->GetLastError() == WSAETIMEDOUT)
+					cout << "Receive timed out" << endl;
+				else if (StreamSock->GetLastError() == WSA_IO_PENDING)
+					cout << "Receive timed out" << endl;
+				else if (StreamSock->GetLastError() == WSAECONNRESET)
+					cout << "The connection was reset" << endl;
+				else
+					cout << "Socket Recv returned an error, LastError = " << StreamSock->GetLastError() << endl;
+			}
+			else
+				cout << "Recv returned an error" << endl;
 		}
 		else
-			cout << "No response data received " << endl;
+			cout << "No response data received" << endl;
 		cout << "Exiting worker" << endl << endl;
 		cout << "Listening for client connections, press enter key to terminate." << endl << endl;
 		});

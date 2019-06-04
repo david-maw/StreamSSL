@@ -25,6 +25,7 @@ private:
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
+	bool m_encrypting = false;
 	static HRESULT InitializeClass(void);
 	HRESULT Startup(void);
 	SECURITY_STATUS SSPINegotiateLoop(WCHAR* ServerName);
@@ -41,6 +42,7 @@ private:
 	SecPkgContext_StreamSizes Sizes{};
 	static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
 	SECURITY_STATUS GetNewClientCredentials();
+	int RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len);
 	bool ServerCertNameMatches;
 	bool ServerCertTrusted;
 
@@ -49,7 +51,7 @@ public:
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
 	int SendPartial(LPCVOID lpBuf, const ULONG Len);
 	DWORD GetLastError(void);
-	bool Close();
+	bool Close(bool closeUnderlyingSocket = true);
 	// Regular class interface
 	HRESULT Disconnect(void);
 	static PSecurityFunctionTable SSPI(void);
