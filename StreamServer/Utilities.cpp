@@ -175,7 +175,7 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 	char cbLine;
 	const byte * buffer = static_cast<const byte *>(buf);
 
-	if (!verbose & (length > 16))
+	if (!verbose && (length > 16))
 		length = 16;
 
 	for (index = 0; length; length -= count, buffer += count, index += count)

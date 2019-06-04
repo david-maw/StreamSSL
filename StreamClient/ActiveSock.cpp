@@ -293,6 +293,8 @@ bool CActiveSock::Close(void)
 //sends a message, or part of one
 int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 {
+	DebugMsg("CActiveSock::SendPartial, Len = %d", Len);
+	
 	WSABUF buffer;
 	DWORD bytes_sent = 0;
 
