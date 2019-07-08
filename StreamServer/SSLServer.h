@@ -15,10 +15,10 @@ public:
 	CSSLServer(CPassiveSock *);
 	~CSSLServer(void);
 	ISocketStream * getSocketStream(void);
-	int Recv(void * const lpBuf, const int Len);
-	int Send(const void * const lpBuf, const int Len);
-	int GetLastError(void);
-	HRESULT Disconnect(void);
+	int Recv(void * const lpBuf, const int Len) override;
+	int Send(const void * const lpBuf, const int Len) override;
+	int GetLastError(void) override;
+	HRESULT Disconnect(void) override;
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
 	HRESULT Initialize(const void * const lpBuf = NULL, const int Len = 0);
