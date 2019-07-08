@@ -11,14 +11,14 @@ class CPassiveSock : public ISocketStream
 public:
 	CPassiveSock(SOCKET, HANDLE);
 	virtual ~CPassiveSock();
-	int GetLastError();
+	int GetLastError() override;
 	void SetTimeoutSeconds(int NewTimeoutSeconds);
-	virtual int Recv(void * const lpBuf, const int Len);
-	virtual int Send(const void * const lpBuf, const int Len);
+	int Recv(void * const lpBuf, const int Len) override;
+	int Send(const void * const lpBuf, const int Len) override;
 	int ReceiveBytes(void * const lpBuf, const int nBufLen);
 	int SendBytes(const void * const lpBuf, const int Len);
 	BOOL ShutDown(int nHow = SD_SEND);
-	virtual HRESULT Disconnect(void);
+	HRESULT Disconnect(void) override;
 
 private:
 	CTime RecvEndTime;
