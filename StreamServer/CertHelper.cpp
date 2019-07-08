@@ -45,7 +45,7 @@ bool DnsNameMatches(std::wstring HostName, PCWSTR pRequiredName)
 	else // The RequiredName is wildcarded, something like *.unisys.com (wildcards represent whole nodes)
 	{
 		std::wstring RequiredName(pRequiredName);
-		unsigned int suffixLen = HostName.length() - HostName.find(L'.'); // The length of the domain part
+		const auto suffixLen = HostName.length() - HostName.find(L'.'); // The length of the domain part
 		if ((RequiredName.length() != suffixLen + 1) && (RequiredName[0] != L'*')) // our wildcard names must begin with "*..."
 			return false;
 		else if (RequiredName.length() - RequiredName.find(L'.') != suffixLen) // The two suffix lengths must match
@@ -140,16 +140,16 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
-		DebugMsg("Certificate 0x%.8x '%S' is allowed to be used for server authentication.", (int)pCertContext, pszFriendlyNameString);
+		DebugMsg("Certificate %p '%S' is allowed to be used for server authentication.", pCertContext, pszFriendlyNameString);
 		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, _countof(pszNameString)))
 			DebugMsg("CertGetNameString failed getting subject name.");
 		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
-			DebugMsg("Certificate 0x%.8x has wrong subject name.", pCertContext);
+			DebugMsg("Certificate %p has wrong subject name.", pCertContext);
 		else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
 		{
 			if (!hCertContextSaved)
 			{
-				DebugMsg("Self-signed certificate 0x%.8x was found and saved in case it is needed.", pCertContext);
+				DebugMsg("Self-signed certificate %p was found and saved in case it is needed.", pCertContext);
 				hCertContextSaved.attach(CertDuplicateCertificateContext(pCertContext));
 			}
 		}
@@ -162,20 +162,20 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 
 	if (pCertContext) // This means we exited after finding a perfect certificate
 	{
-		DebugMsg("Attaching context 0x%.8x", (int)pCertContext);
+		DebugMsg("Attaching context %p", pCertContext);
 		hCertContext.attach(pCertContext);
 	}
 
 	if (hCertContextSaved && !hCertContext)
 	{	// We have a saved self-signed certificate and nothing better 
-		DebugMsg("Self-signed certificate 0x%.8x was the best we had.", hCertContextSaved.get());
+		DebugMsg("Self-signed certificate %p was the best we had.", hCertContextSaved.get());
 		hCertContext = std::move(hCertContextSaved);
 	}
 
 	if (hCertContext)
 	{
 		pCertContext = hCertContext.detach();
-		DebugMsg("CertFindServerCertificateByName returning context 0x%.8x", (int)pCertContext);
+		DebugMsg("CertFindServerCertificateByName returning context %p", pCertContext);
 	}
 	else
 	{
@@ -483,10 +483,10 @@ BOOL WINAPI ValidServerCert(
 	DWORD cbData = 0;
 	std::wstring s = std::wstring(L"Certificate '") + GetCertName(pCertContext) + L"' ";
 	if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
-		DebugMsg(s + L"has wrong subject name.");
+		s.append(L"has wrong subject name.");
 	else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
 	{
-		DebugMsg(s + L"has no private key.");
+		s.append(L"has no private key.");
 	}
 	else
 	{  // All checks passed now check Enhanced Key Usage
@@ -506,10 +506,11 @@ BOOL WINAPI ValidServerCert(
 					return TRUE; // All checks passed and the certificate is allowed to be used for server identification
 				szUsageID++;
 			}
-			DebugMsg(s + L"is not allowed use for server authentication.");
+		s.append(L"is not allowed use for server authentication.");
 		}
 	}
 	// One of the checks failed
+	DebugMsg(s.c_str());
 	return FALSE;
 }
 
@@ -590,7 +591,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 	}
 
 	CRYPT_HASH_BLOB certhash;
-	certhash.cbData = b.size();
+	certhash.cbData = static_cast<decltype(certhash.cbData)>(b.size());
 	certhash.pbData = &b[0];
 
 	// Now search the selected store for the certificate
@@ -700,7 +701,7 @@ std::wstring GetCertName(PCCERT_CONTEXT pCertContext)
 {
 	std::wstring certName;
 	certName.resize(128);
-	auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, &certName[0], certName.capacity());
+	auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, &certName[0], static_cast<DWORD>(certName.capacity()));
 	if (good)
 	{
 		certName.resize(certName.find(L'\0')); // throw away characters after null
@@ -1081,7 +1082,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 		cdblob.pbData = (BYTE*)FriendlyName;
 	else
 		cdblob.pbData = (BYTE*)L"SSLStream Testing";
-	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
+		cdblob.cbData = static_cast<decltype(cdblob.cbData)>((wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR));
 	DebugMsg(("CertSetCertificateContextProperty CERT_FRIENDLY_NAME_PROP_ID"));
 	if (CertSetCertificateContextProperty(pCertContext.get(), CERT_FRIENDLY_NAME_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");
@@ -1099,7 +1100,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 		cdblob.pbData = (BYTE*)L"SSL Stream Client Test created automatically";
 	else
 		cdblob.pbData = (BYTE*)L"SSLStream Server Test created automatically";
-	cdblob.cbData = (wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR);
+		cdblob.cbData = static_cast<decltype(cdblob.cbData)>((wcslen((LPWSTR)cdblob.pbData) + 1) * sizeof(WCHAR));
 	DebugMsg(("CertSetCertificateContextProperty CERT_DESCRIPTION_PROP_ID"));
 	if (CertSetCertificateContextProperty(pCertContext.get(), CERT_DESCRIPTION_PROP_ID, 0, &cdblob))
 		DebugMsg("Success");

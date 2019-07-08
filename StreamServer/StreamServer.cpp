@@ -62,7 +62,7 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = NULL)
 	WCHAR acPathName[MAX_PATH + 1];
 	GetModuleFileName(NULL, acPathName, _countof(acPathName));
 	std::wstring appName(acPathName);
-	int len = appName.find_last_of(L'\\');
+	const auto len = appName.find_last_of(L'\\');
 	appName = appName.substr(0, len + 1) + L"StreamClient.exe " + toHost;
 	PROCESS_INFORMATION pi = {}, *localPpi = ppi ? ppi : &pi; // Just use a local one if one is not passed
 
