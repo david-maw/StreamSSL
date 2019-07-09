@@ -32,8 +32,6 @@ public:
 	bool Close(void); // Returns true if the close worked
 
 private:
-	CTime RecvEndTime;
-	CTime SendEndTime;
 	static WSADATA WsaData;
 	WSAEVENT write_event;
 	WSAEVENT read_event;
