@@ -44,7 +44,7 @@ ISocketStream * CSSLServer::getSocketStream(void)
 }
 
 // Set up the connection, including SSL handshake, certificate selection/validation
-HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
+HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 {
 	HRESULT hr = S_OK;
 	SECURITY_STATUS scRet;
@@ -114,7 +114,7 @@ int CSSLServer::GetLastError(void)
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::Recv(void* const lpBuf, const int Len)
+int CSSLServer::Recv(void* const lpBuf, const size_t Len)
 {
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
@@ -164,7 +164,7 @@ int CSSLServer::Recv(void* const lpBuf, const int Len)
 }
 
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
-int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
+int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
 	INT err;
 	INT i;
@@ -341,7 +341,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::Send(const void * const lpBuf, const int Len)
+int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;

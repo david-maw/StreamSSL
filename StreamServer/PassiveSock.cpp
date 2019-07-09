@@ -35,7 +35,7 @@ CPassiveSock::~CPassiveSock()
 // CPassiveSock member functions
 
 // Receives up to Len bytes of data and returnds the amount received - or SOCKET_ERROR if it times out
-int CPassiveSock::Recv(void * const lpBuf, const int Len)
+int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
 {
 	WSABUF buffer;
 	WSAEVENT hEvents[2] = { NULL,NULL };
@@ -102,9 +102,9 @@ int CPassiveSock::Recv(void * const lpBuf, const int Len)
 
 
 // Receives exactly Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
-int CPassiveSock::ReceiveBytes(void * const lpBuf, const int Len)
+int CPassiveSock::ReceiveBytes(void * const lpBuf, const size_t Len)
 {
-	int
+	size_t
 		bytes_received = 0,
 		total_bytes_received = 0;
 
@@ -150,7 +150,7 @@ HRESULT CPassiveSock::Disconnect(void)
 }
 
 //sends a message, or part of one
-int CPassiveSock::Send(const void * const lpBuf, const int Len)
+int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
 {
 	WSABUF buffers[2];
 	WSAEVENT hEvents[2] = { NULL,NULL };
@@ -196,9 +196,9 @@ int CPassiveSock::Send(const void * const lpBuf, const int Len)
 }
 
 //sends all the data or returns a timeout
-int CPassiveSock::SendBytes(const void * const lpBuf, const int Len)
+int CPassiveSock::SendBytes(const void * const lpBuf, const size_t Len)
 {
-	int
+	size_t
 		bytes_sent = 0,
 		total_bytes_sent = 0;
 
