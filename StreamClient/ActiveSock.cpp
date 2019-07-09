@@ -151,7 +151,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		// Special case, the previous read timed out, so we are trying again, maybe it completed in the meantime
 		rc = SOCKET_ERROR;
 		LastError = WSA_IO_PENDING;
-		RecvEndTime = 0;
 	}
 	else
 	{
@@ -171,8 +170,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 	}
 
 	// If the timer has been invalidated, restart it
-	if (RecvEndTime == 0)
-		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
+	const auto RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 
 	// Now wait for the I/O to complete if necessary, and see what happened
 	bool IOCompleted = false;
@@ -198,8 +196,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
 		{
 			LastError = 0;
-			if (bytes_read == Len) // We got what was requested
-				RecvEndTime = 0; // Restart the timer on the next read
 			return bytes_read; // Normal case, we read some bytes, it's all good
 		}
 		else
@@ -221,8 +217,6 @@ int CActiveSock::RecvMsg(LPVOID lpBuf, const ULONG Len)
 		bytes_received = 0,
 		total_bytes_received = 0;
 
-	RecvEndTime = 0; // Tell RecvPartial to restart the timer
-
 	while (total_bytes_received < Len)
 	{
 		bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
@@ -243,7 +237,6 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	if (NewRecvTimeoutSeconds > 0)
 	{
 		RecvTimeoutSeconds = NewRecvTimeoutSeconds;
-		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 	}
 }
 
@@ -259,7 +252,6 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	if (NewSendTimeoutSeconds > 0)
 	{
 		SendTimeoutSeconds = NewSendTimeoutSeconds;
-		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 	}
 }
 
@@ -302,8 +294,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 	buffer.len = Len;
 
 	// Reset the timer if it has been invalidated 
-	if (SendEndTime == 0)
-		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
+	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
 	LastError = 0;
 
@@ -338,8 +329,6 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 		DWORD msg_flags = 0;
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_sent, true, &msg_flags))
 		{
-			if (bytes_sent == Len) // Everything that was requested was sent
-				SendEndTime = 0;  // Invalidate the timer so it is set next time through
 			return bytes_sent;
 		}
 	}
@@ -352,8 +341,6 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const ULONG Len)
 	ULONG
 		bytes_sent = 0,
 		total_bytes_sent = 0;
-
-	SendEndTime = 0; // Invalidate the timer so SendPartial can reset it.
 
 	while (total_bytes_sent < Len)
 	{
