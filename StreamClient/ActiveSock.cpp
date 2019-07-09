@@ -180,12 +180,11 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
 	{
 		CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
-		DWORD dwWait, SecondsLeft = (DWORD)TimeLeft.GetTotalSeconds();
-		if (SecondsLeft <= 0)
-			dwWait = WAIT_TIMEOUT;
-		else
+		DWORD dwWait{ WAIT_TIMEOUT };
+		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
+		if (0 < SecondsLeft)
 		{
-			dwWait = WaitForMultipleObjects(2, hEvents, false, SecondsLeft * 1000);
+			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
 			if (dwWait == WAIT_OBJECT_0 + 1) // The read event 
 				IOCompleted = true;
 		}
@@ -323,9 +322,13 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 		WSAEVENT hEvents[2] = { write_event, m_hStopEvent };
 		DWORD dwWait;
 		CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
-		dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds() * 1000);
-		if (dwWait == WAIT_OBJECT_0 + 1) // The write event
-			IOCompleted = true;
+		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
+		if (0 < SecondsLeft)
+		{
+			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
+			if (dwWait == WAIT_OBJECT_0 + 1) // The write event
+				IOCompleted = true;
+		}
 	}
 	else if (!rc) // if rc is zero, the write was completed immediately, which is common
 		IOCompleted = true;
