@@ -28,13 +28,13 @@ CSSLClient::CSSLClient(CActiveSock * SocketStream)
 {
 }
 
-CSSLClient::~CSSLClient(void)
+CSSLClient::~CSSLClient()
 {
 }
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
-PSecurityFunctionTable CSSLClient::SSPI(void) { return g_pSSPI; }
+PSecurityFunctionTable CSSLClient::SSPI() { return g_pSSPI; }
 
 // Set up the connection, including SSL handshake, certificate selection/validation
 // lpBuf and Len let you provide any data that's already been read
@@ -88,7 +88,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 }
 
 // Establish SSPI pointer and correct credentials (meaning pick a certificate) for the SSL server
-HRESULT CSSLClient::InitializeClass(void)
+HRESULT CSSLClient::InitializeClass()
 {
 	g_pSSPI = InitSecurityInterface();
 
@@ -104,7 +104,7 @@ HRESULT CSSLClient::InitializeClass(void)
 }
 
 // Return the last error value for this CSSLClient
-DWORD CSSLClient::GetLastError(void)
+DWORD CSSLClient::GetLastError()
 {
 	if (m_LastError)
 		return m_LastError;
@@ -804,7 +804,7 @@ bool CSSLClient::Close(bool closeUnderlyingSocket)
 	return closeUnderlyingSocket ? m_SocketStream->Close() : true;
 }
 
-HRESULT CSSLClient::Disconnect(void)
+HRESULT CSSLClient::Disconnect()
 {
 	DWORD           dwType;
 	PBYTE           pbMessage;
