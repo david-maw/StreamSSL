@@ -23,7 +23,7 @@ bool CSP::AcquirePrivateKey(PCCERT_CONTEXT pCertContext)
 {
 	BOOL fCallerFreeProvOrNCryptKey = FALSE;
 	DWORD dwKeySpec;
-	return FALSE != CryptAcquireCertificatePrivateKey(pCertContext, 0, NULL, &hCryptProvOrNCryptKey, &dwKeySpec, &fCallerFreeProvOrNCryptKey);
+	return FALSE != CryptAcquireCertificatePrivateKey(pCertContext, 0, nullptr, &hCryptProvOrNCryptKey, &dwKeySpec, &fCallerFreeProvOrNCryptKey);
 }
 
 CryptProvider::CryptProvider()
@@ -56,14 +56,14 @@ CryptProvider::~CryptProvider()
 	{
 		// free up the allocated string
 		::RpcStringFree((RPC_WSTR*)&KeyContainerName);
-		KeyContainerName = NULL;
+		KeyContainerName = nullptr;
 	}
 }
 
 
 BOOL CryptProvider::AcquireContext(DWORD dwFlags)
 {
-	return CryptAcquireContextW(&hCryptProv, KeyContainerName, NULL, PROV_RSA_FULL, dwFlags);
+	return CryptAcquireContextW(&hCryptProv, KeyContainerName, nullptr, PROV_RSA_FULL, dwFlags);
 }
 
 CryptKey::CryptKey()
@@ -102,17 +102,17 @@ CertStore::~CertStore()
 bool CertStore::CertOpenStore(DWORD dwFlags)
 {
 	hStore = ::CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0, dwFlags, L"My");
-	return hStore != NULL;
+	return hStore != nullptr;
 }
 
 bool CertStore::AddCertificateContext(PCCERT_CONTEXT pCertContext)
 {
-	return (FALSE != ::CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_REPLACE_EXISTING, 0));
+	return (FALSE != ::CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_REPLACE_EXISTING, nullptr));
 }
 
 CertStore::operator bool() const
 {
-	return hStore != NULL;
+	return hStore != nullptr;
 }
 
 HCERTSTORE CertStore::get() const

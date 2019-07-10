@@ -32,7 +32,7 @@ private:
 class CryptProvider
 {
 public:
-	WCHAR * KeyContainerName = NULL; // will create a random one in constructor
+	WCHAR * KeyContainerName = nullptr; // will create a random one in constructor
 	CryptProvider();
 	~CryptProvider();
 	BOOL AcquireContext(DWORD dwFlags);
@@ -63,6 +63,6 @@ public:
 	bool AddCertificateContext(PCCERT_CONTEXT pCertContext);
 
 private:
-	HCERTSTORE hStore = NULL;
+	HCERTSTORE hStore = nullptr;
 
 };

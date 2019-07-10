@@ -62,7 +62,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 		if (!pCertContext)
 		{
 			cout << ", none found, creating one";
-			pCertContext = CreateCertificate(false, (GetUserName() + L" at " + GetHostName()).c_str(), L"StreamSSL client", NULL, true);
+			pCertContext = CreateCertificate(false, (GetUserName() + L" at " + GetHostName()).c_str(), L"StreamSSL client", nullptr, true);
 			if (pCertContext)
 				Status = S_OK;
 			else
