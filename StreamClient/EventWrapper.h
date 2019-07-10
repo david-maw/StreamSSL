@@ -4,10 +4,10 @@ class CEventWrapper
 {
 public:
 
-	CEventWrapper(LPSECURITY_ATTRIBUTES lpEventAttributes = NULL,
+	CEventWrapper(LPSECURITY_ATTRIBUTES lpEventAttributes = nullptr,
 		BOOL bManualReset = TRUE,
 		BOOL bInitialState = FALSE,
-		LPCTSTR lpName = NULL)
+		LPCTSTR lpName = nullptr)
 		: m_Event(NULL)
 	{
 		m_Event = CreateEvent(lpEventAttributes, bManualReset, bInitialState, lpName);
