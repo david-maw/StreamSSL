@@ -278,7 +278,7 @@ BOOL CActiveSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
-bool CActiveSock::Close(void)
+bool CActiveSock::Close()
 {
 	if (ShutDown() == FALSE)
 		return true;
