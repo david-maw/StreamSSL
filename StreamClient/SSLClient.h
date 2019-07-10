@@ -19,15 +19,15 @@ class CSSLClient
 {
 public:
 	CSSLClient(CActiveSock *);
-	~CSSLClient(void);
+	~CSSLClient();
 private:
 	static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError;
 	bool m_encrypting = false;
-	static HRESULT InitializeClass(void);
-	HRESULT Startup(void);
+	static HRESULT InitializeClass();
+	HRESULT Startup();
 	SECURITY_STATUS SSPINegotiateLoop(WCHAR* ServerName);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
@@ -50,11 +50,11 @@ public:
 	// ISocketStream
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
 	int SendPartial(LPCVOID lpBuf, const ULONG Len);
-	DWORD GetLastError(void);
+	DWORD GetLastError();
 	bool Close(bool closeUnderlyingSocket = true);
 	// Regular class interface
-	HRESULT Disconnect(void);
-	static PSecurityFunctionTable SSPI(void);
+	HRESULT Disconnect();
+	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
 	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
 	// Attributes

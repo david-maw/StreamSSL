@@ -29,7 +29,7 @@ public:
 	int SendMsg(LPCVOID lpBuf, const ULONG Len);
 	BOOL ShutDown(int nHow = SD_BOTH);
 	DWORD GetLastError() override;
-	bool Close(void) override; // Returns true if the close worked
+	bool Close() override; // Returns true if the close worked
 
 private:
 	CTime RecvEndTime;
