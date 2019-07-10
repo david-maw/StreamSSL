@@ -56,7 +56,7 @@ public:
 	HRESULT Disconnect(void);
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
-	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = NULL, const int Len = 0);
+	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
 	// Attributes
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;

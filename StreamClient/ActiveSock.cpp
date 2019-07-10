@@ -82,7 +82,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 		&dwRemoteAddr,
 		(SOCKADDR*)&RemoteAddr,
 		&Timeout,
-		NULL);
+		nullptr);
 
 	CTimeSpan HowLong = CTime::GetCurrentTime() - Now;
 
@@ -96,7 +96,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 		return false;
 	}
 	iResult = setsockopt(ActualSocket, SOL_SOCKET,
-		0x7010 /*SO_UPDATE_CONNECT_CONTEXT*/, NULL, 0);
+		0x7010 /*SO_UPDATE_CONNECT_CONTEXT*/, nullptr, 0);
 	if (iResult == SOCKET_ERROR) {
 		LastError = WSAGetLastError();
 		DebugMsg("setsockopt for SO_UPDATE_CONNECT_CONTEXT failed with error: %d", LastError);
@@ -166,7 +166,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		os.hEvent = hEvents[1];
 		WSAResetEvent(os.hEvent);
 		RecvInitiated = true;
-		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
+		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
 		LastError = WSAGetLastError();
 	}
 
@@ -311,7 +311,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = write_event;
 	WSAResetEvent(read_event);
-	int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
+	int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();
 
 	// Now wait for the I/O to complete if necessary, and see what happened
