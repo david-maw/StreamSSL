@@ -6,7 +6,7 @@
 #include "CertHelper.h"
 
 // Global value to optimize access since it is set only once
-PSecurityFunctionTable CSSLClient::g_pSSPI = NULL;
+PSecurityFunctionTable CSSLClient::g_pSSPI = nullptr;
 
 // Declare the Close functions for the handle classes using the global SSPI function table pointer
 
@@ -92,7 +92,7 @@ HRESULT CSSLClient::InitializeClass(void)
 {
 	g_pSSPI = InitSecurityInterface();
 
-	if (g_pSSPI == NULL)
+	if (g_pSSPI == nullptr)
 	{
 		int err = ::GetLastError();
 		if (err == 0)
@@ -187,7 +187,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	}
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -234,7 +234,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		Buffers[2].BufferType = SECBUFFER_EMPTY;
 		Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	}
 
 
@@ -258,7 +258,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 
 	// Locate the data buffer because the decrypted data is placed there. It's almost certainly
 	// the second buffer (index 1) and we start there, but search all but the first just in case...
-	PSecBuffer pDataBuffer(NULL);
+	PSecBuffer pDataBuffer(nullptr);
 
 	for (i = 1; i < 4; i++)
 	{
@@ -301,7 +301,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 	// See if there was any extra data read beyond what was needed for the message we are handling
 	// TCP can sometime merge multiple messages into a single one, if there is, it will amost 
 	// certainly be in the fourth buffer (index 3), but search all but the first, just in case.
-	PSecBuffer pExtraDataBuffer(NULL);
+	PSecBuffer pExtraDataBuffer(nullptr);
 
 	for (i = 1; i < 4; i++)
 	{
@@ -436,7 +436,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	//  Initiate a ClientHello message and generate a token.
 	//
 
-	OutBuffers[0].pvBuffer = NULL;
+	OutBuffers[0].pvBuffer = nullptr;
 	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 	OutBuffers[0].cbBuffer = 0;
 
@@ -447,12 +447,12 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	scRet = g_pSSPI->InitializeSecurityContext(
 #pragma warning (suppress: 4238)
 		&m_ClientCreds.get(),
-		NULL,
+		nullptr,
 		ServerName,
 		dwSSPIFlags,
 		0,
 		SECURITY_NATIVE_DREP,
-		NULL,
+		nullptr,
 		0,
 		m_hContext.set(),
 		&OutBuffer,
@@ -466,7 +466,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	}
 
 	// Send response to server if there is one.
-	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
+	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 	{
 		cbData = m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 		if (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer)
@@ -487,7 +487,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 		// Free output buffer.
 		g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-		OutBuffers[0].pvBuffer = NULL;
+		OutBuffers[0].pvBuffer = nullptr;
 	}
 
 	// Now start loop to negotiate SSL 
@@ -559,7 +559,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		InBuffers[0].cbBuffer = cbIoBuffer;
 		InBuffers[0].BufferType = SECBUFFER_TOKEN;
 
-		InBuffers[1].pvBuffer = NULL;
+		InBuffers[1].pvBuffer = nullptr;
 		InBuffers[1].cbBuffer = 0;
 		InBuffers[1].BufferType = SECBUFFER_EMPTY;
 
@@ -573,7 +573,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		// garbage later.
 		//
 
-		OutBuffers[0].pvBuffer = NULL;
+		OutBuffers[0].pvBuffer = nullptr;
 		OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 		OutBuffers[0].cbBuffer = 0;
 
@@ -587,13 +587,13 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 		scRet = g_pSSPI->InitializeSecurityContext(m_ClientCreds.getunsaferef(),
 			m_hContext.getunsaferef(),
-			NULL,
+			nullptr,
 			dwSSPIFlags,
 			0,
 			SECURITY_NATIVE_DREP,
 			&InBuffer,
 			0,
-			NULL,
+			nullptr,
 			&OutBuffer,
 			&dwSSPIOutFlags,
 			&tsExpiry);
@@ -634,7 +634,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 					return SEC_E_UNKNOWN_CREDENTIALS;
 			}
 
-			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
+			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				cbData = this->m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				if (cbData == SOCKET_ERROR || cbData == 0)
@@ -659,7 +659,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 				// Free output buffer.
 				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-				OutBuffers[0].pvBuffer = NULL;
+				OutBuffers[0].pvBuffer = nullptr;
 			}
 		}
 
@@ -850,7 +850,7 @@ HRESULT CSSLClient::Disconnect(void)
 		ISC_REQ_ALLOCATE_MEMORY |
 		ISC_REQ_STREAM;
 
-	OutBuffers[0].pvBuffer = NULL;
+	OutBuffers[0].pvBuffer = nullptr;
 	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 	OutBuffers[0].cbBuffer = 0;
 
@@ -861,13 +861,13 @@ HRESULT CSSLClient::Disconnect(void)
 	Status = g_pSSPI->InitializeSecurityContext(
 		m_ClientCreds.getunsaferef(),	// Which certificate to use, already established
 		m_hContext.getunsaferef(),		// The context handle
-		NULL,
+		nullptr,
 		dwSSPIFlags,
 		0,
 		SECURITY_NATIVE_DREP,
 		& OutBuffer,
 		0,
-		NULL,
+		nullptr,
 		& OutBuffer,
 		& dwSSPIFlags,
 		& tsExpiry);
@@ -890,7 +890,7 @@ HRESULT CSSLClient::Disconnect(void)
 	// Send the close notify message to the server.
 	//
 
-	if (pbMessage != NULL && cbMessage != 0)
+	if (pbMessage != nullptr && cbMessage != 0)
 	{
 		cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
@@ -950,7 +950,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 	DebugMsg("Issuer list information returned, issuers = %d", IssuerListInfo.cIssuers);
 
 	// Now go ask for the client credentials
-	PCCERT_CONTEXT pCertContext = NULL;
+	PCCERT_CONTEXT pCertContext = nullptr;
 	CertContextHandle hCertContext;
 
 	if (SelectClientCertificate)
@@ -1006,13 +1006,13 @@ SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds
 	TimeStamp       tsExpiry;
 	// Get a handle to the SSPI credential
 	Status = g_pSSPI->AcquireCredentialsHandle(
-		NULL,                   // Name of principal
+		nullptr,                   // Name of principal
 		UNISP_NAME,             // Name of package
 		SECPKG_CRED_OUTBOUND,   // Flags indicating use
-		NULL,                   // Pointer to logon ID
+		nullptr,                   // Pointer to logon ID
 		&SchannelCred,          // Package specific data
-		NULL,                   // Pointer to GetKey() func
-		NULL,                   // Value to pass to GetKey()
+		nullptr,                   // Pointer to GetKey() func
+		nullptr,                   // Value to pass to GetKey()
 		phCreds,                // (out) Cred Handle
 		&tsExpiry);             // (out) Lifetime (optional)
 
