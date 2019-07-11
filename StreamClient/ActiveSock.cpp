@@ -188,6 +188,10 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 			if (dwWait == WAIT_OBJECT_0 + 1) // The read event 
 				IOCompleted = true;
 		}
+		else
+		{
+			LastError = ERROR_TIMEOUT;
+		}
 	}
 	else if (!rc) // if rc is zero, the read was completed immediately
 		IOCompleted = true;
@@ -328,6 +332,10 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
 			if (dwWait == WAIT_OBJECT_0 + 1) // The write event
 				IOCompleted = true;
+		}
+		else
+		{
+			LastError = ERROR_TIMEOUT;
 		}
 	}
 	else if (!rc) // if rc is zero, the write was completed immediately, which is common

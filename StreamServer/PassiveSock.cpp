@@ -90,6 +90,10 @@ int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
 					return 0;
 			}
 		}
+		else
+		{
+			LastError = ERROR_TIMEOUT;
+		}
 	}
 	else if (!rc) // if rc is zero, the read was completed immediately
 	{
@@ -180,11 +184,18 @@ int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
 		CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
-		dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds() * 1000);
+		if (TimeLeft.GetTotalSeconds() <= 0)
+			dwWait = WAIT_TIMEOUT;
+		else
+			dwWait = WaitForMultipleObjects(2, hEvents, false, (DWORD)TimeLeft.GetTotalSeconds() * 1000);
 		if (dwWait == WAIT_OBJECT_0 + 1) // I/O completed
 		{
 			if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_sent, true, &msg_flags))
 				return bytes_sent;
+		}
+		else
+		{
+			LastError = ERROR_TIMEOUT;
 		}
 	}
 	else if (!rc) // if rc is zero, the read was completed immediately
