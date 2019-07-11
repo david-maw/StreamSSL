@@ -213,8 +213,10 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
-			if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+			if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 				DebugMsg("RecvMsg timed out");
+			else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				DebugMsg("RecvMsg Overlapped operations will complete later");
 			else if (WSAECONNRESET == m_SocketStream->GetLastError())
 				DebugMsg("RecvMsg failed, the socket was closed by the other host");
 			else

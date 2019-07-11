@@ -145,8 +145,10 @@ int CSSLServer::Recv(void* const lpBuf, const int Len)
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
-				if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
+				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+					DebugMsg("Recv Overlapped operations will complete later");
 				else if (WSAECONNRESET == m_SocketStream->GetLastError())
 					DebugMsg("Recv failed, the socket was closed by the other host");
 				else
@@ -208,8 +210,10 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
-			if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+			if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 				DebugMsg("Recv timed out");
+			else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				DebugMsg("Recv Overlapped operations will complete later");
 			else if (WSAECONNRESET == m_SocketStream->GetLastError())
 				DebugMsg("Recv failed, the socket was closed by the other host");
 			else
@@ -475,8 +479,10 @@ bool CSSLServer::SSPINegotiateLoop(void)
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
-				if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
+				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+					DebugMsg("Recv Overlapped operations will complete later");
 				else if (WSAECONNRESET == m_SocketStream->GetLastError())
 					DebugMsg("Recv failed, the socket was closed by the other host");
 				else
