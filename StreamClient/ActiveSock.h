@@ -30,6 +30,9 @@ public:
 	BOOL ShutDown(int nHow = SD_BOTH);
 	DWORD GetLastError() override;
 	bool Close() override; // Returns true if the close worked
+protected:
+  SOCKET ActualSocket;
+  HANDLE m_hStopEvent;
 
 private:
 	CTime RecvEndTime;
@@ -39,8 +42,6 @@ private:
 	WSAEVENT read_event;
 	WSAOVERLAPPED os{};
 	bool RecvInitiated = false;
-	SOCKET ActualSocket;
 	DWORD LastError = 0;
 	int SendTimeoutSeconds, RecvTimeoutSeconds;
-	HANDLE m_hStopEvent;
 };
