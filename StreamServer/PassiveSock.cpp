@@ -134,7 +134,7 @@ void CPassiveSock::SetTimeoutSeconds(int NewTimeoutSeconds)
 	if (NewTimeoutSeconds > 0)
 	{
 		TimeoutSeconds = NewTimeoutSeconds;
-		SendEndTime = RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
+		// SendEndTime and RecvEndTime are untouched, because a Send or receive may be in process
 	}
 }
 
