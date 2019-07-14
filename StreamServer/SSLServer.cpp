@@ -60,7 +60,7 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 
 	if (lpBuf && (Len > 0))
 	{  // preload the IO buffer with whatever we already read
-		readBufferBytes = Len;
+		readBufferBytes = static_cast<decltype(readBufferBytes)>(Len);
 		memcpy_s(readBuffer, sizeof(readBuffer), lpBuf, Len);
 	}
 	else
@@ -389,7 +389,7 @@ int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 	Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
 
 	Buffers[1].pvBuffer = writeBuffer + Sizes.cbHeader;
-	Buffers[1].cbBuffer = Len;
+	Buffers[1].cbBuffer = static_cast<decltype(Buffers[1].cbBuffer)>(Len);
 	Buffers[1].BufferType = SECBUFFER_DATA;
 
 	Buffers[2].pvBuffer = writeBuffer + Sizes.cbHeader + Len;
@@ -402,7 +402,7 @@ int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 
 	DebugMsg(" ");
 	DebugMsg("Plaintext message has %d bytes", Len);
-	PrintHexDump(Len, lpBuf);
+	PrintHexDump(static_cast<DWORD>(Len), lpBuf);
 
 	if (FAILED(scRet))
 	{
@@ -415,13 +415,13 @@ int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 	m_LastError = 0;
 
 	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	PrintHexDump(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
+	PrintHexDump(static_cast<DWORD>(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer), writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
 		DebugMsg("Send failed: %ld", m_SocketStream->GetLastError());
 		return SOCKET_ERROR;
 	}
-	return Len;
+	return static_cast<int>(Len);
 }
 
 // Negotiate a connection with the client, sending and receiving messages until the

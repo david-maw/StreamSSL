@@ -61,7 +61,7 @@ int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
 
 		// Setup the buffers array
 		buffer.buf = static_cast<char*>(lpBuf);
-		buffer.len = Len;
+		buffer.len = static_cast<decltype(buffer.len)>(Len);
 
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
@@ -126,7 +126,7 @@ int CPassiveSock::ReceiveBytes(void * const lpBuf, const size_t Len)
 			total_bytes_received += bytes_received;
 		}
 	}; // loop
-	return (total_bytes_received);
+	return (static_cast<int>(total_bytes_received));
 }
 
 void CPassiveSock::SetTimeoutSeconds(int NewTimeoutSeconds)
@@ -168,7 +168,8 @@ int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
 	hEvents[0] = m_hStopEvent;
 	// Setup the buffers array
 	buffers[0].buf = (char *)lpBuf;
-	buffers[0].len = Len;
+	buffers[0].len = static_cast<decltype(buffers[0].len)>(Len);
+	;
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
@@ -228,5 +229,5 @@ int CPassiveSock::SendBytes(const void * const lpBuf, const size_t Len)
 		else
 			total_bytes_sent += bytes_sent;
 	}; // loop
-	return (total_bytes_sent);
+	return (static_cast<int>(total_bytes_sent));
 }
