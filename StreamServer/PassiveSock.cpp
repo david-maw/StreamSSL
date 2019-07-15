@@ -34,6 +34,12 @@ CPassiveSock::~CPassiveSock()
 /////////////////////////////////////////////////////////////////////////////
 // CPassiveSock member functions
 
+
+void CPassiveSock::ArmRecvTimer()
+{
+	RecvEndTime = 0; // Allow it to be set next time RecvPartial is called
+}
+
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 {
@@ -115,7 +121,7 @@ int CPassiveSock::ReceiveBytes(void * const lpBuf, const size_t Len)
 		bytes_received = 0,
 		total_bytes_received = 0;
 
-	RecvEndTime = 0; // Allow Recv to set it
+	ArmRecvTimer(); // Allow RecvPartial to start timing
 
 	while (total_bytes_received < Len)
 	{
@@ -155,6 +161,12 @@ HRESULT CPassiveSock::Disconnect(void)
 {
 	return ShutDown() ? HRESULT_FROM_WIN32(GetLastError()) : S_OK;
 }
+
+void CPassiveSock::ArmSendTimer()
+{
+	SendEndTime = 0; // Allow it to be set next time SendPartial is called
+}
+
 
 //sends a message, or part of one
 int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)

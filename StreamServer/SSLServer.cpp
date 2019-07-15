@@ -141,6 +141,8 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 		}
 		else
 		{
+			// We need to read data from the socket
+			m_SocketStream->ArmRecvTimer();
 			int err = m_SocketStream->RecvPartial(lpBuf, Len);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
@@ -236,7 +238,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 		// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
 		// shutdown message with other data concatenated
-			const int headerLen = 5, shutdownLen = 26;
+		const int headerLen = 5, shutdownLen = 26;
 		if (((CHAR*)readPtr)[0] == 21 // Alert message type
 			&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
 			&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
@@ -256,7 +258,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		}
 		else // The normal case
 			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
-}
+	}
 
 	PSecBuffer pDataBuffer(NULL); // Points to databuffer if there is one
 
