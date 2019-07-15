@@ -192,7 +192,7 @@ int wmain(int argc, WCHAR * argv[])
 	WORD key = WaitForAnyKey(30000);
 	if (!(key == 'Q' || key == 0))
 	{
-		cout << "The the program will pause until you press enter" << endl;
+		cout << "The program will pause until you press enter" << endl;
 		key = (WORD)getchar(); // Assign result to avoid warning
 	}
 	return 0;

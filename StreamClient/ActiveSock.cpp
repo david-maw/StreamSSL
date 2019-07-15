@@ -93,6 +93,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 			HostName,
 			PortName);
 		closesocket(ActualSocket);
+		ActualSocket = INVALID_SOCKET;
 		return false;
 	}
 	iResult = setsockopt(ActualSocket, SOL_SOCKET,
@@ -101,6 +102,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 		LastError = WSAGetLastError();
 		DebugMsg("setsockopt for SO_UPDATE_CONNECT_CONTEXT failed with error: %d", LastError);
 		closesocket(ActualSocket);
+		ActualSocket = INVALID_SOCKET;
 		return false;
 	}
 	//// At this point we have a connection, so set up keepalives so we can detect if the host disconnects
@@ -112,6 +114,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//		wprintf(L"setsockopt for SO_KEEPALIVE failed with error: %d\n",
 	//			LastError);
 	//		closesocket(ActualSocket);
+	//		ActualSocket = INVALID_SOCKET;
 	//		return false;       
 	//	}
 
@@ -130,6 +133,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//	LastError = WSAGetLastError() ;
 	//	wprintf(L"WSAIoctl to set keepalive failed with error: %d\n", LastError);
 	//	closesocket(ActualSocket);
+	//	ActualSocket = INVALID_SOCKET;
 	//	return false;       
 	//}
 
@@ -241,6 +245,7 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	if (NewRecvTimeoutSeconds > 0)
 	{
 		RecvTimeoutSeconds = NewRecvTimeoutSeconds;
+		// RecvEndTime is untouched because a receive may be in process
 	}
 }
 
@@ -256,6 +261,7 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	if (NewSendTimeoutSeconds > 0)
 	{
 		SendTimeoutSeconds = NewSendTimeoutSeconds;
+		// SendEndTime is untouched, because a Send may be in process
 	}
 }
 
