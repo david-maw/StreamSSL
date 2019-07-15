@@ -49,6 +49,9 @@ int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
 	hEvents[1] = read_event;
 	hEvents[0] = m_hStopEvent;
 
+	if (RecvEndTime == 0)
+		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
+
 	if (RecvInitiated)
 	{
 		// Special case, the previous read timed out, so we are trying again, maybe it completed in the meantime
@@ -112,7 +115,7 @@ int CPassiveSock::ReceiveBytes(void * const lpBuf, const size_t Len)
 		bytes_received = 0,
 		total_bytes_received = 0;
 
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
+	RecvEndTime = 0; // Allow Recv to set it
 
 	while (total_bytes_received < Len)
 	{
@@ -169,12 +172,13 @@ int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
 	// Setup the buffers array
 	buffers[0].buf = (char *)lpBuf;
 	buffers[0].len = static_cast<decltype(buffers[0].len)>(Len);
-	;
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
 
 	LastError = 0;
+	if (SendEndTime == 0)
+		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
@@ -214,7 +218,7 @@ int CPassiveSock::SendBytes(const void * const lpBuf, const size_t Len)
 		bytes_sent = 0,
 		total_bytes_sent = 0;
 
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
+	SendEndTime = 0; // Allow it to be reset by Send
 
 	while (total_bytes_sent < Len)
 	{
