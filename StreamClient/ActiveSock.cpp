@@ -245,6 +245,7 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	if (NewRecvTimeoutSeconds > 0)
 	{
 		RecvTimeoutSeconds = NewRecvTimeoutSeconds;
+		// RecvEndTime is untouched because a receive may be in process
 	}
 }
 
@@ -260,6 +261,7 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	if (NewSendTimeoutSeconds > 0)
 	{
 		SendTimeoutSeconds = NewSendTimeoutSeconds;
+		// SendEndTime is untouched, because a Send may be in process
 	}
 }
 

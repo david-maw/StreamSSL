@@ -100,7 +100,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
-SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, bool fUserStore)
 {
 	HCERTSTORE hCertStore{};
 	WCHAR pszFriendlyNameString[128];
@@ -204,7 +204,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 
 // Select, and return a handle to a client certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
-SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, bool fUserStore)
 {
 	HCERTSTORE hCertStore;
 	WCHAR pszFriendlyNameString[128];
@@ -519,7 +519,7 @@ BOOL WINAPI ValidServerCert(
 
 CryptUIDlgSelectCertificate SelectCertificate = nullptr;
 
-SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, bool fUserStore)
 {
 	//   Open a certificate store.
 	HCERTSTORE hCertStore;
@@ -567,7 +567,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 
 // End Section of code supporting CertFindCertificateUI
 
-SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
+SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, bool fUserStore)
 {
 	// Find a specific certificate based on its signature
 	// The parameter is the SHA1 signatureof the certificate you want the server to use in string form, which the certificate manager will show you as the "thumbprint" field
