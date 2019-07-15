@@ -167,6 +167,33 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 	}
 }
 
+
+// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
+// shutdown message with other data concatenated, at least as of Windows 10, July 2019.
+void CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffer (&Buffers)[4], SecBufferDesc& Message, int & err, SECURITY_STATUS& scRet)
+{
+	const int headerLen = 5, shutdownLen = 26;
+	if (((CHAR*)readPtr)[0] == 21 // Alert message type
+		&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
+		&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
+		&& ((CHAR*)readPtr)[5] == 0 // it is a "close notify" (aka shutdown) message
+		)
+	{
+		DebugMsg("Looks like a concatenated shutdown message and something else");
+		PrintHexDump(err, readPtr, true);
+		Buffers[0].cbBuffer = shutdownLen + headerLen;
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		if (scRet == SEC_I_CONTEXT_EXPIRED)
+		{
+			Buffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
+			Buffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
+			Buffers[1].BufferType = SECBUFFER_EXTRA;
+		}
+	}
+	else
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+}
+
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
 int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
@@ -202,7 +229,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
 		readBufferBytes = 0; // We have consumed them
 	}
 
@@ -238,26 +265,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 		// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
 		// shutdown message with other data concatenated
-		const int headerLen = 5, shutdownLen = 26;
-		if (((CHAR*)readPtr)[0] == 21 // Alert message type
-			&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
-			&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
-			&& ((CHAR*)readPtr)[5] == 0 // it is a "close notify" (aka shutdown) message
-			)
-		{
-			DebugMsg("Looks like a concatenated shutdown message and something else");
-			PrintHexDump(err, readPtr, true);
-			Buffers[0].cbBuffer = shutdownLen + headerLen;
-			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
-			if (scRet == SEC_I_CONTEXT_EXPIRED)
-			{
-				Buffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
-				Buffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
-				Buffers[1].BufferType = SECBUFFER_EXTRA;
-			}
-		}
-		else // The normal case
-			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
 	}
 
 	PSecBuffer pDataBuffer(NULL); // Points to databuffer if there is one
