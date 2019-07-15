@@ -44,7 +44,7 @@ ISocketStream * CSSLServer::getSocketStream(void)
 }
 
 // Set up the connection, including SSL handshake, certificate selection/validation
-HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
+HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 {
 	HRESULT hr = S_OK;
 	SECURITY_STATUS scRet;
@@ -60,7 +60,7 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const int Len)
 
 	if (lpBuf && (Len > 0))
 	{  // preload the IO buffer with whatever we already read
-		readBufferBytes = Len;
+		readBufferBytes = static_cast<decltype(readBufferBytes)>(Len);
 		memcpy_s(readBuffer, sizeof(readBuffer), lpBuf, Len);
 	}
 	else
@@ -114,7 +114,7 @@ int CSSLServer::GetLastError(void)
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::Recv(void* const lpBuf, const int Len)
+int CSSLServer::Recv(void* const lpBuf, const size_t Len)
 {
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
@@ -145,8 +145,10 @@ int CSSLServer::Recv(void* const lpBuf, const int Len)
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
-				if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
+				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+					DebugMsg("Recv Overlapped operations will complete later");
 				else if (WSAECONNRESET == m_SocketStream->GetLastError())
 					DebugMsg("Recv failed, the socket was closed by the other host");
 				else
@@ -164,7 +166,7 @@ int CSSLServer::Recv(void* const lpBuf, const int Len)
 }
 
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
-int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
+int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
 	INT err;
 	INT i;
@@ -204,12 +206,14 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0]));
+		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
-			if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+			if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 				DebugMsg("Recv timed out");
+			else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				DebugMsg("Recv Overlapped operations will complete later");
 			else if (WSAECONNRESET == m_SocketStream->GetLastError())
 				DebugMsg("Recv failed, the socket was closed by the other host");
 			else
@@ -341,7 +345,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const int Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::Send(const void * const lpBuf, const int Len)
+int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -385,7 +389,7 @@ int CSSLServer::Send(const void * const lpBuf, const int Len)
 	Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
 
 	Buffers[1].pvBuffer = writeBuffer + Sizes.cbHeader;
-	Buffers[1].cbBuffer = Len;
+	Buffers[1].cbBuffer = static_cast<decltype(Buffers[1].cbBuffer)>(Len);
 	Buffers[1].BufferType = SECBUFFER_DATA;
 
 	Buffers[2].pvBuffer = writeBuffer + Sizes.cbHeader + Len;
@@ -398,7 +402,7 @@ int CSSLServer::Send(const void * const lpBuf, const int Len)
 
 	DebugMsg(" ");
 	DebugMsg("Plaintext message has %d bytes", Len);
-	PrintHexDump(Len, lpBuf);
+	PrintHexDump(static_cast<DWORD>(Len), lpBuf);
 
 	if (FAILED(scRet))
 	{
@@ -411,13 +415,13 @@ int CSSLServer::Send(const void * const lpBuf, const int Len)
 	m_LastError = 0;
 
 	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	PrintHexDump(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
+	PrintHexDump(static_cast<DWORD>(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer), writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
 		DebugMsg("Send failed: %ld", m_SocketStream->GetLastError());
 		return SOCKET_ERROR;
 	}
-	return Len;
+	return static_cast<int>(Len);
 }
 
 // Negotiate a connection with the client, sending and receiving messages until the
@@ -475,8 +479,10 @@ bool CSSLServer::SSPINegotiateLoop(void)
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
-				if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+				if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
+				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
+					DebugMsg("Recv Overlapped operations will complete later");
 				else if (WSAECONNRESET == m_SocketStream->GetLastError())
 					DebugMsg("Recv failed, the socket was closed by the other host");
 				else

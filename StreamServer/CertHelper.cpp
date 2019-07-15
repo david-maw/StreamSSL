@@ -73,7 +73,7 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 	// Extract the SAN information (list of names) 
 	DWORD cbStructInfo = 0;
 	if (pExtension && CryptDecodeObject(X509_ASN_ENCODING, szOID,
-		pExtension->Value.pbData, pExtension->Value.cbData, 0, 0, &cbStructInfo))
+		pExtension->Value.pbData, pExtension->Value.cbData, 0, nullptr, &cbStructInfo))
 	{
 		auto pvS = std::make_unique<byte[]>(cbStructInfo);
 		CryptDecodeObject(X509_ASN_ENCODING, szOID, pExtension->Value.pbData,
@@ -100,13 +100,13 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
-SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, bool fUserStore)
 {
 	HCERTSTORE hCertStore{};
 	WCHAR pszFriendlyNameString[128];
 	WCHAR	pszNameString[128];
 
-	if (pszSubjectName == NULL || _tcslen(pszSubjectName) == 0)
+	if (pszSubjectName == nullptr || _tcslen(pszSubjectName) == 0)
 	{
 		DebugMsg("**** No subject name specified!");
 		return E_POINTER;
@@ -127,7 +127,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 	// it then selects the best one (ideally one that contains the server name
 	// in the subject name).
 
-	while (NULL != (pCertContext = CertFindCertificateInStore(hCertStore,
+	while (nullptr != (pCertContext = CertFindCertificateInStore(hCertStore,
 		X509_ASN_ENCODING,
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
@@ -135,13 +135,13 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		pCertContext))) // If this points to a valid certificate it will act as starting point and also be closed
 	{
 		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, _countof(pszFriendlyNameString)))
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, nullptr, pszFriendlyNameString, _countof(pszFriendlyNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
-		DebugMsg("Certificate %p '%S' is allowed to be used for server authentication.", pCertContext, pszFriendlyNameString);
-		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, _countof(pszNameString)))
+    DebugMsg("Certificate %p '%S' is allowed to be used for server authentication.", pCertContext, pszFriendlyNameString);
+		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, pszNameString, _countof(pszNameString)))
 			DebugMsg("CertGetNameString failed getting subject name.");
 		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
 			DebugMsg("Certificate %p has wrong subject name.", pCertContext);
@@ -204,7 +204,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 
 // Select, and return a handle to a client certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
-SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, bool fUserStore)
 {
 	HCERTSTORE hCertStore;
 	WCHAR pszFriendlyNameString[128];
@@ -217,11 +217,11 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 
 	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
 		CertFreeCertificateContext(pCertContext);
-	pCertContext = NULL;
+	pCertContext = nullptr;
 
 	char * requiredUsage = szOID_PKIX_KP_CLIENT_AUTH;
 	CERT_ENHKEY_USAGE eku;
-	PCCERT_CONTEXT  pCertContextCurrent = NULL;
+	PCCERT_CONTEXT  pCertContextCurrent = nullptr;
 	eku.cUsageIdentifier = 1;
 	eku.rgpszUsageIdentifier = &requiredUsage;
 	// Find a client certificate. Note that this code just searches for a 
@@ -229,7 +229,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 	// it then selects the best one (ideally one that contains the client name somewhere
 	// in the subject name).
 
-	while (NULL != (pCertContextCurrent = CertFindCertificateInStore(hCertStore,
+	while (nullptr != (pCertContextCurrent = CertFindCertificateInStore(hCertStore,
 		X509_ASN_ENCODING,
 		CERT_FIND_OPTIONAL_ENHKEY_USAGE_FLAG,
 		CERT_FIND_ENHKEY_USAGE,
@@ -237,13 +237,13 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 		pCertContextCurrent)))
 	{
 		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, _countof(pszFriendlyNameString)))
+		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, nullptr, pszFriendlyNameString, _countof(pszFriendlyNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
 		DebugMsg("Certificate '%S' is allowed to be used for client authentication.", pszFriendlyNameString);
-		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL, pszNameString, _countof(pszNameString)))
+		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, pszNameString, _countof(pszNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting subject name.");
 			continue;
@@ -253,7 +253,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 		HCRYPTPROV_OR_NCRYPT_KEY_HANDLE hCryptProvOrNCryptKey = NULL;
 		BOOL fCallerFreeProvOrNCryptKey = FALSE;
 		DWORD dwKeySpec;
-		if (!CryptAcquireCertificatePrivateKey(pCertContextCurrent, 0, NULL, &hCryptProvOrNCryptKey, &dwKeySpec, &fCallerFreeProvOrNCryptKey))
+		if (!CryptAcquireCertificatePrivateKey(pCertContextCurrent, 0, nullptr, &hCryptProvOrNCryptKey, &dwKeySpec, &fCallerFreeProvOrNCryptKey))
 		{
 			DWORD LastError = GetLastError();
 			if (LastError == CRYPT_E_NO_KEY_PROPERTY)
@@ -291,9 +291,9 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 	if (pCertContext)
 	{ // The caller passed in a certificate context we no longer need, so free it
 		CertFreeCertificateContext(pCertContext);
-		pCertContext = NULL;
+		pCertContext = nullptr;
 	}
-	PCCERT_CHAIN_CONTEXT pChainContext = NULL;
+	PCCERT_CHAIN_CONTEXT pChainContext = nullptr;
 	CERT_CHAIN_FIND_BY_ISSUER_PARA FindByIssuerPara = { 0 };
 	SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
 	HCERTSTORE hCertStore;
@@ -311,9 +311,9 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 	FindByIssuerPara.cIssuer = IssuerListInfo.cIssuers;
 	FindByIssuerPara.rgIssuer = IssuerListInfo.aIssuers;
 
-	pChainContext = NULL;
+	pChainContext = nullptr;
 
-	while (TRUE)
+	while (true)
 	{
 		// Find a certificate chain.
 		pChainContext = CertFindChainInStore(hCertStore,
@@ -322,7 +322,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 			CERT_CHAIN_FIND_BY_ISSUER,
 			&FindByIssuerPara,
 			pChainContext);
-		if (pChainContext == NULL)
+		if (pChainContext == nullptr)
 		{
 			DWORD LastError = GetLastError();
 			if (LastError == CRYPT_E_NOT_FOUND)
@@ -354,7 +354,7 @@ HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectNa
 	if (pCertContext)
 	{ // The caller passed in a certificate context we no longer need, so free it
 		CertFreeCertificateContext(pCertContext);
-		pCertContext = NULL;
+		pCertContext = nullptr;
 	}
 	HCERTSTORE hCertStore;
 	SECURITY_STATUS hr = GetStore(hCertStore, false);
@@ -375,7 +375,7 @@ HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectNa
 			0,
 			CERT_FIND_SUBJECT_STR,
 			pszSubjectName,
-			NULL);
+			nullptr);
 		if (pCertContext)
 		{
 			return S_OK;
@@ -484,14 +484,14 @@ BOOL WINAPI ValidServerCert(
 	std::wstring s = std::wstring(L"Certificate '") + GetCertName(pCertContext) + L"' ";
 	if (!MatchCertificateName(pCertContext, (LPCWSTR)pvCallbackData))  //  (_tcscmp(pszNameString, pszSubjectName))
 		s.append(L"has wrong subject name.");
-	else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, NULL, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
+	else if (!CertGetCertificateContextProperty(pCertContext, CERT_KEY_PROV_INFO_PROP_ID, nullptr, &cbData) && GetLastError() == CRYPT_E_NOT_FOUND)
 	{
 		s.append(L"has no private key.");
 	}
 	else
 	{  // All checks passed now check Enhanced Key Usage
 		cbData = 0;
-		CertGetEnhancedKeyUsage(pCertContext, 0, NULL, &cbData);
+		CertGetEnhancedKeyUsage(pCertContext, 0, nullptr, &cbData);
 		if (cbData == 0)
 			return TRUE; // There are no EKU entries, so any usage is allowed
 		else
@@ -517,9 +517,9 @@ BOOL WINAPI ValidServerCert(
 // CryptUIDlgSelectCertificateW is not in a library, but IS present in CryptUI.dll so we
 // have to link to it dynamically. This is the declaration of the function pointer.
 
-CryptUIDlgSelectCertificate SelectCertificate = NULL;
+CryptUIDlgSelectCertificate SelectCertificate = nullptr;
 
-SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, boolean fUserStore)
+SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, bool fUserStore)
 {
 	//   Open a certificate store.
 	HCERTSTORE hCertStore;
@@ -530,7 +530,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
 	{
 		CertFreeCertificateContext(pCertContext);
-		pCertContext = NULL;
+		pCertContext = nullptr;
 	}
 
 	// Link to SelectCertificate if it has not already been done
@@ -559,7 +559,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 	csc.rghDisplayStores = &tempStore;
 	csc.pvCallbackData = (LPVOID)pszSubjectName;
 
-	if ((pCertContext = SelectCertificate(&csc))==0)
+	if ((pCertContext = SelectCertificate(&csc))==nullptr)
 		DebugMsg("Select Certificate UI did not return a certificate.");
 
 	return pCertContext ? SEC_E_OK : SEC_E_CERT_UNKNOWN;
@@ -567,7 +567,7 @@ SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTS
 
 // End Section of code supporting CertFindCertificateUI
 
-SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, boolean fUserStore)
+SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, char const * const signature, bool fUserStore)
 {
 	// Find a specific certificate based on its signature
 	// The parameter is the SHA1 signatureof the certificate you want the server to use in string form, which the certificate manager will show you as the "thumbprint" field
@@ -587,7 +587,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 	if (pCertContext)	// The caller passed in a certificate context we no longer need, so free it
 	{
 		CertFreeCertificateContext(pCertContext);
-		pCertContext = NULL;
+		pCertContext = nullptr;
 	}
 
 	CRYPT_HASH_BLOB certhash;
@@ -601,11 +601,11 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 		0,                            // No dwFlags needed 
 		CERT_FIND_SHA1_HASH, // Find a certificate with a SHA1 hash that matches the next parameter
 		&certhash,
-		NULL)) !=0)                        // NULL for the first call to the
+		nullptr)) !=nullptr)                        // NULL for the first call to the
 	{
 		WCHAR pszFriendlyNameString[128];
 		//ShowCertInfo(pCertContext);
-		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, pszFriendlyNameString, _countof(pszFriendlyNameString)))
+		if (!CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, nullptr, pszFriendlyNameString, _countof(pszFriendlyNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			return HRESULT_FROM_WIN32(GetLastError());
@@ -630,7 +630,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 	CERT_CHAIN_POLICY_PARA   PolicyPara{ 0 };
 	CERT_CHAIN_POLICY_STATUS PolicyStatus{ 0 };
 	CERT_CHAIN_PARA          ChainPara{ 0 };
-	PCCERT_CHAIN_CONTEXT     pChainContext = NULL;
+	PCCERT_CHAIN_CONTEXT     pChainContext = nullptr;
 	HRESULT                  Status;
 	LPSTR rgszUsages[] = { isClientCert ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH,
 	   szOID_SERVER_GATED_CRYPTO,
@@ -643,13 +643,13 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 	ChainPara.RequestedUsage.Usage.cUsageIdentifier = cUsages;
 	ChainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
 
-	if (!CertGetCertificateChain(NULL,
+	if (!CertGetCertificateChain(nullptr,
 		pCertContext,
-		NULL,
+		nullptr,
 		pCertContext->hCertStore,
 		&ChainPara,
 		0,
-		NULL,
+		nullptr,
 		&pChainContext))
 	{
 		Status = GetLastError();
@@ -662,7 +662,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 	polHttps.cbStruct = sizeof(HTTPSPolicyCallbackData);
 	polHttps.dwAuthType = isClientCert ? AUTHTYPE_CLIENT : AUTHTYPE_SERVER;
 	polHttps.fdwChecks = 0;    // dwCertFlags;
-	polHttps.pwszServerName = NULL; // ServerName - checked elsewhere
+	polHttps.pwszServerName = nullptr; // ServerName - checked elsewhere
 
 	PolicyPara.cbSize = sizeof(PolicyPara);
 	PolicyPara.pvExtraPolicyPara = &polHttps;
@@ -701,7 +701,7 @@ std::wstring GetCertName(PCCERT_CONTEXT pCertContext)
 {
 	std::wstring certName;
 	certName.resize(128);
-	auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, NULL, &certName[0], static_cast<DWORD>(certName.capacity()));
+  auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, nullptr, &certName[0], static_cast<DWORD>(certName.capacity()));
 	if (good)
 	{
 		certName.resize(certName.find(L'\0')); // throw away characters after null
@@ -724,7 +724,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 	if (!CryptUIDlgViewContext(
 		CERT_STORE_CERTIFICATE_CONTEXT,
 		pCertContext,
-		NULL,
+		nullptr,
 		Title.c_str(),
 		0,
 		pszNameString // Dummy parameter just to avoid a warning
@@ -737,7 +737,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 		pCertContext,
 		CERT_NAME_SIMPLE_DISPLAY_TYPE,
 		0,
-		NULL,
+		nullptr,
 		pszNameString,
 		128))
 	{
@@ -886,7 +886,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 		if (CertGetCertificateContextProperty(
 			pCertContext,
 			dwPropId,
-			NULL,
+			nullptr,
 			&cbData))
 		{
 			//  Continue.
@@ -970,7 +970,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 				DebugMsg("**** Error 0x%.8x returned by CryptAcquireContext", err);
 			// Error
 			DebugMsg("Error 0x%.8x", GetLastError());
-			return 0;
+			return nullptr;
 		}
 		else
 		{
@@ -988,7 +988,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 	else
 		DebugMsg("Success");
@@ -1006,25 +1006,25 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	DWORD cbEncoded = 0;
 	// Find out how many bytes are needed to encode the certificate
 	DebugMsg(("CertStrToName... "));
-	if (CertStrToName(X509_ASN_ENCODING, X500.c_str(), CERT_X500_NAME_STR, NULL, NULL, &cbEncoded, NULL))
+	if (CertStrToName(X509_ASN_ENCODING, X500.c_str(), CERT_X500_NAME_STR, nullptr, nullptr, &cbEncoded, nullptr))
 		DebugMsg("Success");
 	else
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 	// Allocate the required space
 	CertName.resize(cbEncoded);
 	// Encode the certificate
 	DebugMsg(("CertStrToName... "));
-	if (CertStrToName(X509_ASN_ENCODING, X500.c_str(), CERT_X500_NAME_STR, NULL, &CertName[0], &cbEncoded, NULL))
+	if (CertStrToName(X509_ASN_ENCODING, X500.c_str(), CERT_X500_NAME_STR, nullptr, &CertName[0], &cbEncoded, nullptr))
 		DebugMsg("Success");
 	else
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 
 	// Prepare certificate Subject for self-signed certificate
@@ -1035,11 +1035,11 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	// Prepare key provider structure for certificate
 	CRYPT_KEY_PROV_INFO KeyProvInfo{ 0 };
 	KeyProvInfo.pwszContainerName = cryptprovider.KeyContainerName;
-	KeyProvInfo.pwszProvName = NULL;
+	KeyProvInfo.pwszProvName = nullptr;
 	KeyProvInfo.dwProvType = PROV_RSA_FULL;
 	KeyProvInfo.dwFlags = CRYPT_MACHINE_KEYSET;
 	KeyProvInfo.cProvParam = 0;
-	KeyProvInfo.rgProvParam = NULL;
+	KeyProvInfo.rgProvParam = nullptr;
 	KeyProvInfo.dwKeySpec = AT_SIGNATURE;
 
 	// Prepare algorithm structure for certificate
@@ -1053,14 +1053,14 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 
 	// Create certificate
 	DebugMsg(("CertCreateSelfSignCertificate... "));
-	CertContextHandle pCertContext(CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, 0, &EndTime, 0));
+	CertContextHandle pCertContext(CertCreateSelfSignCertificate(NULL, &SubjectIssuerBlob, 0, &KeyProvInfo, &SignatureAlgorithm, nullptr, &EndTime, nullptr));
 	if (pCertContext)
 		DebugMsg("Success");
 	else
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 
 	// Specify the allowed usage of the certificate (client or server authentication)
@@ -1071,7 +1071,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 
 	// Common variable used in several calls below
@@ -1090,7 +1090,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 
 	// Give the certificate a description
@@ -1108,7 +1108,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 
 	// Open Personal certificate store for whole machine or individual user
@@ -1125,7 +1125,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 			DebugMsg("**** CertOpenStore failed with 'access denied' are  you running as administrator?");
 		else
 			DebugMsg("**** Error 0x%.8x returned by CertOpenStore", err);
-		return 0;
+		return nullptr;
 	}
 	// Add the cert to the store
 	DebugMsg(("CertAddCertificateContextToStore... "));
@@ -1135,7 +1135,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 
 	// Just for testing, verify that we can access cert's private key
@@ -1147,7 +1147,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	{
 		// Error
 		DebugMsg("Error 0x%.8x", GetLastError());
-		return 0;
+		return nullptr;
 	}
 	return pCertContext.detach();
 }

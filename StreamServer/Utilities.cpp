@@ -17,7 +17,7 @@ std::wstring string_format(const WCHAR* pszFormat, ...) {
 	if (n < 10) n = 10;
 	std::unique_ptr<WCHAR[]> formatted;
 	va_list ap;
-	while (1) {
+	while (true) {
 		formatted.reset(new WCHAR[n]); /* Wrap the plain char array into the unique_ptr */
 		wcscpy_s(&formatted[0], n, pszFormat);
 		va_start(ap, pszFormat);
@@ -34,7 +34,7 @@ std::wstring string_format(const WCHAR* pszFormat, ...) {
 std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName)
 {
 	DWORD NameLength = 0;
-	if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, NULL, &NameLength))
+	if (ERROR_SUCCESS == ::GetComputerNameEx(WhichName, nullptr, &NameLength))
 	{
 		std::wstring ComputerName;
 		ComputerName.resize(NameLength);
@@ -50,7 +50,7 @@ std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName)
 std::wstring GetUserName()
 {
 	DWORD NameLength = 0;
-	if (ERROR_SUCCESS == ::GetUserName(NULL, &NameLength))
+	if (ERROR_SUCCESS == ::GetUserName(nullptr, &NameLength))
 	{
 		std::wstring UserName;
 		UserName.resize(NameLength);
@@ -70,11 +70,11 @@ std::wstring WinErrorMsg(int nErrorCode)
 	try
 	{
 		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
-			NULL, nErrorCode,
+			nullptr, nErrorCode,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 			&theMsg[0],
 			100,
-			NULL);
+			nullptr);
 		if (theMsg.empty())
 			theMsg = string_format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
 	}
@@ -159,7 +159,7 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 	CHAR rgbDigits[] = "0123456789abcdef";
 	CHAR rgbLine[100];
 	char cbLine;
-	const byte * buffer = static_cast<const byte *>(buf);
+	const auto * buffer = static_cast<const byte *>(buf);
 
 	if (!verbose && (length > 16))
 		length = 16;
@@ -229,7 +229,7 @@ bool IsUserAdmin()
 		&AdministratorsGroup);
 	if (b)
 	{
-		if (!CheckTokenMembership(NULL, AdministratorsGroup, &b))
+		if (!CheckTokenMembership(nullptr, AdministratorsGroup, &b))
 		{
 			b = FALSE;
 		}

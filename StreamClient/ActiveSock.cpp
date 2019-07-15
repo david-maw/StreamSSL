@@ -82,7 +82,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 		&dwRemoteAddr,
 		(SOCKADDR*)&RemoteAddr,
 		&Timeout,
-		NULL);
+		nullptr);
 
 	CTimeSpan HowLong = CTime::GetCurrentTime() - Now;
 
@@ -93,14 +93,16 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 			HostName,
 			PortName);
 		closesocket(ActualSocket);
+		ActualSocket = INVALID_SOCKET;
 		return false;
 	}
 	iResult = setsockopt(ActualSocket, SOL_SOCKET,
-		0x7010 /*SO_UPDATE_CONNECT_CONTEXT*/, NULL, 0);
+		0x7010 /*SO_UPDATE_CONNECT_CONTEXT*/, nullptr, 0);
 	if (iResult == SOCKET_ERROR) {
 		LastError = WSAGetLastError();
 		DebugMsg("setsockopt for SO_UPDATE_CONNECT_CONTEXT failed with error: %d", LastError);
 		closesocket(ActualSocket);
+		ActualSocket = INVALID_SOCKET;
 		return false;
 	}
 	//// At this point we have a connection, so set up keepalives so we can detect if the host disconnects
@@ -112,6 +114,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//		wprintf(L"setsockopt for SO_KEEPALIVE failed with error: %d\n",
 	//			LastError);
 	//		closesocket(ActualSocket);
+	//		ActualSocket = INVALID_SOCKET;
 	//		return false;       
 	//	}
 
@@ -130,6 +133,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//	LastError = WSAGetLastError() ;
 	//	wprintf(L"WSAIoctl to set keepalive failed with error: %d\n", LastError);
 	//	closesocket(ActualSocket);
+	//	ActualSocket = INVALID_SOCKET;
 	//	return false;       
 	//}
 
@@ -165,7 +169,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 		os.hEvent = hEvents[1];
 		WSAResetEvent(os.hEvent);
 		RecvInitiated = true;
-		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
+		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
 		LastError = WSAGetLastError();
 	}
 
@@ -185,6 +189,10 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
 			if (dwWait == WAIT_OBJECT_0 + 1) // The read event 
 				IOCompleted = true;
+		}
+		else
+		{
+			LastError = ERROR_TIMEOUT;
 		}
 	}
 	else if (!rc) // if rc is zero, the read was completed immediately
@@ -237,6 +245,7 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	if (NewRecvTimeoutSeconds > 0)
 	{
 		RecvTimeoutSeconds = NewRecvTimeoutSeconds;
+		// RecvEndTime is untouched because a receive may be in process
 	}
 }
 
@@ -252,6 +261,7 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	if (NewSendTimeoutSeconds > 0)
 	{
 		SendTimeoutSeconds = NewSendTimeoutSeconds;
+		// SendEndTime is untouched, because a Send may be in process
 	}
 }
 
@@ -270,7 +280,7 @@ BOOL CActiveSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
-bool CActiveSock::Close(void)
+bool CActiveSock::Close()
 {
 	if (ShutDown() == FALSE)
 		return true;
@@ -302,7 +312,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = write_event;
 	WSAResetEvent(read_event);
-	int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
+	int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();
 
 	// Now wait for the I/O to complete if necessary, and see what happened
@@ -319,6 +329,10 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
 			if (dwWait == WAIT_OBJECT_0 + 1) // The write event
 				IOCompleted = true;
+		}
+		else
+		{
+			LastError = ERROR_TIMEOUT;
 		}
 	}
 	else if (!rc) // if rc is zero, the write was completed immediately, which is common

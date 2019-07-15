@@ -15,13 +15,13 @@ public:
 	CSSLServer(CPassiveSock *);
 	~CSSLServer(void);
 	ISocketStream * getSocketStream(void);
-	int Recv(void * const lpBuf, const int Len) override;
-	int Send(const void * const lpBuf, const int Len) override;
+	int Recv(void * const lpBuf, const size_t Len) override;
+	int Send(const void * const lpBuf, const size_t Len) override;
 	int GetLastError(void) override;
 	HRESULT Disconnect(void) override;
 	static PSecurityFunctionTable SSPI(void);
 	// Set up state for this connection
-	HRESULT Initialize(const void * const lpBuf = NULL, const int Len = 0);
+	HRESULT Initialize(const void * const lpBuf = NULL, const size_t Len = 0);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
@@ -31,7 +31,7 @@ private:
 	int m_LastError{};
 	static HRESULT InitializeClass(void);
 	HRESULT Startup(void);
-	int RecvEncrypted(void* const lpBuf, const int Len);
+	int RecvEncrypted(void* const lpBuf, const size_t Len);
 	bool SSPINegotiateLoop(void);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
