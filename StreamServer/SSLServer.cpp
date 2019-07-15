@@ -114,7 +114,7 @@ int CSSLServer::GetLastError(void)
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::Recv(void* const lpBuf, const size_t Len)
+int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 {
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
@@ -141,7 +141,7 @@ int CSSLServer::Recv(void* const lpBuf, const size_t Len)
 		}
 		else
 		{
-			int err = m_SocketStream->Recv(lpBuf, Len);
+			int err = m_SocketStream->RecvPartial(lpBuf, Len);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
@@ -206,7 +206,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+		err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -236,7 +236,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 		// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
 		// shutdown message with other data concatenated
-		const int headerLen = 5, shutdownLen = 26;
+			const int headerLen = 5, shutdownLen = 26;
 		if (((CHAR*)readPtr)[0] == 21 // Alert message type
 			&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
 			&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
@@ -256,7 +256,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		}
 		else // The normal case
 			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
-	}
+}
 
 	PSecBuffer pDataBuffer(NULL); // Points to databuffer if there is one
 
@@ -345,7 +345,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::Send(const void * const lpBuf, const size_t Len)
+int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -411,7 +411,7 @@ int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->Send(writeBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->SendPartial(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
 	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
@@ -475,7 +475,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 	{
 		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
-			err = m_SocketStream->Recv(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			err = m_SocketStream->RecvPartial(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
@@ -557,7 +557,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
 			{
 				// Send response to client if there is one
-				err = m_SocketStream->CPassiveSock::Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{
@@ -762,7 +762,7 @@ HRESULT CSSLServer::Disconnect(void)
 
 	if (pbMessage != NULL && cbMessage != 0)
 	{
-		cbData = m_SocketStream->Send(pbMessage, cbMessage);
+		cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = m_SocketStream->GetLastError();

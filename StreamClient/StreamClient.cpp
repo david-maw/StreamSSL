@@ -164,6 +164,7 @@ int wmain(int argc, WCHAR * argv[])
 			{
 				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				cout << "Shutting down SSL" << endl;
+				::Sleep(1000); // Give the next message a chance to arrive at the server separately
 				pSSLClient->Close(false);
 				// The TCP connection still exists and can be used to send messages, though
 				// this is rarely done, here's an example of doing it

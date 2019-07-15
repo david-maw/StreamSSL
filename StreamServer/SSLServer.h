@@ -15,8 +15,8 @@ public:
 	CSSLServer(CPassiveSock *);
 	~CSSLServer(void);
 	ISocketStream * getSocketStream(void);
-	int Recv(void * const lpBuf, const size_t Len) override;
-	int Send(const void * const lpBuf, const size_t Len) override;
+	int RecvPartial(void * const lpBuf, const size_t Len) override;
+	int SendPartial(const void * const lpBuf, const size_t Len) override;
 	int GetLastError(void) override;
 	HRESULT Disconnect(void) override;
 	static PSecurityFunctionTable SSPI(void);

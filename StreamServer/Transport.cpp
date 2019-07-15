@@ -60,12 +60,12 @@ CTransport::~CTransport()
 int CTransport::Recv(void * const lpBuf, const int MaxLen)
 {
 	if (!IsConnected) return -1;
-	int Len = SocketStream->Recv(lpBuf, MaxLen);
+	int Len = SocketStream->RecvPartial(lpBuf, MaxLen);
 	return Len;
 }
 
 int CTransport::Send(const void * const lpBuf, const int RequestedLen)
 {
 	if (!IsConnected) return -1;
-	return PassiveSock->Send(lpBuf, RequestedLen);
+	return PassiveSock->SendPartial(lpBuf, RequestedLen);
 }

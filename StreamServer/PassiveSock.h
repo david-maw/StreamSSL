@@ -13,8 +13,8 @@ public:
 	virtual ~CPassiveSock();
 	int GetLastError() override;
 	void SetTimeoutSeconds(int NewTimeoutSeconds);
-	int Recv(void * const lpBuf, const size_t Len) override;
-	int Send(const void * const lpBuf, const size_t Len) override;
+	int RecvPartial(void * const lpBuf, const size_t Len) override;
+	int SendPartial(const void * const lpBuf, const size_t Len) override;
 	int ReceiveBytes(void * const lpBuf, const size_t nBufLen);
 	int SendBytes(const void * const lpBuf, const size_t Len);
 	BOOL ShutDown(int nHow = SD_SEND);

@@ -158,10 +158,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\StreamServer\ISocketStream.h" />
     <ClInclude Include="ActiveSock.h" />
     <ClInclude Include="EventWrapper.h" />
     <ClInclude Include="..\StreamServer\Handle.h" />
-    <ClInclude Include="ISocketStream.h" />
     <ClInclude Include="..\StreamServer\SecurityHandle.h" />
     <ClInclude Include="SSLClient.h" />
     <ClInclude Include="stdafx.h" />

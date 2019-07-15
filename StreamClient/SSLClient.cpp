@@ -192,14 +192,14 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		int freeBytesAtStart = static_cast<int>((CHAR*)readPtr - &readBuffer[0]);
-		int freeBytesAtEnd = static_cast<int>(sizeof(readBuffer)) - readBufferBytes - freeBytesAtStart;
+		size_t freeBytesAtStart = static_cast<int>((CHAR*)readPtr - &readBuffer[0]);
+		size_t freeBytesAtEnd = static_cast<int>(sizeof(readBuffer)) - readBufferBytes - freeBytesAtStart;
 		if (freeBytesAtEnd == 0) // There is no space to add more at the end of the buffer
 		{
 			if (freeBytesAtStart > 0) // which ought to always be true at this point
 			{
 				// Move down the existing data to make room for more at the end of the buffer
-				memmove_s(readBuffer, sizeof(readBuffer), readPtr, static_cast<int>(sizeof(readBuffer)) - freeBytesAtStart);
+				memmove_s(readBuffer, sizeof(readBuffer), readPtr, sizeof(readBuffer) - freeBytesAtStart);
 				freeBytesAtEnd = freeBytesAtStart;
 				readPtr = readBuffer;
 			}
@@ -400,7 +400,7 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->SendMsg(writeBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->SendMsg(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
 	DebugMsg("SendPartial %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
