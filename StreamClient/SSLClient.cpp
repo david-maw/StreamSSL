@@ -471,12 +471,15 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 	{
 		cbData = m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
-		if (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer)
+		if ((cbData == SOCKET_ERROR) || (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer))
 		{
 			DebugMsg("**** Error %d sending data to server (1)", WSAGetLastError());
 			g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
 			m_hContext.Close();
-			return SEC_E_INTERNAL_ERROR;
+			if (cbData == SOCKET_ERROR)
+				return CRYPT_E_FILE_ERROR;
+			else
+				return SEC_E_INTERNAL_ERROR;
 		}
 
 		DebugMsg("%d bytes of handshake data sent", cbData);
