@@ -286,7 +286,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 	return SEC_E_OK;
 }
 
-SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo)
+SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo, bool fUserStore)
 {
 	if (pCertContext)
 	{ // The caller passed in a certificate context we no longer need, so free it
@@ -297,7 +297,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 	CERT_CHAIN_FIND_BY_ISSUER_PARA FindByIssuerPara = { 0 };
 	SECURITY_STATUS Status = SEC_E_CERT_UNKNOWN;
 	HCERTSTORE hCertStore;
-	SECURITY_STATUS hr = GetStore(hCertStore, false);
+	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
 	if (FAILED(hr))
 		return hr;
 
@@ -349,7 +349,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 
 // Simple certificate search by name only
 
-HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName)
+HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, bool fUserStore)
 {
 	if (pCertContext)
 	{ // The caller passed in a certificate context we no longer need, so free it
@@ -357,7 +357,7 @@ HRESULT CertFindByName(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectNa
 		pCertContext = nullptr;
 	}
 	HCERTSTORE hCertStore;
-	SECURITY_STATUS hr = GetStore(hCertStore, false);
+	SECURITY_STATUS hr = GetStore(hCertStore, fUserStore);
 	if (FAILED(hr))
 		return hr;
 
