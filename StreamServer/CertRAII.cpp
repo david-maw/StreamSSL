@@ -35,8 +35,8 @@ CryptProvider::CryptProvider()
 	if (ret_val == RPC_S_OK)
 	{
 		// convert UUID to LPWSTR
-		::UuidToString(&uuid, (RPC_WSTR*)&KeyContainerName);
-		if (!KeyContainerName)
+		ret_val = ::UuidToString(&uuid, (RPC_WSTR*)&KeyContainerName);
+		if (FAILED(ret_val) || !KeyContainerName)
 			DebugMsg("CryptProvider constructor could not initialize KeyContainerName");
 	}
 	else
