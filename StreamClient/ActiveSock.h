@@ -31,15 +31,15 @@ public:
 	DWORD GetLastError() override;
 	bool Close() override; // Returns true if the close worked
 protected:
-  SOCKET ActualSocket;
-  HANDLE m_hStopEvent;
+  SOCKET ActualSocket{ INVALID_SOCKET };
+  HANDLE m_hStopEvent{ nullptr };
 
 private:
 	static WSADATA WsaData;
-	WSAEVENT write_event;
-	WSAEVENT read_event;
+	WSAEVENT write_event{ nullptr };
+	WSAEVENT read_event{ nullptr };
 	WSAOVERLAPPED os{};
 	bool RecvInitiated = false;
 	DWORD LastError = 0;
-	int SendTimeoutSeconds, RecvTimeoutSeconds;
+	int SendTimeoutSeconds{ 1 }, RecvTimeoutSeconds{ 1 }; // Default timeout is 1 seconds, encourages callers to set it
 };
