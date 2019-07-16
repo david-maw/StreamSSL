@@ -43,8 +43,6 @@ void CPassiveSock::ArmRecvTimer()
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 {
-	WSABUF buffer;
-	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD
 		bytes_read = 0,
 		dwWait = 0,
@@ -52,8 +50,7 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 	int rc;
 
 	// Setup up the events to wait on
-	hEvents[1] = read_event;
-	hEvents[0] = m_hStopEvent;
+	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
 	if (RecvEndTime == 0)
 		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
@@ -68,16 +65,19 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 	{
 		// Normal case, the last read completed normally, now we're reading again
 
-		// Setup the buffers array
-		buffer.buf = static_cast<char*>(lpBuf);
-		buffer.len = static_cast<decltype(buffer.len)>(Len);
-
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
 		os.hEvent = hEvents[1];
-		WSAResetEvent(os.hEvent);
+    if (!WSAResetEvent(os.hEvent))
+    {
+      LastError = WSAGetLastError();
+      return SOCKET_ERROR;
+    }
+
 		RecvInitiated = true;
-		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
+    // Setup the buffers array
+    WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
+    rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
 		LastError = WSAGetLastError();
 	}
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
@@ -169,32 +169,33 @@ void CPassiveSock::ArmSendTimer()
 //sends a message, or part of one
 int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 {
-	WSABUF buffers[2];
-	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD
 		dwWait,
 		bytes_sent = 0,
 		msg_flags = 0;
 
 	// Setup up the events to wait on
-	hEvents[1] = write_event;
-	hEvents[0] = m_hStopEvent;
-	// Setup the buffers array
-	buffers[0].buf = (char *)lpBuf;
-	buffers[0].len = static_cast<decltype(buffers[0].len)>(Len);
+	WSAEVENT hEvents[2] = { m_hStopEvent, write_event };
+
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
 
-	LastError = 0;
 	if (SendEndTime == 0)
 		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = hEvents[1];
-	WSAResetEvent(hEvents[1]);
-	rc = WSASend(ActualSocket, buffers, 1, &bytes_sent, 0, &os, NULL);
+  if (!WSAResetEvent(os.hEvent))
+  {
+    LastError = WSAGetLastError();
+    return SOCKET_ERROR;
+  }
+
+  // Setup the buffers array
+  WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
+  rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
 	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
