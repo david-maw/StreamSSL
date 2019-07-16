@@ -80,8 +80,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 			LastError,
 			HostName,
 			PortName);
-		closesocket(ActualSocket);
-		ActualSocket = INVALID_SOCKET;
+		CloseAndInvalidateSocket();
 		return false;
 	}
 	iResult = setsockopt(ActualSocket, SOL_SOCKET,
@@ -89,8 +88,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	if (iResult == SOCKET_ERROR) {
 		LastError = WSAGetLastError();
 		DebugMsg("setsockopt for SO_UPDATE_CONNECT_CONTEXT failed with error: %d", LastError);
-		closesocket(ActualSocket);
-		ActualSocket = INVALID_SOCKET;
+		CloseAndInvalidateSocket();
 		return false;
 	}
 	//// At this point we have a connection, so set up keepalives so we can detect if the host disconnects
@@ -101,8 +99,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//		LastError = WSAGetLastError();
 	//		wprintf(L"setsockopt for SO_KEEPALIVE failed with error: %d\n",
 	//			LastError);
-	//		closesocket(ActualSocket);
-	//		ActualSocket = INVALID_SOCKET;
+	//		CloseAndInvalidateSocket();
 	//		return false;       
 	//	}
 
@@ -120,8 +117,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//{
 	//	LastError = WSAGetLastError() ;
 	//	wprintf(L"WSAIoctl to set keepalive failed with error: %d\n", LastError);
-	//	closesocket(ActualSocket);
-	//	ActualSocket = INVALID_SOCKET;
+	//	CloseAndInvalidateSocket();
 	//	return false;       
 	//}
 
@@ -316,8 +312,7 @@ bool CActiveSock::Close()
 		WSACloseEvent(read_event);
 		WSACloseEvent(write_event);
 		WSACleanup();
-		closesocket(ActualSocket);
-		ActualSocket = INVALID_SOCKET;
+		CloseAndInvalidateSocket();
 		return true;
 	}
 	else
@@ -418,4 +413,10 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 			total_bytes_sent += bytes_sent;
 	}; // loop
 	return (total_bytes_sent);
+}
+
+void CActiveSock::CloseAndInvalidateSocket()
+{
+	closesocket(ActualSocket);
+	ActualSocket = INVALID_SOCKET;
 }
