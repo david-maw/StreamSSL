@@ -36,7 +36,7 @@ public:
 	Handle(Handle const &) = delete;
 	Handle & operator=(Handle const &) = delete;
 
-	Handle(Type value) noexcept :
+	explicit Handle(Type value) noexcept :
 		m_value(value)
 	{}
 
