@@ -54,7 +54,6 @@ UINT __cdecl CListener::ListenerWorker(LPVOID v)
 // Initialize the listener, set up the socket to listen on, or return an error
 CListener::ErrorType CListener::Initialize(int TCPSocket)
 {
-	WCHAR MsgText[100];
 	std::wstring TCPSocketText = string_format(L"%i", TCPSocket);
 
 	WSADATA wsadata;
@@ -69,6 +68,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	Hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
 	if (GetAddrInfo(NULL, TCPSocketText.c_str(), &Hints, &AddrInfo) != 0)
 	{
+		WCHAR MsgText[100];
 		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i", GetLastError());
 		LogWarning(MsgText);
 		return UnknownError;
@@ -171,7 +171,6 @@ void CListener::Listen()
 {
 	HANDLE hEvents[FD_SETSIZE + 1];
 	SOCKET iReadSocket = NULL;
-	DWORD dwWait;
 	//WCHAR MsgText[100];
 
 	m_TransportCount = 0;
@@ -199,7 +198,7 @@ void CListener::Listen()
 		// StringCchPrintf(MsgText, _countof(MsgText), L"CListener::Listen entering WaitForMultipleObjects for %d objects"), m_iNumListenSockets+1;
 		// LogWarning(MsgText);
 
-		dwWait = WaitForMultipleObjects(m_iNumListenSockets + 1, hEvents, false, INFINITE);
+    const DWORD dwWait = WaitForMultipleObjects(m_iNumListenSockets + 1, hEvents, false, INFINITE);
 
 		if (dwWait == WAIT_OBJECT_0)
 		{
