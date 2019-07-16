@@ -71,7 +71,6 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 		DebugMsg("socket failed with error: %d\n", WSAGetLastError());
 		return false;
 	}
-	CTime Now = CTime::GetCurrentTime();
 
 	// Note that WSAConnectByName requires Vista or Server 2008
 	bSuccess = WSAConnectByName(ActualSocket, const_cast<LPWSTR>(HostName),
@@ -81,8 +80,6 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 		(SOCKADDR*)&RemoteAddr,
 		&Timeout,
 		nullptr);
-
-	CTimeSpan HowLong = CTime::GetCurrentTime() - Now;
 
 	if (!bSuccess) {
 		LastError = WSAGetLastError();
@@ -144,15 +141,17 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	DWORD
 		bytes_read = 0,
 		msg_flags = 0;
-	int rc;
+	int rc = SOCKET_ERROR;
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
+	// If the timer has been invalidated, restart it
+	const auto RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
+
 	if (RecvInitiated)
 	{
 		// Special case, the previous read timed out, so we are trying again, maybe it completed in the meantime
-		rc = SOCKET_ERROR;
 		LastError = WSA_IO_PENDING;
 	}
 	else
@@ -175,29 +174,39 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		LastError = WSAGetLastError();
 	}
 
-	// If the timer has been invalidated, restart it
-	const auto RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
+	const CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
+	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
+	if (SecondsLeft <= 0)
+	{
+		LastError = ERROR_TIMEOUT;
+		return SOCKET_ERROR;
+	}
+
+	bool IOCompleted = !rc; // if rc is zero, the read was completed immediately
 
 	// Now wait for the I/O to complete if necessary, and see what happened
-	bool IOCompleted = false;
 
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
 	{
-		CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
-		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
-		if (0 < SecondsLeft)
+		const DWORD dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
+		switch (dwWait)
 		{
-			const DWORD dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
-			if (dwWait == WAIT_OBJECT_0 + 1) // The read event 
-				IOCompleted = true;
-		}
-		else
-		{
+		case WAIT_OBJECT_0 + 1: // The read event 
+			IOCompleted = true;
+			break;
+		case WAIT_ABANDONED_0:
+		case WAIT_ABANDONED_0 + 1:
+			break;
+		case WAIT_TIMEOUT:
 			LastError = ERROR_TIMEOUT;
+			break;
+		case WAIT_FAILED:
+			LastError = ::GetLastError();
+			break;
+		default:
+			break;
 		}
 	}
-	else if (!rc) // if rc is zero, the read was completed immediately
-		IOCompleted = true;
 
 	if (IOCompleted)
 	{
@@ -209,7 +218,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		}
 		else
 		{	// A bad thing happened
-			int e = WSAGetLastError();
+			const int e = WSAGetLastError();
 			if (e == 0) // The socket was closed
 				return 0;
 			else if (LastError == 0)
@@ -311,9 +320,6 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, write_event };
 
-	// Reset the timer if it has been invalidated 
-	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
-
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = hEvents[1];
@@ -326,29 +332,45 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	// Setup the buffer array
 	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
 
-	int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
+	// Reset the timer if it has been invalidated 
+	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
+
+	const int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();
 
+	const CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
+	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
+	if (SecondsLeft <= 0)
+	{
+		LastError = ERROR_TIMEOUT;
+		return SOCKET_ERROR;
+	}
+
+	bool IOCompleted = !rc; // if rc is zero, the write was completed immediately, which is common
+
 	// Now wait for the I/O to complete if necessary, and see what happened
-	bool IOCompleted = false;
 
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
-		CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
-		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
-		if (0 < SecondsLeft)
+		const DWORD dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
+		switch (dwWait)
 		{
-			const DWORD dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
-			if (dwWait == WAIT_OBJECT_0 + 1) // The write event
-				IOCompleted = true;
-		}
-		else
-		{
+		case WAIT_OBJECT_0 + 1: // The write event
+			IOCompleted = true;
+			break;
+		case WAIT_ABANDONED_0:
+		case WAIT_ABANDONED_0 + 1:
+			break;
+		case WAIT_TIMEOUT:
 			LastError = ERROR_TIMEOUT;
+			break;
+		case WAIT_FAILED:
+			LastError = ::GetLastError();
+			break;
+		default:
+			break;
 		}
 	}
-	else if (!rc) // if rc is zero, the write was completed immediately, which is common
-		IOCompleted = true;
 
 	if (IOCompleted)
 	{
