@@ -141,7 +141,6 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
-	WSABUF buffer;
 	WSAEVENT hEvents[2] = { read_event, m_hStopEvent };
 	DWORD
 		bytes_read = 0,
@@ -159,8 +158,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		// Normal case, the last read completed normally, now we're reading again
 
 		// Setup the buffers array
-		buffer.buf = static_cast<char*>(lpBuf);
-		buffer.len = static_cast<decltype(buffer.len)>(Len);
+		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
 
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
@@ -306,12 +304,10 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 {
 	DebugMsg("CActiveSock::SendPartial, Len = %d", Len);
 	
-	WSABUF buffer;
 	DWORD bytes_sent = 0;
 
 	// Setup the buffer array
-	buffer.buf = (char *)lpBuf;
-	buffer.len = static_cast<decltype(buffer.len)>(Len);
+	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
 
 	// Reset the timer if it has been invalidated 
 	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
