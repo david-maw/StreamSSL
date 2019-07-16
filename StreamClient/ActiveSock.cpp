@@ -43,10 +43,8 @@ CActiveSock::CActiveSock(HANDLE StopEvent)
 
 CActiveSock::~CActiveSock()
 {
-	WSACloseEvent(read_event);
-	WSACloseEvent(write_event);
-	WSACleanup();
-	closesocket(ActualSocket);
+	if (ActualSocket != INVALID_SOCKET)
+		Close();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -288,8 +286,20 @@ BOOL CActiveSock::ShutDown(int nHow)
 
 bool CActiveSock::Close()
 {
-	if (ShutDown() == FALSE)
+	if (ActualSocket == INVALID_SOCKET)
+	{
+		LastError = ERROR_HANDLES_CLOSED;
+		return false;
+	}
+	else if (ShutDown() == FALSE)
+	{
+		WSACloseEvent(read_event);
+		WSACloseEvent(write_event);
+		WSACleanup();
+		closesocket(ActualSocket);
+		ActualSocket = INVALID_SOCKET;
 		return true;
+	}
 	else
 	{
 		LastError = ::WSAGetLastError();
