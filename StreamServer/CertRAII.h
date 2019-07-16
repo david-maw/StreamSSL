@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "wincrypt.h"
 #pragma comment(lib, "crypt32.lib")
 
