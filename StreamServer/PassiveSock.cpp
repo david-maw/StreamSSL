@@ -194,8 +194,8 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
-	os.hEvent = write_event;
-	WSAResetEvent(read_event);
+	os.hEvent = hEvents[1];
+	WSAResetEvent(hEvents[1]);
 	rc = WSASend(ActualSocket, buffers, 1, &bytes_sent, 0, &os, NULL);
 	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
@@ -215,7 +215,7 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 			LastError = ERROR_TIMEOUT;
 		}
 	}
-	else if (!rc) // if rc is zero, the read was completed immediately
+	else if (!rc) // if rc is zero, the send was completed immediately
 	{
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_sent, true, &msg_flags))
 			return bytes_sent;
