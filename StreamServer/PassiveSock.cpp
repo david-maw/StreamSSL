@@ -43,7 +43,6 @@ void CPassiveSock::ArmRecvTimer()
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 {
-	WSABUF buffer;
 	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD
 		bytes_read = 0,
@@ -69,8 +68,7 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 		// Normal case, the last read completed normally, now we're reading again
 
 		// Setup the buffers array
-		buffer.buf = static_cast<char*>(lpBuf);
-		buffer.len = static_cast<decltype(buffer.len)>(Len);
+		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
 
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
@@ -169,7 +167,6 @@ void CPassiveSock::ArmSendTimer()
 //sends a message, or part of one
 int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 {
-	WSABUF buffers[2];
 	WSAEVENT hEvents[2] = { NULL,NULL };
 	DWORD
 		dwWait,
@@ -180,8 +177,7 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 	hEvents[1] = write_event;
 	hEvents[0] = m_hStopEvent;
 	// Setup the buffers array
-	buffers[0].buf = (char *)lpBuf;
-	buffers[0].len = static_cast<decltype(buffers[0].len)>(Len);
+	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
@@ -194,7 +190,7 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = hEvents[1];
 	WSAResetEvent(hEvents[1]);
-	rc = WSASend(ActualSocket, buffers, 1, &bytes_sent, 0, &os, NULL);
+	rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
 	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
