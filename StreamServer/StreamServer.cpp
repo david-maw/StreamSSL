@@ -149,6 +149,8 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 					cout << "Receive timed out" << endl;
 				else if (StreamSock->GetLastError() == WSA_IO_PENDING)
 					cout << "Receive not completed" << endl;
+				else if (StreamSock->GetLastError() == ERROR_OPERATION_ABORTED)
+					cout << "Receive failed" << endl;
 				else if (StreamSock->GetLastError() == WSAECONNRESET)
 					cout << "The connection was reset" << endl;
 				else

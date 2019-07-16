@@ -93,10 +93,8 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 			if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
 				return bytes_read; // Normal case, we read some bytes, it's all good
 			else
-			{// A bad thing happened
-				int e = WSAGetLastError();
-				if (e == 0) // The socket was closed
-					return 0;
+			{// A bad thing happened, either WSAGetOverlappedResult failed or bytes_read returned zero
+				LastError = ERROR_OPERATION_ABORTED;  // One case that gets you here is if the other end disconnects
 			}
 		}
 		else
