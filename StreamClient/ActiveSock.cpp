@@ -18,8 +18,8 @@ static char THIS_FILE[] = __FILE__;
 WSADATA CActiveSock::WsaData;
 
 CActiveSock::CActiveSock(HANDLE StopEvent)
+  : m_hStopEvent(StopEvent)
 {
-	m_hStopEvent = StopEvent;
 	//
 	// Initialize the WinSock subsystem.
 	//
@@ -30,13 +30,6 @@ CActiveSock::CActiveSock(HANDLE StopEvent)
 		throw "WSAStartup error";
 	}
 	ZeroMemory(&os, sizeof(os));
-	ActualSocket = INVALID_SOCKET;
-	RecvTimeoutSeconds = 1; // Default timeout is 1 seconds, encourages callers to set it
-	SendTimeoutSeconds = 1; // Default timeout is 1 seconds, encourages callers to set it
-	read_event = WSACreateEvent();  // if create fails we should return an error
-	WSAResetEvent(read_event);
-	write_event = WSACreateEvent();  // if create fails we should return an error
-	WSAResetEvent(write_event);
 	int rc = true;
 	setsockopt(ActualSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&rc, sizeof(int));
 }
@@ -132,7 +125,31 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//	return false;       
 	//}
 
-	return true;
+  if (!read_event)
+  {
+    read_event = WSACreateEvent();
+  }
+
+  if (read_event != WSA_INVALID_EVENT)
+  {
+    if (!write_event)
+    {
+      write_event = WSACreateEvent();
+    }
+    if (write_event != WSA_INVALID_EVENT)
+    {
+      if (WSAResetEvent(read_event))
+      {
+        if (WSAResetEvent(write_event))
+        {
+          return true;
+        }
+      }
+    }
+  }
+
+  LastError = WSAGetLastError();
+  return false;
 }
 
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
