@@ -13,7 +13,7 @@ std::wstring& rtrim(std::wstring& str, const std::wstring& chars = L"\t\n\v\f\r 
 }
 
 std::wstring string_format(const WCHAR* pszFormat, ...) {
-	int final_n, n = lstrlen(pszFormat) * 2; /* Reserve two times as much as the length of the fmt_str */
+	int n = lstrlen(pszFormat) * 2; /* Reserve two times as much as the length of the fmt_str */
 	if (n < 10) n = 10;
 	std::unique_ptr<WCHAR[]> formatted;
 	va_list ap;
@@ -21,7 +21,7 @@ std::wstring string_format(const WCHAR* pszFormat, ...) {
 		formatted.reset(new WCHAR[n]); /* Wrap the plain char array into the unique_ptr */
 		wcscpy_s(&formatted[0], n, pszFormat);
 		va_start(ap, pszFormat);
-		final_n = _vsnwprintf_s(&formatted[0],n, n, pszFormat, ap);
+		const int final_n = _vsnwprintf_s(&formatted[0],n, n, pszFormat, ap);
 		va_end(ap);
 		if (final_n < 0 || final_n >= n)
 			n += abs(final_n - n + 1);
@@ -158,7 +158,6 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 	DWORD i, count, index;
 	CHAR rgbDigits[] = "0123456789abcdef";
 	CHAR rgbLine[100];
-	char cbLine;
 	const auto * buffer = static_cast<const byte *>(buf);
 
 	if (!verbose && (length > 16))
@@ -169,7 +168,7 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 		count = (length > 16) ? 16 : length;
 
 		sprintf_s(rgbLine, sizeof(rgbLine), "%4.4x  ", index);
-		cbLine = 6;
+		char cbLine = 6;
 
 		for (i = 0; i < count; i++)
 		{

@@ -694,7 +694,6 @@ HRESULT CSSLServer::Disconnect()
 	DWORD           dwType;
 	PBYTE           pbMessage;
 	DWORD           cbMessage;
-	DWORD           cbData;
 
 	SecBufferDesc   OutBuffer;
 	SecBuffer       OutBuffers[1];
@@ -772,7 +771,7 @@ HRESULT CSSLServer::Disconnect()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = m_SocketStream->GetLastError();
