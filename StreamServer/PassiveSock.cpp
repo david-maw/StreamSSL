@@ -155,7 +155,7 @@ BOOL CPassiveSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
-HRESULT CPassiveSock::Disconnect(void)
+HRESULT CPassiveSock::Disconnect()
 {
 	return ShutDown() ? HRESULT_FROM_WIN32(GetLastError()) : S_OK;
 }

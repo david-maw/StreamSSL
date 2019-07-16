@@ -20,7 +20,7 @@ public:
 	int ReceiveBytes(void * const lpBuf, const size_t nBufLen);
 	int SendBytes(const void * const lpBuf, const size_t Len);
 	BOOL ShutDown(int nHow = SD_SEND);
-	HRESULT Disconnect(void) override;
+	HRESULT Disconnect() override;
 
 private:
 	CTime RecvEndTime;

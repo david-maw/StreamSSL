@@ -29,16 +29,16 @@ CSSLServer::CSSLServer(CPassiveSock * SocketStream)
 {
 }
 
-CSSLServer::~CSSLServer(void)
+CSSLServer::~CSSLServer()
 {
 }
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
-PSecurityFunctionTable CSSLServer::SSPI(void) { return g_pSSPI; }
+PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
 
 // Return an ISocketStream interface to the SSL connection to anyone that needs one
-ISocketStream * CSSLServer::getSocketStream(void)
+ISocketStream * CSSLServer::getSocketStream()
 {
 	return m_SocketStream; // for now, return 'this' later, once we can do SSL
 }
@@ -90,7 +90,7 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 }
 
 // Establish SSPI pointer
-HRESULT CSSLServer::InitializeClass(void)
+HRESULT CSSLServer::InitializeClass()
 {
 	g_pSSPI = InitSecurityInterface();
 
@@ -106,7 +106,7 @@ HRESULT CSSLServer::InitializeClass(void)
 }
 
 // Return the last error value for this CSSLServer
-int CSSLServer::GetLastError(void)
+int CSSLServer::GetLastError()
 {
 	if (m_LastError)
 		return m_LastError;
@@ -436,7 +436,7 @@ int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 
 // Negotiate a connection with the client, sending and receiving messages until the
 // negotiation succeeds or fails
-bool CSSLServer::SSPINegotiateLoop(void)
+bool CSSLServer::SSPINegotiateLoop()
 {
 	TimeStamp            tsExpiry;
 	SECURITY_STATUS      scRet;
@@ -682,7 +682,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 // that's rare and this implementation does not support it (it's 
 // challenging to separate the SSL shutdown message from unencrypted
 // messages following it). So, this just sends a shutdown message.
-HRESULT CSSLServer::Disconnect(void)
+HRESULT CSSLServer::Disconnect()
 {
 
 	if (!m_encrypting)
