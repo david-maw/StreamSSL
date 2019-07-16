@@ -206,6 +206,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		{
 		case WAIT_OBJECT_0 + 1: // The read event 
 			IOCompleted = true;
+			LastError = 0;
 			break;
 		case WAIT_ABANDONED_0:
 		case WAIT_ABANDONED_0 + 1:
@@ -226,7 +227,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		RecvInitiated = false;
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
 		{
-			LastError = 0;
 			return bytes_read; // Normal case, we read some bytes, it's all good
 		}
 		else
@@ -369,6 +369,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		{
 		case WAIT_OBJECT_0 + 1: // The write event
 			IOCompleted = true;
+			LastError = 0;
 			break;
 		case WAIT_ABANDONED_0:
 		case WAIT_ABANDONED_0 + 1:
@@ -391,6 +392,14 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		{
 			return bytes_sent;
 		}
+    else
+    {	// A bad thing happened
+      const int e = WSAGetLastError();
+      if (e == 0) // The socket was closed
+        return 0;
+      else if (LastError == 0)
+        LastError = e;
+    }
 	}
 	return SOCKET_ERROR;
 }
