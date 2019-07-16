@@ -24,7 +24,7 @@ private:
 	static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
-	int m_LastError;
+	int m_LastError{ 0 };
 	bool m_encrypting = false;
 	static HRESULT InitializeClass();
 	HRESULT Startup();
@@ -43,8 +43,8 @@ private:
 	static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
 	SECURITY_STATUS GetNewClientCredentials();
 	int RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len);
-	bool ServerCertNameMatches;
-	bool ServerCertTrusted;
+	bool ServerCertNameMatches{ false };
+	bool ServerCertTrusted{ false };
 
 public:
 	// ISocketStream
