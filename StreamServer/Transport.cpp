@@ -33,7 +33,7 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 	else
 	{
 		int err = SSLServer->GetLastError();
-		SSLServer = NULL;
+		SSLServer = nullptr;
 		if (hr == SEC_E_INVALID_TOKEN)
 			m_Listener->LogWarning(L"SSL token invalid, perhaps the client rejected our certificate");
 		else if (hr == CRYPT_E_NOT_FOUND)

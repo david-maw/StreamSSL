@@ -5,7 +5,7 @@
 #include "ServerCert.h"
 
 // Global value to optimize access since it is set only once
-PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
+PSecurityFunctionTable CSSLServer::g_pSSPI = nullptr;
 
 // Declare the Close functions for the handle classes using the global SSPI function table pointer
 
@@ -94,7 +94,7 @@ HRESULT CSSLServer::InitializeClass()
 {
 	g_pSSPI = InitSecurityInterface();
 
-	if (g_pSSPI == NULL)
+	if (g_pSSPI == nullptr)
 	{
 		int err = ::GetLastError();
 		if (err == 0)
@@ -268,7 +268,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
 	}
 
-	PSecBuffer pDataBuffer(NULL); // Points to databuffer if there is one
+	PSecBuffer pDataBuffer(nullptr); // Points to databuffer if there is one
 
 	if (scRet == SEC_E_OK)
 	{
@@ -324,7 +324,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	// certainly be in the fourth buffer (index 3), but search all but the first, just in case.
 	// This does not work with a shutdown message - if it is concatenated with a following plaintext
 	// the decryption just fails with a "cannot decrypt" error, which is why it has special handling above.
-	PSecBuffer pExtraDataBuffer(NULL);
+	PSecBuffer pExtraDataBuffer(nullptr);
 
 	for (i = 1; i < 4; i++)
 	{
@@ -530,7 +530,7 @@ bool CSSLServer::SSPINegotiateLoop()
 		InBuffers[0].cbBuffer = readBufferBytes;
 		InBuffers[0].BufferType = SECBUFFER_TOKEN;
 
-		InBuffers[1].pvBuffer = NULL;
+		InBuffers[1].pvBuffer = nullptr;
 		InBuffers[1].cbBuffer = 0;
 		InBuffers[1].BufferType = SECBUFFER_EMPTY;
 
@@ -544,7 +544,7 @@ bool CSSLServer::SSPINegotiateLoop()
 		// garbage later.
 		//
 
-		OutBuffers[0].pvBuffer = NULL;
+		OutBuffers[0].pvBuffer = nullptr;
 		OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 		OutBuffers[0].cbBuffer = 0;
 
@@ -554,7 +554,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			&InBuffer,										// Input buffer list
 			dwSSPIFlags,									// What we require of the connection
 			0,													// Data representation, not used 
-			ContextHandleValid ? NULL : m_hContext.set(),	// If we don't yet have a context handle, it is returned here
+			ContextHandleValid ? nullptr : m_hContext.set(),	// If we don't yet have a context handle, it is returned here
 			&OutBuffer,										// [out] The output buffer, for messages to be sent to the other end
 			&dwSSPIOutFlags,								// [out] The flags associated with the negotiated connection
 			&tsExpiry);										// [out] Receives context expiration time
@@ -564,7 +564,7 @@ bool CSSLServer::SSPINegotiateLoop()
 		if (scRet == SEC_E_OK || scRet == SEC_I_CONTINUE_NEEDED
 			|| (FAILED(scRet) && (0 != (dwSSPIOutFlags & ASC_RET_EXTENDED_ERROR))))
 		{
-			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
+			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
 				err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
@@ -583,7 +583,7 @@ bool CSSLServer::SSPINegotiateLoop()
 				}
 
 				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-				OutBuffers[0].pvBuffer = NULL;
+				OutBuffers[0].pvBuffer = nullptr;
 			}
 		}
 
@@ -596,7 +596,7 @@ bool CSSLServer::SSPINegotiateLoop()
 		 // Ensure a client certificate is checked if one was requested, if none was provided we'd already have failed
 			if (ClientCertAcceptable)
 			{
-				PCERT_CONTEXT pCertContext = NULL;
+				PCERT_CONTEXT pCertContext = nullptr;
 				HRESULT hr = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
 
 				if (FAILED(hr))
@@ -737,7 +737,7 @@ HRESULT CSSLServer::Disconnect()
 		ASC_REQ_ALLOCATE_MEMORY |
 		ASC_REQ_STREAM;
 
-	OutBuffers[0].pvBuffer = NULL;
+	OutBuffers[0].pvBuffer = nullptr;
 	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 	OutBuffers[0].cbBuffer = 0;
 
@@ -770,7 +770,7 @@ HRESULT CSSLServer::Disconnect()
 	// Send the close notify message to the client.
 	//
 
-	if (pbMessage != NULL && cbMessage != 0)
+	if (pbMessage != nullptr && cbMessage != 0)
 	{
 		cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)

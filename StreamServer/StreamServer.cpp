@@ -37,7 +37,7 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 	else
 		cout << "An untrusted";
 	wcout << " client certificate was returned for \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
-	return NULL != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
+	return nullptr != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
 }
 
 // Run arbitrary code and return process information
@@ -47,7 +47,7 @@ bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 	si.cb = sizeof si;
 	ZeroMemory(&pi, sizeof(pi));
 #pragma warning(suppress:6335)
-	if (CreateProcess(NULL, &app[0], 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
+	if (CreateProcess(nullptr, &app[0], 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
 		return true;
 	else
 	{
@@ -56,7 +56,7 @@ bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 	}
 }
 // Run the sample client application just to simplify testing (that way you needn't run both server and client separately)
-void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = NULL)
+void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = nullptr)
 {
 	cout << "Initiating a client instance for testing.\n" << endl;
 	WCHAR acPathName[MAX_PATH + 1];

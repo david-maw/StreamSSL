@@ -21,7 +21,7 @@ public:
 	HRESULT Disconnect() override;
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
-	HRESULT Initialize(const void * const lpBuf = NULL, const size_t Len = 0);
+	HRESULT Initialize(const void * const lpBuf = nullptr, const size_t Len = 0);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
