@@ -34,8 +34,14 @@ CPassiveSock::~CPassiveSock()
 /////////////////////////////////////////////////////////////////////////////
 // CPassiveSock member functions
 
-// Receives up to Len bytes of data and returnds the amount received - or SOCKET_ERROR if it times out
-int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
+
+void CPassiveSock::ArmRecvTimer()
+{
+	RecvEndTime = 0; // Allow it to be set next time RecvPartial is called
+}
+
+// Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
+int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 {
 	WSABUF buffer;
 	WSAEVENT hEvents[2] = { NULL,NULL };
@@ -48,6 +54,9 @@ int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
 	// Setup up the events to wait on
 	hEvents[1] = read_event;
 	hEvents[0] = m_hStopEvent;
+
+	if (RecvEndTime == 0)
+		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 
 	if (RecvInitiated)
 	{
@@ -84,10 +93,8 @@ int CPassiveSock::Recv(void * const lpBuf, const size_t Len)
 			if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
 				return bytes_read; // Normal case, we read some bytes, it's all good
 			else
-			{// A bad thing happened
-				int e = WSAGetLastError();
-				if (e == 0) // The socket was closed
-					return 0;
+			{// A bad thing happened, either WSAGetOverlappedResult failed or bytes_read returned zero
+				LastError = ERROR_OPERATION_ABORTED;  // One case that gets you here is if the other end disconnects
 			}
 		}
 		else
@@ -112,11 +119,11 @@ int CPassiveSock::ReceiveBytes(void * const lpBuf, const size_t Len)
 		bytes_received = 0,
 		total_bytes_received = 0;
 
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
+	ArmRecvTimer(); // Allow RecvPartial to start timing
 
 	while (total_bytes_received < Len)
 	{
-		bytes_received = Recv((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
 		if (bytes_received == SOCKET_ERROR)
 			return SOCKET_ERROR;
 		else if (bytes_received == 0)
@@ -148,13 +155,19 @@ BOOL CPassiveSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
-HRESULT CPassiveSock::Disconnect(void)
+HRESULT CPassiveSock::Disconnect()
 {
 	return ShutDown() ? HRESULT_FROM_WIN32(GetLastError()) : S_OK;
 }
 
+void CPassiveSock::ArmSendTimer()
+{
+	SendEndTime = 0; // Allow it to be set next time SendPartial is called
+}
+
+
 //sends a message, or part of one
-int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
+int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 {
 	WSABUF buffers[2];
 	WSAEVENT hEvents[2] = { NULL,NULL };
@@ -169,17 +182,18 @@ int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
 	// Setup the buffers array
 	buffers[0].buf = (char *)lpBuf;
 	buffers[0].len = static_cast<decltype(buffers[0].len)>(Len);
-	;
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
 
 	LastError = 0;
+	if (SendEndTime == 0)
+		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
 
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
-	os.hEvent = write_event;
-	WSAResetEvent(read_event);
+	os.hEvent = hEvents[1];
+	WSAResetEvent(hEvents[1]);
 	rc = WSASend(ActualSocket, buffers, 1, &bytes_sent, 0, &os, NULL);
 	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
@@ -199,7 +213,7 @@ int CPassiveSock::Send(const void * const lpBuf, const size_t Len)
 			LastError = ERROR_TIMEOUT;
 		}
 	}
-	else if (!rc) // if rc is zero, the read was completed immediately
+	else if (!rc) // if rc is zero, the send was completed immediately
 	{
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_sent, true, &msg_flags))
 			return bytes_sent;
@@ -214,11 +228,11 @@ int CPassiveSock::SendBytes(const void * const lpBuf, const size_t Len)
 		bytes_sent = 0,
 		total_bytes_sent = 0;
 
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, TimeoutSeconds);
+	SendEndTime = 0; // Allow it to be reset by Send
 
 	while (total_bytes_sent < Len)
 	{
-		bytes_sent = Send((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
 		if ((bytes_sent == SOCKET_ERROR))
 			return SOCKET_ERROR;
 		else if (bytes_sent == 0)

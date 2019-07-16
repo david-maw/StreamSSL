@@ -5,7 +5,7 @@
 #include "ServerCert.h"
 
 // Global value to optimize access since it is set only once
-PSecurityFunctionTable CSSLServer::g_pSSPI = NULL;
+PSecurityFunctionTable CSSLServer::g_pSSPI = nullptr;
 
 // Declare the Close functions for the handle classes using the global SSPI function table pointer
 
@@ -29,16 +29,16 @@ CSSLServer::CSSLServer(CPassiveSock * SocketStream)
 {
 }
 
-CSSLServer::~CSSLServer(void)
+CSSLServer::~CSSLServer()
 {
 }
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
-PSecurityFunctionTable CSSLServer::SSPI(void) { return g_pSSPI; }
+PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
 
 // Return an ISocketStream interface to the SSL connection to anyone that needs one
-ISocketStream * CSSLServer::getSocketStream(void)
+ISocketStream * CSSLServer::getSocketStream()
 {
 	return m_SocketStream; // for now, return 'this' later, once we can do SSL
 }
@@ -90,11 +90,11 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 }
 
 // Establish SSPI pointer
-HRESULT CSSLServer::InitializeClass(void)
+HRESULT CSSLServer::InitializeClass()
 {
 	g_pSSPI = InitSecurityInterface();
 
-	if (g_pSSPI == NULL)
+	if (g_pSSPI == nullptr)
 	{
 		int err = ::GetLastError();
 		if (err == 0)
@@ -106,7 +106,7 @@ HRESULT CSSLServer::InitializeClass(void)
 }
 
 // Return the last error value for this CSSLServer
-int CSSLServer::GetLastError(void)
+int CSSLServer::GetLastError()
 {
 	if (m_LastError)
 		return m_LastError;
@@ -114,7 +114,7 @@ int CSSLServer::GetLastError(void)
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::Recv(void* const lpBuf, const size_t Len)
+int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 {
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
@@ -141,7 +141,9 @@ int CSSLServer::Recv(void* const lpBuf, const size_t Len)
 		}
 		else
 		{
-			int err = m_SocketStream->Recv(lpBuf, Len);
+			// We need to read data from the socket
+			m_SocketStream->ArmRecvTimer();
+			int err = m_SocketStream->RecvPartial(lpBuf, Len);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
@@ -163,6 +165,33 @@ int CSSLServer::Recv(void* const lpBuf, const size_t Len)
 			}
 		}
 	}
+}
+
+
+// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
+// shutdown message with other data concatenated, at least as of Windows 10, July 2019.
+void CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffer (&Buffers)[4], SecBufferDesc& Message, int & err, SECURITY_STATUS& scRet)
+{
+	const int headerLen = 5, shutdownLen = 26;
+	if (((CHAR*)readPtr)[0] == 21 // Alert message type
+		&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
+		&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
+		&& ((CHAR*)readPtr)[5] == 0 // it is a "close notify" (aka shutdown) message
+		)
+	{
+		DebugMsg("Looks like a concatenated shutdown message and something else");
+		PrintHexDump(err, readPtr, true);
+		Buffers[0].cbBuffer = shutdownLen + headerLen;
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		if (scRet == SEC_I_CONTEXT_EXPIRED)
+		{
+			Buffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
+			Buffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
+			Buffers[1].BufferType = SECBUFFER_EXTRA;
+		}
+	}
+	else
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
 }
 
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
@@ -200,13 +229,13 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
 		readBufferBytes = 0; // We have consumed them
 	}
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+		err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -236,29 +265,10 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 		// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
 		// shutdown message with other data concatenated
-		const int headerLen = 5, shutdownLen = 26;
-		if (((CHAR*)readPtr)[0] == 21 // Alert message type
-			&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
-			&& ((CHAR*)readPtr)[3] == 0 && ((CHAR*)readPtr)[4] == shutdownLen // the first message is the correct length for a shutdown message
-			&& ((CHAR*)readPtr)[5] == 0 // it is a "close notify" (aka shutdown) message
-			)
-		{
-			DebugMsg("Looks like a concatenated shutdown message and something else");
-			PrintHexDump(err, readPtr, true);
-			Buffers[0].cbBuffer = shutdownLen + headerLen;
-			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
-			if (scRet == SEC_I_CONTEXT_EXPIRED)
-			{
-				Buffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
-				Buffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
-				Buffers[1].BufferType = SECBUFFER_EXTRA;
-			}
-		}
-		else // The normal case
-			scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
 	}
 
-	PSecBuffer pDataBuffer(NULL); // Points to databuffer if there is one
+	PSecBuffer pDataBuffer(nullptr); // Points to databuffer if there is one
 
 	if (scRet == SEC_E_OK)
 	{
@@ -314,7 +324,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	// certainly be in the fourth buffer (index 3), but search all but the first, just in case.
 	// This does not work with a shutdown message - if it is concatenated with a following plaintext
 	// the decryption just fails with a "cannot decrypt" error, which is why it has special handling above.
-	PSecBuffer pExtraDataBuffer(NULL);
+	PSecBuffer pExtraDataBuffer(nullptr);
 
 	for (i = 1; i < 4; i++)
 	{
@@ -345,7 +355,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::Send(const void * const lpBuf, const size_t Len)
+int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -411,7 +421,7 @@ int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->Send(writeBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->SendPartial(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
 	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
@@ -426,7 +436,7 @@ int CSSLServer::Send(const void * const lpBuf, const size_t Len)
 
 // Negotiate a connection with the client, sending and receiving messages until the
 // negotiation succeeds or fails
-bool CSSLServer::SSPINegotiateLoop(void)
+bool CSSLServer::SSPINegotiateLoop()
 {
 	TimeStamp            tsExpiry;
 	SECURITY_STATUS      scRet;
@@ -475,7 +485,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 	{
 		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
-			err = m_SocketStream->Recv(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			err = m_SocketStream->RecvPartial(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
@@ -520,7 +530,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		InBuffers[0].cbBuffer = readBufferBytes;
 		InBuffers[0].BufferType = SECBUFFER_TOKEN;
 
-		InBuffers[1].pvBuffer = NULL;
+		InBuffers[1].pvBuffer = nullptr;
 		InBuffers[1].cbBuffer = 0;
 		InBuffers[1].BufferType = SECBUFFER_EMPTY;
 
@@ -534,7 +544,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		// garbage later.
 		//
 
-		OutBuffers[0].pvBuffer = NULL;
+		OutBuffers[0].pvBuffer = nullptr;
 		OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 		OutBuffers[0].cbBuffer = 0;
 
@@ -544,7 +554,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 			&InBuffer,										// Input buffer list
 			dwSSPIFlags,									// What we require of the connection
 			0,													// Data representation, not used 
-			ContextHandleValid ? NULL : m_hContext.set(),	// If we don't yet have a context handle, it is returned here
+			ContextHandleValid ? nullptr : m_hContext.set(),	// If we don't yet have a context handle, it is returned here
 			&OutBuffer,										// [out] The output buffer, for messages to be sent to the other end
 			&dwSSPIOutFlags,								// [out] The flags associated with the negotiated connection
 			&tsExpiry);										// [out] Receives context expiration time
@@ -554,10 +564,10 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		if (scRet == SEC_E_OK || scRet == SEC_I_CONTINUE_NEEDED
 			|| (FAILED(scRet) && (0 != (dwSSPIOutFlags & ASC_RET_EXTENDED_ERROR))))
 		{
-			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
+			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
-				err = m_SocketStream->CPassiveSock::Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{
@@ -573,7 +583,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 				}
 
 				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-				OutBuffers[0].pvBuffer = NULL;
+				OutBuffers[0].pvBuffer = nullptr;
 			}
 		}
 
@@ -586,7 +596,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 		 // Ensure a client certificate is checked if one was requested, if none was provided we'd already have failed
 			if (ClientCertAcceptable)
 			{
-				PCERT_CONTEXT pCertContext = NULL;
+				PCERT_CONTEXT pCertContext = nullptr;
 				HRESULT hr = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
 
 				if (FAILED(hr))
@@ -672,7 +682,7 @@ bool CSSLServer::SSPINegotiateLoop(void)
 // that's rare and this implementation does not support it (it's 
 // challenging to separate the SSL shutdown message from unencrypted
 // messages following it). So, this just sends a shutdown message.
-HRESULT CSSLServer::Disconnect(void)
+HRESULT CSSLServer::Disconnect()
 {
 
 	if (!m_encrypting)
@@ -727,7 +737,7 @@ HRESULT CSSLServer::Disconnect(void)
 		ASC_REQ_ALLOCATE_MEMORY |
 		ASC_REQ_STREAM;
 
-	OutBuffers[0].pvBuffer = NULL;
+	OutBuffers[0].pvBuffer = nullptr;
 	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
 	OutBuffers[0].cbBuffer = 0;
 
@@ -760,9 +770,9 @@ HRESULT CSSLServer::Disconnect(void)
 	// Send the close notify message to the client.
 	//
 
-	if (pbMessage != NULL && cbMessage != 0)
+	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		cbData = m_SocketStream->Send(pbMessage, cbMessage);
+		cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = m_SocketStream->GetLastError();

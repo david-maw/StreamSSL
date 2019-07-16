@@ -20,13 +20,13 @@ public:
 	void SetSendTimeoutSeconds(int NewTimeoutSeconds);
 	int GetSendTimeoutSeconds();
 	// Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
-	int RecvPartial(LPVOID lpBuf, const ULONG Len) override;
+	int RecvPartial(LPVOID lpBuf, const size_t Len) override;
 	// Sends up to Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
-	int SendPartial(LPCVOID lpBuf, const ULONG Len) override;
+	int SendPartial(LPCVOID lpBuf, const size_t Len) override;
 	// Receives exactly Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
-	int RecvMsg(LPVOID lpBuf, const ULONG Len);
+	int RecvMsg(LPVOID lpBuf, const size_t Len);
 	// Sends exactly Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
-	int SendMsg(LPCVOID lpBuf, const ULONG Len);
+	int SendMsg(LPCVOID lpBuf, const size_t Len);
 	BOOL ShutDown(int nHow = SD_BOTH);
 	DWORD GetLastError() override;
 	bool Close() override; // Returns true if the close worked

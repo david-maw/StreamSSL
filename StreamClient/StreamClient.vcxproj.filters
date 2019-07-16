@@ -17,9 +17,6 @@
     <ClInclude Include="ActiveSock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ISocketStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="SSLClient.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -30,6 +27,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\StreamServer\Handle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\StreamServer\ISocketStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

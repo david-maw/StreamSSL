@@ -25,7 +25,7 @@ private:
 	CWinThread * m_ListenerThread;
 	static UINT __cdecl Worker(LPVOID);
 	static UINT __cdecl ListenerWorker(LPVOID);
-	void Listen(void);
+	void Listen();
 	std::function<void(ISocketStream * StreamSock)> m_actualwork;
 public:
 	void LogWarning(const WCHAR* const);
@@ -36,7 +36,7 @@ public:
 	ErrorType Initialize(int TCPSocket);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
-	void EndListening(void);
+	void EndListening();
 	void BeginListening(std::function<void(ISocketStream * StreamSock)> actualwork);
 	void IncrementTransportCount(int i = 1);
 };

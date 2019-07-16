@@ -33,7 +33,7 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 	else
 	{
 		int err = SSLServer->GetLastError();
-		SSLServer = NULL;
+		SSLServer = nullptr;
 		if (hr == SEC_E_INVALID_TOKEN)
 			m_Listener->LogWarning(L"SSL token invalid, perhaps the client rejected our certificate");
 		else if (hr == CRYPT_E_NOT_FOUND)
@@ -60,12 +60,12 @@ CTransport::~CTransport()
 int CTransport::Recv(void * const lpBuf, const int MaxLen)
 {
 	if (!IsConnected) return -1;
-	int Len = SocketStream->Recv(lpBuf, MaxLen);
+	int Len = SocketStream->RecvPartial(lpBuf, MaxLen);
 	return Len;
 }
 
 int CTransport::Send(const void * const lpBuf, const int RequestedLen)
 {
 	if (!IsConnected) return -1;
-	return PassiveSock->Send(lpBuf, RequestedLen);
+	return PassiveSock->SendPartial(lpBuf, RequestedLen);
 }

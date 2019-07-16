@@ -13,15 +13,15 @@ class CSSLServer : public ISocketStream
 {
 public:
 	CSSLServer(CPassiveSock *);
-	~CSSLServer(void);
-	ISocketStream * getSocketStream(void);
-	int Recv(void * const lpBuf, const size_t Len) override;
-	int Send(const void * const lpBuf, const size_t Len) override;
-	int GetLastError(void) override;
-	HRESULT Disconnect(void) override;
-	static PSecurityFunctionTable SSPI(void);
+	~CSSLServer();
+	ISocketStream * getSocketStream();
+	int RecvPartial(void * const lpBuf, const size_t Len) override;
+	int SendPartial(const void * const lpBuf, const size_t Len) override;
+	int GetLastError() override;
+	HRESULT Disconnect() override;
+	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
-	HRESULT Initialize(const void * const lpBuf = NULL, const size_t Len = 0);
+	HRESULT Initialize(const void * const lpBuf = nullptr, const size_t Len = 0);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted)> ClientCertAcceptable;
 private:
@@ -29,10 +29,11 @@ private:
 	static PSecurityFunctionTable g_pSSPI;
 	CPassiveSock * m_SocketStream;
 	int m_LastError{};
-	static HRESULT InitializeClass(void);
-	HRESULT Startup(void);
+	static HRESULT InitializeClass();
+	HRESULT Startup();
+	void DecryptAndHandleConcatenatedShutdownMessage(SecBuffer(&Buffers)[4], SecBufferDesc& Message, int& err, SECURITY_STATUS& scRet);
 	int RecvEncrypted(void* const lpBuf, const size_t Len);
-	bool SSPINegotiateLoop(void);
+	bool SSPINegotiateLoop();
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message

@@ -43,10 +43,8 @@ CActiveSock::CActiveSock(HANDLE StopEvent)
 
 CActiveSock::~CActiveSock()
 {
-	WSACloseEvent(read_event);
-	WSACloseEvent(write_event);
-	WSACleanup();
-	closesocket(ActualSocket);
+	if (ActualSocket != INVALID_SOCKET)
+		Close();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -141,7 +139,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 }
 
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
-int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
+int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
 	WSABUF buffer;
 	WSAEVENT hEvents[2] = { read_event, m_hStopEvent };
@@ -162,7 +160,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 
 		// Setup the buffers array
 		buffer.buf = static_cast<char*>(lpBuf);
-		buffer.len = Len;
+		buffer.len = static_cast<decltype(buffer.len)>(Len);
 
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
@@ -219,9 +217,9 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const ULONG Len)
 }
 
 // Receives exactly Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
-int CActiveSock::RecvMsg(LPVOID lpBuf, const ULONG Len)
+int CActiveSock::RecvMsg(LPVOID lpBuf, const size_t Len)
 {
-	ULONG
+	size_t
 		bytes_received = 0,
 		total_bytes_received = 0;
 
@@ -235,7 +233,7 @@ int CActiveSock::RecvMsg(LPVOID lpBuf, const ULONG Len)
 		else
 			total_bytes_received += bytes_received;
 	}; // loop
-	return (total_bytes_received);
+	return (static_cast<int>(total_bytes_received));
 }
 
 void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
@@ -282,8 +280,20 @@ BOOL CActiveSock::ShutDown(int nHow)
 
 bool CActiveSock::Close()
 {
-	if (ShutDown() == FALSE)
+	if (ActualSocket == INVALID_SOCKET)
+	{
+		LastError = ERROR_HANDLES_CLOSED;
+		return false;
+	}
+	else if (ShutDown() == FALSE)
+	{
+		WSACloseEvent(read_event);
+		WSACloseEvent(write_event);
+		WSACleanup();
+		closesocket(ActualSocket);
+		ActualSocket = INVALID_SOCKET;
 		return true;
+	}
 	else
 	{
 		LastError = ::WSAGetLastError();
@@ -292,7 +302,7 @@ bool CActiveSock::Close()
 }
 
 //sends a message, or part of one
-int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
+int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 {
 	DebugMsg("CActiveSock::SendPartial, Len = %d", Len);
 	
@@ -301,7 +311,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 
 	// Setup the buffer array
 	buffer.buf = (char *)lpBuf;
-	buffer.len = Len;
+	buffer.len = static_cast<decltype(buffer.len)>(Len);
 
 	// Reset the timer if it has been invalidated 
 	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
@@ -350,7 +360,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const ULONG Len)
 }
 
 //sends all the data or returns a timeout
-int CActiveSock::SendMsg(LPCVOID lpBuf, const ULONG Len)
+int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 {
 	ULONG
 		bytes_sent = 0,

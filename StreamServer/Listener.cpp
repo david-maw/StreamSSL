@@ -16,7 +16,7 @@ CListener::CListener()
 	}
 }
 
-CListener::~CListener(void)
+CListener::~CListener()
 {
 	m_ListenerThread = NULL;
 	for (int i = 0; i < FD_SETSIZE; i++)
@@ -145,7 +145,7 @@ void CListener::IncrementTransportCount(int i)
 }
 
 // Stop listening, tells the listener thread it can stop, then waits for it to terminate
-void CListener::EndListening(void)
+void CListener::EndListening()
 {
 	m_StopEvent.SetEvent();
 	if (m_ListenerThread)
@@ -167,7 +167,7 @@ void CListener::LogWarning(const CHAR* const msg)
 
 // Listen for connections until the "stop" event is caused, this is invoked on
 // its own thread
-void CListener::Listen(void)
+void CListener::Listen()
 {
 	HANDLE hEvents[FD_SETSIZE + 1];
 	SOCKET iReadSocket = NULL;

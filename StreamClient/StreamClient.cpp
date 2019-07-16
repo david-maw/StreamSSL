@@ -158,21 +158,38 @@ int wmain(int argc, WCHAR * argv[])
 			CStringA sentMsg("Hello from client");
 			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 				cout << "Wrong number of characters sent" << endl;
+			cout << "Sending second greeting" << endl;
+			sentMsg ="Hello again from client";
+			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
 			int len = 0;
 			if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
 			{
 				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				cout << "Shutting down SSL" << endl;
+				::Sleep(1000); // Give the next message a chance to arrive at the server separately
 				pSSLClient->Close(false);
 				// The TCP connection still exists and can be used to send messages, though
 				// this is rarely done, here's an example of doing it
-				cout << "Sending unencrypted data" << endl;
-				sentMsg = "Unencrypted data from client";
+				cout << "Sending first unencrypted data message" << endl;
+				sentMsg = "First block of unencrypted data from client";
 				if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 					cout << "Wrong number of characters sent" << endl;
 				else
-					::Sleep(1000); // Give the final message time to arrive at the server
+				{
+					cout << "Sleeping before sending second unencrypted data message" << endl;
+					::Sleep(6000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
+					cout << "Sending second unencrypted data message" << endl;
+					sentMsg = "Second block of unencrypted data from client";
+					if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+						cout << "Wrong number of characters sent" << endl;
+					else
+					{
+						cout << "Sleeping before sending termination to give the last message time to arrive" << endl;
+						::Sleep(1000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
+					}
+				}
 			}
 			else
 				cout << "Recv reported an error" << endl;
