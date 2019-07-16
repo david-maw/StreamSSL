@@ -151,41 +151,29 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
-	DWORD
-		bytes_read = 0,
-		msg_flags = 0;
-	int rc = SOCKET_ERROR;
+	DWORD bytes_read = 0;
+	DWORD msg_flags = 0;
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
+	// Create the overlapped I/O event and structures
+	memset(&os, 0, sizeof(OVERLAPPED));
+	os.hEvent = hEvents[1];
+	if (!WSAResetEvent(os.hEvent))
+	{
+		LastError = WSAGetLastError();
+		return SOCKET_ERROR;
+	}
+
+	// Setup the buffers array
+	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
+
 	// If the timer has been invalidated, restart it
 	const auto RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 
-	if (RecvInitiated)
-	{
-		// Special case, the previous read timed out, so we are trying again, maybe it completed in the meantime
-		LastError = WSA_IO_PENDING;
-	}
-	else
-	{
-		// Normal case, the last read completed normally, now we're reading again
-
-		// Create the overlapped I/O event and structures
-		memset(&os, 0, sizeof(OVERLAPPED));
-		os.hEvent = hEvents[1];
-		if (!WSAResetEvent(os.hEvent))
-		{
-			LastError = WSAGetLastError();
-			return SOCKET_ERROR;
-		}
-
-		RecvInitiated = true;
-		// Setup the buffers array
-		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
-		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
-		LastError = WSAGetLastError();
-	}
+	const int rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
+	LastError = WSAGetLastError();
 
 	const CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
 	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
@@ -224,7 +212,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 
 	if (IOCompleted)
 	{
-		RecvInitiated = false;
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
 		{
 			return bytes_read; // Normal case, we read some bytes, it's all good
@@ -344,7 +331,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	// Setup the buffer array
 	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
 
-	// Reset the timer if it has been invalidated 
+	// If the timer has been invalidated, restart it
 	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
 	const int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
