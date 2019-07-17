@@ -1,4 +1,6 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "SSLClient.h"
 #include "Utilities.h"
 #include "ActiveSock.h"

@@ -1,4 +1,6 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "CertHelper.h"
 #include <algorithm>
 #include <vector>

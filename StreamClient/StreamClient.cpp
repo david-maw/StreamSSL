@@ -1,7 +1,9 @@
 // StreamClient.cpp : This is a sample calling program that uses the SSL client side capabilities.
 //
 
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "Utilities.h"
 #include "ActiveSock.h"
 #include "SSLClient.h"

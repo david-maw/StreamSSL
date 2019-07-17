@@ -1,4 +1,6 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include <memory>
 #include <vector>
 #include "CertRAII.h"

@@ -1,4 +1,6 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include <unordered_map>
 #include <mutex>
 #include "ServerCert.h"
