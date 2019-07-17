@@ -8,9 +8,10 @@
 #include "ActiveSock.h"
 #include "SSLClient.h"
 #include "EventWrapper.h"
+#include "CertHelper.h"
+
 #include <iostream>
 #include <iomanip>
-#include "CertHelper.h"
 
 using namespace std;
 

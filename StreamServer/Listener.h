@@ -1,7 +1,8 @@
 #pragma once
-#include <functional>
 #include "wincrypt.h"
 #include "Transport.h"
+
+#include <functional>
 
 class ISocketStream;
 

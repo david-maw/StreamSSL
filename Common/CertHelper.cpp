@@ -2,12 +2,14 @@
 #include "framework.h"
 
 #include "CertHelper.h"
+#include "CertRAII.h"
+#include "SecurityHandle.h"
+#include "Utilities.h"
+
 #include <algorithm>
 #include <vector>
 #include <cryptuiapi.h>
 #include <string>
-#include "CertRAII.h"
-#include "SecurityHandle.h"
 
 #pragma comment(lib, "Cryptui.lib")
 #pragma comment(lib, "Dnsapi.lib")

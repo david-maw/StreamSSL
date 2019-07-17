@@ -29,13 +29,13 @@
     <ClInclude Include="EventWrapper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\StreamServer\SecurityHandle.h">
+    <ClInclude Include="..\Common\Include\SecurityHandle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\StreamServer\Handle.h">
+    <ClInclude Include="..\Common\Include\Handle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\StreamServer\ISocketStream.h">
+    <ClInclude Include="ISocketStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -52,13 +52,13 @@
     <ClCompile Include="SSLClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\StreamServer\Utilities.cpp">
+    <ClCompile Include="..\Common\Utilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\StreamServer\CertRAII.cpp">
+    <ClCompile Include="..\Common\CertRAII.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\StreamServer\CertHelper.cpp">
+    <ClCompile Include="..\Common\CertHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

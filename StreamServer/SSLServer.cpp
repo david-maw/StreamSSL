@@ -5,6 +5,7 @@
 #include "SSLHelper.h"
 #include "CertHelper.h"
 #include "ServerCert.h"
+#include "Utilities.h"
 
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLServer::g_pSSPI = nullptr;

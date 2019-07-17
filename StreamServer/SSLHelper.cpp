@@ -2,6 +2,8 @@
 #include "framework.h"
 
 #include "SSLHelper.h"
+#include "Utilities.h"
+
 #include <vector>
 #include <locale>
 #include <codecvt>

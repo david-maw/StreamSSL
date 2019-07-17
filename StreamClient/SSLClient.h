@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SecurityHandle.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <functional>
@@ -10,8 +12,6 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
-#include "SecurityHandle.h"
-
 
 class CActiveSock; // forward declaration
 

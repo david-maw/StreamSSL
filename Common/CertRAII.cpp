@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "framework.h"
 
+#include "CertRAII.h"
+#include "Utilities.h"
+
 #include <memory>
 #include <vector>
-#include "CertRAII.h"
 #include <Rpc.h>
 #pragma comment(lib, "Rpcrt4.lib")
 

@@ -100,6 +100,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -117,6 +118,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -134,6 +136,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,6 +156,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,13 +166,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CertHelper.h" />
-    <ClInclude Include="CertRAII.h" />
-    <ClInclude Include="Handle.h" />
+    <ClInclude Include="..\Common\Include\CertHelper.h" />
+    <ClInclude Include="..\Common\Include\CertRAII.h" />
+    <ClInclude Include="..\Common\Include\Handle.h" />
     <ClInclude Include="ISocketStream.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="PassiveSock.h" />
-    <ClInclude Include="SecurityHandle.h" />
+    <ClInclude Include="..\Common\Include\SecurityHandle.h" />
     <ClInclude Include="ServerCert.h" />
     <ClInclude Include="SSLServer.h" />
     <ClInclude Include="SSLHelper.h" />
@@ -176,11 +180,11 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Transport.h" />
-    <ClInclude Include="Utilities.h" />
+    <ClInclude Include="..\Common\Include\Utilities.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CertHelper.cpp" />
-    <ClCompile Include="CertRAII.cpp" />
+    <ClCompile Include="..\Common\CertHelper.cpp" />
+    <ClCompile Include="..\Common\CertRAII.cpp" />
     <ClCompile Include="Listener.cpp" />
     <ClCompile Include="PassiveSock.cpp" />
     <ClCompile Include="ServerCert.cpp" />
@@ -194,7 +198,7 @@
     </ClCompile>
     <ClCompile Include="StreamServer.cpp" />
     <ClCompile Include="Transport.cpp" />
-    <ClCompile Include="Utilities.cpp" />
+    <ClCompile Include="..\Common\Utilities.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

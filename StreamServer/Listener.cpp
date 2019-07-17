@@ -2,6 +2,7 @@
 #include "framework.h"
 
 #include "Listener.h"
+#include "Utilities.h"
 
 // CListener object, listens for connections on one thread, and initiates a worker
 // thread each time a client connects.

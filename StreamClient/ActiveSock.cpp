@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "framework.h"
 
+#include "ActiveSock.h"
+#include "Utilities.h"
+
 #include <process.h>
 #include <stdlib.h>
 #include <WS2tcpip.h>
 #include <MSTcpIP.h>
-#include "Utilities.h"
-#include "ActiveSock.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

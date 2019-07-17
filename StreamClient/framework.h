@@ -44,6 +44,3 @@ const bool debug = false;
 
 // Standard C++
 #include <iostream>
-
-// Application
-#include "Utilities.h"

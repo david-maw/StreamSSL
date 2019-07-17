@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "framework.h"
 
-#include <process.h>
 #include "PassiveSock.h"
+
+#include <process.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

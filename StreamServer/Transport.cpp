@@ -4,6 +4,7 @@
 #include "Transport.h"
 #include "SSLServer.h"
 #include "Listener.h"
+#include "Utilities.h"
 
 #ifdef _DEBUG
 #undef THIS_FILE

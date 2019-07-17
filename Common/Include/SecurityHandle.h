@@ -1,4 +1,6 @@
 #pragma once
+#include "Handle.h"
+
 #include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
 #include <wintrust.h>
@@ -6,7 +8,6 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
-#include "Handle.h"
 
 /*
 This is one of 2 different approaches to handling old Windows handle classes.
