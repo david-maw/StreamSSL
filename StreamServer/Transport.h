@@ -1,6 +1,5 @@
 #pragma once
 #include <memory>
-class CPrtMsg;
 class CListener;
 class CSSLServer;
 class CPassiveSock;
@@ -13,7 +12,7 @@ private:
 	std::unique_ptr <CPassiveSock> PassiveSock;
 public:
 	ISocketStream * SocketStream;
-	bool IsConnected;
+  bool IsConnected{ false };
 	int Recv(void * const lpBuf, const int Len);
 	CTransport(SOCKET s, CListener * Listener);
 	virtual ~CTransport();

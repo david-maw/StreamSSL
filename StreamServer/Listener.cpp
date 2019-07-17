@@ -7,10 +7,6 @@
 // CListener object, listens for connections on one thread, and initiates a worker
 // thread each time a client connects.
 CListener::CListener()
-	:m_StopEvent(FALSE, TRUE),
-	m_TransportCount(0),
-	m_ListenerThread(NULL),
-	m_iNumListenSockets(0)
 {
 	for (int i = 0; i < FD_SETSIZE; i++)
 	{
@@ -21,7 +17,6 @@ CListener::CListener()
 
 CListener::~CListener()
 {
-	m_ListenerThread = NULL;
 	for (int i = 0; i < FD_SETSIZE; i++)
 	{
 		if (m_iListenSockets[i] != INVALID_SOCKET)

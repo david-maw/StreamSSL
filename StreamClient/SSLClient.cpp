@@ -25,12 +25,8 @@ void SecurityContextTraits::Close(Type value)
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)
-	:readPtr(readBuffer)
-	,m_SocketStream(SocketStream)
-{
-}
-
-CSSLClient::~CSSLClient()
+  : m_SocketStream(SocketStream)
+  , readPtr(readBuffer)
 {
 }
 

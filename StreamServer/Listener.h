@@ -1,7 +1,7 @@
 #pragma once
-#include "wincrypt.h"
 #include "Transport.h"
 
+#include <wincrypt.h>
 #include <functional>
 
 class ISocketStream;
@@ -20,9 +20,9 @@ public:
 private:
 	SOCKET m_iListenSockets[FD_SETSIZE]{};
 	HANDLE m_hSocketEvents[FD_SETSIZE]{};
-	int m_iNumListenSockets;
+  int m_iNumListenSockets{ 0 };
 	CCriticalSection m_TransportCountLock;
-	CWinThread * m_ListenerThread;
+  CWinThread * m_ListenerThread{ nullptr };
 	static UINT __cdecl Worker(LPVOID);
 	static UINT __cdecl ListenerWorker(LPVOID);
 	void Listen();
@@ -30,8 +30,8 @@ private:
 public:
 	void LogWarning(const WCHAR* const);
 	void LogWarning(const CHAR* const);
-	int m_TransportCount;
-	CEvent m_StopEvent;
+  int m_TransportCount{ 0 };
+  CEvent m_StopEvent{ FALSE, TRUE };
 	// Initialize the listener
 	ErrorType Initialize(int TCPSocket);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;

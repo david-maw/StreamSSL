@@ -9,10 +9,6 @@
 #include <Rpc.h>
 #pragma comment(lib, "Rpcrt4.lib")
 
-CSP::CSP()
-{
-}
-
 CSP::~CSP()
 {
 	if (hCryptProvOrNCryptKey)
@@ -70,10 +66,6 @@ BOOL CryptProvider::AcquireContext(DWORD dwFlags)
 	return CryptAcquireContextW(&hCryptProv, KeyContainerName, nullptr, PROV_RSA_FULL, dwFlags);
 }
 
-CryptKey::CryptKey()
-{
-}
-
 CryptKey::~CryptKey()
 {
 	if (hKey)
@@ -89,10 +81,6 @@ BOOL CryptKey::CryptGenKey(CryptProvider& prov)
 	return ::CryptGenKey(prov.hCryptProv, AT_SIGNATURE, 0x08000000 /*RSA-2048-BIT_KEY*/, &hKey);
 }
 
-
-CertStore::CertStore()
-{
-}
 
 CertStore::~CertStore()
 {

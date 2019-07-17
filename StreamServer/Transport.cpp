@@ -16,9 +16,8 @@ static char THIS_FILE[] = __FILE__;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires a socket already assigned
-	IsConnected(false)
-	, m_Listener(Listener)
+CTransport::CTransport(SOCKET s, CListener * Listener) // constructor requires a socket already assigned
+	: m_Listener(Listener)
 {
 	Listener ->IncrementTransportCount();
 	PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
@@ -57,7 +56,7 @@ CTransport::CTransport(SOCKET s, CListener * Listener) : // constructor requires
 
 CTransport::~CTransport()
 {
-	m_Listener -> IncrementTransportCount(-1);
+	m_Listener->IncrementTransportCount(-1);
 }
 
 int CTransport::Recv(void * const lpBuf, const int MaxLen)

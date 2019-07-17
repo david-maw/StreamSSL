@@ -25,10 +25,8 @@ void SecurityContextTraits::Close(Type value)
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means to send messages to a client (a CPassiveSock).
 CSSLServer::CSSLServer(CPassiveSock * SocketStream)
-	:readBufferBytes(0)
-	, readPtr(readBuffer)
-	, m_SocketStream(SocketStream)
-	, m_LastError(0)
+  : m_SocketStream(SocketStream)
+  , readPtr(readBuffer)
 {
 }
 

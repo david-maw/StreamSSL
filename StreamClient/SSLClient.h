@@ -19,7 +19,7 @@ class CSSLClient
 {
 public:
 	explicit CSSLClient(CActiveSock *);
-	~CSSLClient();
+	~CSSLClient() = default;
 private:
 	static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;

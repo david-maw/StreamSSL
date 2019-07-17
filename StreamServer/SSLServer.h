@@ -29,7 +29,7 @@ private:
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
 	CPassiveSock * m_SocketStream;
-	int m_LastError{};
+	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	HRESULT Startup();
 	void DecryptAndHandleConcatenatedShutdownMessage(SecBuffer(&Buffers)[4], SecBufferDesc& Message, int& err, SECURITY_STATUS& scRet);
@@ -39,7 +39,7 @@ private:
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
-	DWORD readBufferBytes{};
+	DWORD readBufferBytes{ 0 };
 	void* readPtr{};
 	SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes{};

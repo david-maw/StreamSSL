@@ -15,7 +15,7 @@ private:
 	bool decoded;
 public:
 	CSSLHelper(const byte * BufPtr, const int BufBytes);
-	~CSSLHelper();
+	~CSSLHelper() = default;
 	// Max length of handshake data buffer
 	void TraceHandshake();
 	// Is this packet a complete client initialize packet

@@ -18,10 +18,6 @@ CSSLHelper::CSSLHelper(const byte * BufPtr, const int BufBytes) :
 	decoded = BufPtr && CanDecode();
 }
 
-CSSLHelper::~CSSLHelper()
-{
-}
-
 // Decode a buffer
 bool CSSLHelper::CanDecode()
 {
