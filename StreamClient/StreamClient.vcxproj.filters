@@ -9,6 +9,12 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="Header Files\Common Headers">
+      <UniqueIdentifier>{671b7d48-41ef-4a34-a15d-db6e477bb90f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Common Sources">
+      <UniqueIdentifier>{17883f1f-bcff-41e8-a73d-12d627f7f227}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -29,14 +35,23 @@
     <ClInclude Include="EventWrapper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Include\SecurityHandle.h">
+    <ClInclude Include="ISocketStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Include\Handle.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
-    <ClInclude Include="ISocketStream.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\Common\Include\SecurityHandle.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\CertHelper.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\CertRAII.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\Utilities.h">
+      <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -52,14 +67,14 @@
     <ClCompile Include="SSLClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Common\Utilities.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\Common\CertHelper.cpp">
+      <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\CertRAII.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\Common\CertHelper.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\Common\Utilities.cpp">
+      <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -156,6 +156,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Common\Include\CertHelper.h" />
+    <ClInclude Include="..\Common\Include\CertRAII.h" />
+    <ClInclude Include="..\Common\Include\Utilities.h" />
     <ClInclude Include="ISocketStream.h" />
     <ClInclude Include="ActiveSock.h" />
     <ClInclude Include="EventWrapper.h" />
