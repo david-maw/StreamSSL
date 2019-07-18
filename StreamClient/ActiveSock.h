@@ -35,7 +35,7 @@ protected:
   HANDLE m_hStopEvent{ nullptr };
 
 private:
-  void CloseAndInvalidateSocket();
+  bool CloseAndInvalidateSocket();
 	static WSADATA WsaData;
 	WSAEVENT write_event{ nullptr };
 	WSAEVENT read_event{ nullptr };

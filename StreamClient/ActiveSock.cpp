@@ -297,19 +297,32 @@ bool CActiveSock::Close()
 		LastError = ERROR_HANDLES_CLOSED;
 		return false;
 	}
-	else if (ShutDown() == FALSE)
-	{
-		WSACloseEvent(read_event);
-		WSACloseEvent(write_event);
-		WSACleanup();
-		CloseAndInvalidateSocket();
-		return true;
+
+  if (!WSACloseEvent(read_event))
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!WSACloseEvent(write_event))
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!CloseAndInvalidateSocket())
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!WSACleanup())
+  {
+    LastError = ::WSAGetLastError();
+    return false;
 	}
-	else
-	{
-		LastError = ::WSAGetLastError();
-		return false;
-	}
+
+  return true;
 }
 
 //sends a message, or part of one
@@ -414,8 +427,9 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 	return (total_bytes_sent);
 }
 
-void CActiveSock::CloseAndInvalidateSocket()
+bool CActiveSock::CloseAndInvalidateSocket()
 {
-	closesocket(ActualSocket);
-	ActualSocket = INVALID_SOCKET;
+  const auto nRet = closesocket(ActualSocket);
+  ActualSocket = INVALID_SOCKET;
+  return nRet == 0;
 }
