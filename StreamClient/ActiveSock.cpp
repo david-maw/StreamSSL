@@ -158,7 +158,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
-
 	// If the timer has been invalidated, restart it
 	const auto RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 
