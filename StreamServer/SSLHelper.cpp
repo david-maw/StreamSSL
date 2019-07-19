@@ -149,13 +149,13 @@ void CSSLHelper::TraceHandshake()
 }
 
 // Is this packet a complete client initialize packet
-bool CSSLHelper::IsClientInitialize()
+bool CSSLHelper::IsClientInitialize() const
 {
 	return decoded;
 }
 
 // Get SNI provided hostname
-std::wstring CSSLHelper::GetSNI()
+std::wstring CSSLHelper::GetSNI() const
 {
 	const byte * BufPtr = DataPtr;
 	if (decoded)

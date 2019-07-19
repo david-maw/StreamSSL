@@ -19,7 +19,7 @@ public:
 	// Max length of handshake data buffer
 	void TraceHandshake();
 	// Is this packet a complete client initialize packet
-	bool IsClientInitialize();
+	bool IsClientInitialize() const;
 	// Get SNI provided hostname
-	std::wstring GetSNI();
+	std::wstring GetSNI() const;
 };

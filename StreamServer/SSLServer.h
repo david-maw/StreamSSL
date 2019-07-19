@@ -18,7 +18,7 @@ public:
 	ISocketStream * getSocketStream();
 	int RecvPartial(void * const lpBuf, const size_t Len) override;
 	int SendPartial(const void * const lpBuf, const size_t Len) override;
-	int GetLastError() override;
+	int GetLastError() const override;
 	HRESULT Disconnect() override;
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection

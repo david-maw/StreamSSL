@@ -11,7 +11,7 @@ class CPassiveSock : public ISocketStream
 public:
 	CPassiveSock(SOCKET, HANDLE);
 	virtual ~CPassiveSock();
-	int GetLastError() override;
+	int GetLastError() const override;
 	void SetTimeoutSeconds(int NewTimeoutSeconds);
 	void ArmRecvTimer();
 	void ArmSendTimer();

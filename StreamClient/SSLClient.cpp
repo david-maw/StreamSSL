@@ -102,7 +102,7 @@ HRESULT CSSLClient::InitializeClass()
 }
 
 // Return the last error value for this CSSLClient
-DWORD CSSLClient::GetLastError()
+DWORD CSSLClient::GetLastError() const
 {
 	if (m_LastError)
 		return m_LastError;
@@ -912,12 +912,12 @@ HRESULT CSSLClient::Disconnect()
 	return Status;
 }
 
-bool CSSLClient::getServerCertNameMatches()
+bool CSSLClient::getServerCertNameMatches() const
 {
 	return ServerCertNameMatches;
 }
 
-bool CSSLClient::getServerCertTrusted()
+bool CSSLClient::getServerCertTrusted() const
 {
 	return ServerCertTrusted;
 }

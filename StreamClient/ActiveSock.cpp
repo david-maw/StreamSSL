@@ -258,7 +258,7 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	}
 }
 
-int CActiveSock::GetRecvTimeoutSeconds()
+int CActiveSock::GetRecvTimeoutSeconds() const
 {
 	return RecvTimeoutSeconds;
 }
@@ -274,12 +274,12 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	}
 }
 
-int CActiveSock::GetSendTimeoutSeconds()
+int CActiveSock::GetSendTimeoutSeconds() const
 {
 	return SendTimeoutSeconds;
 }
 
-DWORD CActiveSock::GetLastError()
+DWORD CActiveSock::GetLastError() const
 {
 	return LastError;
 }

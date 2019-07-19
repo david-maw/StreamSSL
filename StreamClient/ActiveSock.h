@@ -16,9 +16,9 @@ public:
 	virtual ~CActiveSock();
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 	void SetRecvTimeoutSeconds(int NewTimeoutSeconds);
-	int GetRecvTimeoutSeconds();
+	int GetRecvTimeoutSeconds() const;
 	void SetSendTimeoutSeconds(int NewTimeoutSeconds);
-	int GetSendTimeoutSeconds();
+	int GetSendTimeoutSeconds() const;
 	// Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 	int RecvPartial(LPVOID lpBuf, const size_t Len) override;
 	// Sends up to Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
@@ -28,7 +28,7 @@ public:
 	// Sends exactly Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
 	int SendMsg(LPCVOID lpBuf, const size_t Len);
 	BOOL ShutDown(int nHow = SD_BOTH);
-	DWORD GetLastError() override;
+	DWORD GetLastError() const override;
 	bool Close() override; // Returns true if the close worked
 protected:
   SOCKET ActualSocket{ INVALID_SOCKET };

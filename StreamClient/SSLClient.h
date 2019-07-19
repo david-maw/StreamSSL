@@ -50,7 +50,7 @@ public:
 	// ISocketStream
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
 	int SendPartial(LPCVOID lpBuf, const ULONG Len);
-	DWORD GetLastError();
+	DWORD GetLastError() const;
 	bool Close(bool closeUnderlyingSocket = true);
 	// Regular class interface
 	HRESULT Disconnect();
@@ -60,6 +60,6 @@ public:
 	// Attributes
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
-	bool getServerCertNameMatches();
-	bool getServerCertTrusted();
+	bool getServerCertNameMatches() const;
+	bool getServerCertTrusted() const;
 };

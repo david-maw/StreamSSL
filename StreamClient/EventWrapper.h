@@ -19,7 +19,7 @@ public:
 		return m_Event;
 	}
 
-	operator const HANDLE()
+	operator const HANDLE() const
 	{
 		return m_Event;
 	}
