@@ -176,6 +176,7 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, write_event };
+
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
@@ -186,15 +187,15 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = hEvents[1];
-	if (!WSAResetEvent(os.hEvent))
-	{
-		LastError = WSAGetLastError();
-		return SOCKET_ERROR;
-	}
+  if (!WSAResetEvent(os.hEvent))
+  {
+    LastError = WSAGetLastError();
+    return SOCKET_ERROR;
+  }
 
-	// Setup the buffers array
-	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
-	rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
+  // Setup the buffers array
+  WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
+  rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
 	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
