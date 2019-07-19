@@ -68,16 +68,16 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
 		os.hEvent = hEvents[1];
-    if (!WSAResetEvent(os.hEvent))
-    {
-      LastError = WSAGetLastError();
-      return SOCKET_ERROR;
-    }
+		if (!WSAResetEvent(os.hEvent))
+		{
+			LastError = WSAGetLastError();
+			return SOCKET_ERROR;
+		}
 
 		RecvInitiated = true;
-    // Setup the buffers array
-    WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
-    rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
+		// Setup the buffers array
+		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
+		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
 		LastError = WSAGetLastError();
 	}
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case

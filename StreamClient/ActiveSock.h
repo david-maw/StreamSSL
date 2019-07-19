@@ -12,7 +12,7 @@
 class CActiveSock : public ISocketStream
 {
 public:
-	CActiveSock(HANDLE StopEvent);
+	explicit CActiveSock(HANDLE StopEvent);
 	virtual ~CActiveSock();
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 	void SetRecvTimeoutSeconds(int NewTimeoutSeconds);

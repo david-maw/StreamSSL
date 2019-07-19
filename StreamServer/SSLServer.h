@@ -12,7 +12,7 @@
 class CSSLServer : public ISocketStream
 {
 public:
-	CSSLServer(CPassiveSock *);
+	explicit CSSLServer(CPassiveSock *);
 	~CSSLServer();
 	ISocketStream * getSocketStream();
 	int RecvPartial(void * const lpBuf, const size_t Len) override;

@@ -18,7 +18,7 @@ class CActiveSock; // forward declaration
 class CSSLClient
 {
 public:
-	CSSLClient(CActiveSock *);
+	explicit CSSLClient(CActiveSock *);
 	~CSSLClient();
 private:
 	static PSecurityFunctionTable g_pSSPI;
