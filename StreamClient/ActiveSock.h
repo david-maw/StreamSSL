@@ -35,8 +35,6 @@ protected:
   HANDLE m_hStopEvent;
 
 private:
-	CTime RecvEndTime;
-	CTime SendEndTime;
 	static WSADATA WsaData;
 	WSAEVENT write_event;
 	WSAEVENT read_event;
