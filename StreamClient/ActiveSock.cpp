@@ -141,11 +141,13 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
-	WSAEVENT hEvents[2] = { read_event, m_hStopEvent };
 	DWORD
 		bytes_read = 0,
 		msg_flags = 0;
 	int rc;
+
+	// Setup up the events to wait on
+	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
 	if (RecvInitiated)
 	{
@@ -157,14 +159,18 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	{
 		// Normal case, the last read completed normally, now we're reading again
 
-		// Setup the buffers array
-		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
-
 		// Create the overlapped I/O event and structures
 		memset(&os, 0, sizeof(OVERLAPPED));
 		os.hEvent = hEvents[1];
-		WSAResetEvent(os.hEvent);
+		if (!WSAResetEvent(os.hEvent))
+		{
+			LastError = WSAGetLastError();
+			return SOCKET_ERROR;
+		}
+
 		RecvInitiated = true;
+		// Setup the buffers array
+		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
 		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
 		LastError = WSAGetLastError();
 	}
@@ -306,18 +312,24 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	
 	DWORD bytes_sent = 0;
 
-	// Setup the buffer array
-	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
+	// Setup up the events to wait on
+	WSAEVENT hEvents[2] = { m_hStopEvent, write_event };
 
 	// Reset the timer if it has been invalidated 
 	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
-	LastError = 0;
-
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
-	os.hEvent = write_event;
-	WSAResetEvent(read_event);
+	os.hEvent = hEvents[1];
+	if (!WSAResetEvent(os.hEvent))
+	{
+		LastError = WSAGetLastError();
+		return SOCKET_ERROR;
+	}
+
+	// Setup the buffer array
+	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
+
 	int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();
 
@@ -326,7 +338,6 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
-		WSAEVENT hEvents[2] = { write_event, m_hStopEvent };
 		DWORD dwWait;
 		CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
 		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
