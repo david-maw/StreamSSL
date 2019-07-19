@@ -156,7 +156,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
-
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = hEvents[1];
