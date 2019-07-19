@@ -15,9 +15,9 @@ public:
 	explicit CActiveSock(HANDLE StopEvent);
 	virtual ~CActiveSock();
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
-	void SetRecvTimeoutSeconds(int NewTimeoutSeconds);
+	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
 	int GetRecvTimeoutSeconds() const;
-	void SetSendTimeoutSeconds(int NewTimeoutSeconds);
+	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
 	int GetSendTimeoutSeconds() const;
 	// Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 	int RecvPartial(LPVOID lpBuf, const size_t Len) override;
@@ -31,11 +31,11 @@ public:
 	DWORD GetLastError() const override;
 	bool Close() override; // Returns true if the close worked
 protected:
-  SOCKET ActualSocket{ INVALID_SOCKET };
-  HANDLE m_hStopEvent{ nullptr };
+	SOCKET ActualSocket{ INVALID_SOCKET };
+	HANDLE m_hStopEvent{ nullptr };
 
 private:
-  bool CloseAndInvalidateSocket();
+	bool CloseAndInvalidateSocket();
 	static WSADATA WsaData;
 	WSAEVENT write_event{ nullptr };
 	WSAEVENT read_event{ nullptr };

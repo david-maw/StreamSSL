@@ -17,7 +17,7 @@ public:
 	void ArmSendTimer();
 	int RecvPartial(void * const lpBuf, const size_t Len) override;
 	int SendPartial(const void * const lpBuf, const size_t Len) override;
-	int ReceiveBytes(void * const lpBuf, const size_t nBufLen);
+	int ReceiveBytes(void * const lpBuf, const size_t Len);
 	int SendBytes(const void * const lpBuf, const size_t Len);
 	BOOL ShutDown(int nHow = SD_SEND);
 	HRESULT Disconnect() override;

@@ -13,6 +13,8 @@ public:
 		if (!m_Event)
 			throw "no event";
 	}
+	CEventWrapper(const CEventWrapper&) = delete;
+	CEventWrapper& operator=(const CEventWrapper&) = delete;
 
 	HANDLE Event() const
 	{

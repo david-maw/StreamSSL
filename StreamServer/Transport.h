@@ -12,8 +12,8 @@ private:
 	std::unique_ptr <CPassiveSock> PassiveSock;
 public:
 	ISocketStream * SocketStream;
-  bool IsConnected{ false };
-	int Recv(void * const lpBuf, const int Len);
+	bool IsConnected{ false };
+	int Recv(void * const lpBuf, const int MaxLen);
 	CTransport(SOCKET s, CListener * Listener);
 	virtual ~CTransport();
 	CListener* m_Listener;

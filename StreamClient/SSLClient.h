@@ -35,7 +35,7 @@ private:
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes = 0;
 	CHAR plainText[MaxMsgSize * 2]{}; // Extra plaintext data not yet delivered
-	CHAR * plainTextPtr =  nullptr;
+	CHAR * plainTextPtr = nullptr;
 	DWORD plainTextBytes = 0;
 	void * readPtr = nullptr;
 	SecurityContextHandle m_hContext;

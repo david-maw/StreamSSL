@@ -42,7 +42,7 @@ UINT __cdecl CListener::Worker(void * v)
 // Worker process for connection listening
 UINT __cdecl CListener::ListenerWorker(LPVOID v)
 {
-	CListener * Listener = (CListener *)v; // See _beginthread call for parameter definition
+	CListener * Listener = static_cast<CListener*>(v); // See _beginthread call for parameter definition
 
 	SetThreadName("Listener");
 	Listener->Listen();

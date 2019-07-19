@@ -428,7 +428,7 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 
 bool CActiveSock::CloseAndInvalidateSocket()
 {
-  const auto nRet = closesocket(ActualSocket);
-  ActualSocket = INVALID_SOCKET;
-  return nRet == 0;
+	const auto nRet = closesocket(ActualSocket);
+	ActualSocket = INVALID_SOCKET;
+	return nRet == 0;
 }
