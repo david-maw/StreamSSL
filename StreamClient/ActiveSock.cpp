@@ -148,7 +148,6 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
-
 	if (RecvInitiated)
 	{
 		// Special case, the previous read timed out, so we are trying again, maybe it completed in the meantime
