@@ -600,7 +600,7 @@ bool CSSLServer::SSPINegotiateLoop()
 				else
 				{
 					DebugMsg("Client Certificate returned");
-					if (false && debug && pCertContext)
+					if (g_ShowCertInfo && debug && pCertContext)
 						ShowCertInfo(pCertContext, L"Server Received Client Certificate");
 					// All looking good, now see if there's a client certificate, and if it is valid
 					bool acceptable = ClientCertAcceptable(pCertContext, S_OK == CertTrusted(pCertContext, true));

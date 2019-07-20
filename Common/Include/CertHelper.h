@@ -1,5 +1,6 @@
 #pragma once
 #include <schannel.h>
+static bool g_ShowCertInfo = false;
 bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName);
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert);
