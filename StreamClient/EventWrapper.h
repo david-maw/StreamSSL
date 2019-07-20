@@ -8,19 +8,20 @@ public:
 		BOOL bManualReset = TRUE,
 		BOOL bInitialState = FALSE,
 		LPCTSTR lpName = nullptr)
-		: m_Event(nullptr)
 	{
 		m_Event = CreateEvent(lpEventAttributes, bManualReset, bInitialState, lpName);
 		if (!m_Event)
 			throw "no event";
 	}
+	CEventWrapper(const CEventWrapper&) = delete;
+	CEventWrapper& operator=(const CEventWrapper&) = delete;
 
 	HANDLE Event() const
 	{
 		return m_Event;
 	}
 
-	operator const HANDLE()
+	operator const HANDLE() const
 	{
 		return m_Event;
 	}
@@ -30,11 +31,10 @@ public:
 		if (m_Event)
 		{
 			CloseHandle(m_Event);
-			m_Event = nullptr;
 		}
 	}
 
 private:
 	HANDLE
-		m_Event;
+    m_Event{ nullptr };
 };

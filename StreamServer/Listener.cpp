@@ -1,13 +1,12 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "Listener.h"
+#include "Utilities.h"
 
 // CListener object, listens for connections on one thread, and initiates a worker
 // thread each time a client connects.
 CListener::CListener()
-	:m_StopEvent(FALSE, TRUE),
-	m_TransportCount(0),
-	m_ListenerThread(NULL),
-	m_iNumListenSockets(0)
 {
 	for (int i = 0; i < FD_SETSIZE; i++)
 	{
@@ -18,7 +17,6 @@ CListener::CListener()
 
 CListener::~CListener()
 {
-	m_ListenerThread = NULL;
 	for (int i = 0; i < FD_SETSIZE; i++)
 	{
 		if (m_iListenSockets[i] != INVALID_SOCKET)
@@ -44,7 +42,7 @@ UINT __cdecl CListener::Worker(void * v)
 // Worker process for connection listening
 UINT __cdecl CListener::ListenerWorker(LPVOID v)
 {
-	CListener * Listener = (CListener *)v; // See _beginthread call for parameter definition
+	CListener * Listener = static_cast<CListener*>(v); // See _beginthread call for parameter definition
 
 	SetThreadName("Listener");
 	Listener->Listen();

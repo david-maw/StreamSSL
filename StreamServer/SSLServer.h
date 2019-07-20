@@ -1,4 +1,7 @@
 #pragma once
+#include "PassiveSock.h"
+#include "SecurityHandle.h"
+
 #include <functional>
 #include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
@@ -6,8 +9,6 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
-#include "PassiveSock.h"
-#include "SecurityHandle.h"
 
 class CSSLServer : public ISocketStream
 {
@@ -17,7 +18,7 @@ public:
 	ISocketStream * getSocketStream();
 	int RecvPartial(void * const lpBuf, const size_t Len) override;
 	int SendPartial(const void * const lpBuf, const size_t Len) override;
-	int GetLastError() override;
+	int GetLastError() const override;
 	HRESULT Disconnect() override;
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
@@ -28,7 +29,7 @@ private:
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
 	CPassiveSock * m_SocketStream;
-	int m_LastError{};
+	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	HRESULT Startup();
 	void DecryptAndHandleConcatenatedShutdownMessage(SecBuffer(&Buffers)[4], SecBufferDesc& Message, int& err, SECURITY_STATUS& scRet);
@@ -38,7 +39,7 @@ private:
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
-	DWORD readBufferBytes{};
+	DWORD readBufferBytes{ 0 };
 	void* readPtr{};
 	SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes{};

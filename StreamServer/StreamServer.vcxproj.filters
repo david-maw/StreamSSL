@@ -9,12 +9,21 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="Header Files\Common Headers">
+      <UniqueIdentifier>{0b3feaae-7fbb-43c0-bdee-4d71defb9281}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Common Sources">
+      <UniqueIdentifier>{43b68f23-ddb4-4ed5-971d-cf14217fa73e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
+    <ClInclude Include="framework.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ISocketStream.h">
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SSLServer.h">
@@ -32,27 +41,30 @@
     <ClInclude Include="SSLHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CertRAII.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Handle.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SecurityHandle.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CertHelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ServerCert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ISocketStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\CertHelper.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\CertRAII.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\Handle.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\SecurityHandle.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\Utilities.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
+    <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="StreamServer.cpp">
@@ -64,9 +76,6 @@
     <ClCompile Include="Listener.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utilities.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Transport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -76,14 +85,17 @@
     <ClCompile Include="SSLHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CertRAII.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CertHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ServerCert.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\CertHelper.cpp">
+      <Filter>Source Files\Common Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\CertRAII.cpp">
+      <Filter>Source Files\Common Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\Utilities.cpp">
+      <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

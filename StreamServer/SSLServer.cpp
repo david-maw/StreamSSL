@@ -1,8 +1,11 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "SSLServer.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
 #include "ServerCert.h"
+#include "Utilities.h"
 
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLServer::g_pSSPI = nullptr;
@@ -22,10 +25,8 @@ void SecurityContextTraits::Close(Type value)
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means to send messages to a client (a CPassiveSock).
 CSSLServer::CSSLServer(CPassiveSock * SocketStream)
-	:readBufferBytes(0)
-	, readPtr(readBuffer)
-	, m_SocketStream(SocketStream)
-	, m_LastError(0)
+  : m_SocketStream(SocketStream)
+  , readPtr(readBuffer)
 {
 }
 
@@ -46,17 +47,13 @@ ISocketStream * CSSLServer::getSocketStream()
 // Set up the connection, including SSL handshake, certificate selection/validation
 HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 {
-	HRESULT hr = S_OK;
-	SECURITY_STATUS scRet;
-
 	if (!g_pSSPI)
 	{
-		hr = InitializeClass();
+		const HRESULT hr = InitializeClass();
 		if FAILED(hr)
 			return hr;
-	}
-	if (!g_pSSPI)
 		return E_POINTER;
+	}
 
 	if (lpBuf && (Len > 0))
 	{  // preload the IO buffer with whatever we already read
@@ -78,7 +75,7 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 	}
 
 	// Find out how big the header and trailer will be:
-	scRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_STREAM_SIZES, &Sizes);
+	const SECURITY_STATUS scRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_STREAM_SIZES, &Sizes);
 
 	if (scRet != SEC_E_OK)
 	{
@@ -106,7 +103,7 @@ HRESULT CSSLServer::InitializeClass()
 }
 
 // Return the last error value for this CSSLServer
-int CSSLServer::GetLastError()
+int CSSLServer::GetLastError() const
 {
 	if (m_LastError)
 		return m_LastError;
@@ -444,7 +441,6 @@ bool CSSLServer::SSPINegotiateLoop()
 	SecBufferDesc        OutBuffer;
 	SecBuffer            InBuffers[2];
 	SecBuffer            OutBuffers[1];
-	DWORD                err = 0;
 	DWORD                dwSSPIOutFlags = 0;
 	bool				 ContextHandleValid = (bool)m_hContext;
 
@@ -485,7 +481,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	{
 		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
-			err = m_SocketStream->RecvPartial(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			const DWORD err = m_SocketStream->RecvPartial(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
@@ -567,7 +563,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
-				err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				const DWORD err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{

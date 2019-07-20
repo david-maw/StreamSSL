@@ -1,10 +1,13 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
+#include "ActiveSock.h"
+#include "Utilities.h"
+
 #include <process.h>
 #include <stdlib.h>
 #include <WS2tcpip.h>
 #include <MSTcpIP.h>
-#include "Utilities.h"
-#include "ActiveSock.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -151,41 +154,28 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
-	DWORD
-		bytes_read = 0,
-		msg_flags = 0;
-	int rc = SOCKET_ERROR;
+	DWORD bytes_read = 0;
+	DWORD msg_flags = 0;
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
+	// Create the overlapped I/O event and structures
+	memset(&os, 0, sizeof(OVERLAPPED));
+	os.hEvent = hEvents[1];
+	if (!WSAResetEvent(os.hEvent))
+	{
+		LastError = WSAGetLastError();
+		return SOCKET_ERROR;
+	}
+
+	// Setup the buffers array
+	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
 
 	// If the timer has been invalidated, restart it
 	const auto RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 
-	if (RecvInitiated)
-	{
-		// Special case, the previous read timed out, so we are trying again, maybe it completed in the meantime
-		LastError = WSA_IO_PENDING;
-	}
-	else
-	{
-		// Normal case, the last read completed normally, now we're reading again
-
-		// Create the overlapped I/O event and structures
-		memset(&os, 0, sizeof(OVERLAPPED));
-		os.hEvent = hEvents[1];
-		if (!WSAResetEvent(os.hEvent))
-		{
-			LastError = WSAGetLastError();
-			return SOCKET_ERROR;
-		}
-
-		RecvInitiated = true;
-		// Setup the buffers array
-		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
-		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
-		LastError = WSAGetLastError();
-	}
+	const int rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
+	LastError = WSAGetLastError();
 
 	const CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
 	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
@@ -206,6 +196,7 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		{
 		case WAIT_OBJECT_0 + 1: // The read event 
 			IOCompleted = true;
+			LastError = 0;
 			break;
 		case WAIT_ABANDONED_0:
 		case WAIT_ABANDONED_0 + 1:
@@ -223,10 +214,8 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 
 	if (IOCompleted)
 	{
-		RecvInitiated = false;
 		if (WSAGetOverlappedResult(ActualSocket, &os, &bytes_read, true, &msg_flags) && (bytes_read > 0))
 		{
-			LastError = 0;
 			return bytes_read; // Normal case, we read some bytes, it's all good
 		}
 		else
@@ -269,7 +258,7 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	}
 }
 
-int CActiveSock::GetRecvTimeoutSeconds()
+int CActiveSock::GetRecvTimeoutSeconds() const
 {
 	return RecvTimeoutSeconds;
 }
@@ -285,12 +274,12 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	}
 }
 
-int CActiveSock::GetSendTimeoutSeconds()
+int CActiveSock::GetSendTimeoutSeconds() const
 {
 	return SendTimeoutSeconds;
 }
 
-DWORD CActiveSock::GetLastError()
+DWORD CActiveSock::GetLastError() const
 {
 	return LastError;
 }
@@ -307,19 +296,32 @@ bool CActiveSock::Close()
 		LastError = ERROR_HANDLES_CLOSED;
 		return false;
 	}
-	else if (ShutDown() == FALSE)
-	{
-		WSACloseEvent(read_event);
-		WSACloseEvent(write_event);
-		WSACleanup();
-		CloseAndInvalidateSocket();
-		return true;
+
+  if (!WSACloseEvent(read_event))
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!WSACloseEvent(write_event))
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!CloseAndInvalidateSocket())
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!WSACleanup())
+  {
+    LastError = ::WSAGetLastError();
+    return false;
 	}
-	else
-	{
-		LastError = ::WSAGetLastError();
-		return false;
-	}
+
+  return true;
 }
 
 //sends a message, or part of one
@@ -344,7 +346,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	// Setup the buffer array
 	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
 
-	// Reset the timer if it has been invalidated 
+	// If the timer has been invalidated, restart it
 	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
 	const int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
@@ -369,6 +371,7 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		{
 		case WAIT_OBJECT_0 + 1: // The write event
 			IOCompleted = true;
+			LastError = 0;
 			break;
 		case WAIT_ABANDONED_0:
 		case WAIT_ABANDONED_0 + 1:
@@ -391,6 +394,14 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		{
 			return bytes_sent;
 		}
+    else
+    {	// A bad thing happened
+      const int e = WSAGetLastError();
+      if (e == 0) // The socket was closed
+        return 0;
+      else if (LastError == 0)
+        LastError = e;
+    }
 	}
 	return SOCKET_ERROR;
 }
@@ -415,8 +426,9 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 	return (total_bytes_sent);
 }
 
-void CActiveSock::CloseAndInvalidateSocket()
+bool CActiveSock::CloseAndInvalidateSocket()
 {
-	closesocket(ActualSocket);
+	const auto nRet = closesocket(ActualSocket);
 	ActualSocket = INVALID_SOCKET;
+	return nRet == 0;
 }

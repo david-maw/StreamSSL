@@ -1,6 +1,9 @@
-#include "stdafx.h"
-#include <process.h>
+#include "pch.h"
+#include "framework.h"
+
 #include "PassiveSock.h"
+
+#include <process.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -12,8 +15,9 @@ static char THIS_FILE[] = __FILE__;
 // CPassiveSock
 
 CPassiveSock::CPassiveSock(SOCKET s, HANDLE hServerStopEvent)
+ : ActualSocket(s)
+ , m_hStopEvent(hServerStopEvent)
 {
-	ActualSocket = s;
 	ZeroMemory(&os, sizeof(os));
 	read_event = WSACreateEvent();  // if create fails we should return an error
 	WSAResetEvent(read_event);
@@ -21,7 +25,6 @@ CPassiveSock::CPassiveSock(SOCKET s, HANDLE hServerStopEvent)
 	WSAResetEvent(write_event);
 	int rc = 1;
 	setsockopt(ActualSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&rc, sizeof(int));
-	m_hStopEvent = hServerStopEvent;
 }
 
 CPassiveSock::~CPassiveSock()
@@ -143,7 +146,7 @@ void CPassiveSock::SetTimeoutSeconds(int NewTimeoutSeconds)
 	}
 }
 
-int CPassiveSock::GetLastError()
+int CPassiveSock::GetLastError() const
 {
 	return LastError;
 }

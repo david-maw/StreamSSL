@@ -1,9 +1,13 @@
-#include "stdafx.h"
-#include <unordered_map>
-#include <mutex>
+#include "pch.h"
+#include "framework.h"
+
 #include "ServerCert.h"
 #include "CertHelper.h"
 #include "SSLServer.h"
+#include "Utilities.h"
+
+#include <unordered_map>
+#include <mutex>
 
 // Create credentials (a handle to a credential context) from a certificate
 SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)

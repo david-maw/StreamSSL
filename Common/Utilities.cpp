@@ -1,5 +1,8 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "Utilities.h"
+
 #include <atlconv.h>
 #include <stdarg.h>  // For va_start, etc.
 #include <memory>    // For std::unique_ptr

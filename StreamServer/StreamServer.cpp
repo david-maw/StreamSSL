@@ -1,8 +1,11 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "SSLHelper.h"
 #include "CertHelper.h"
 #include "Listener.h"
 #include "ISocketStream.h"
+#include "Utilities.h"
 
 using namespace std;
 

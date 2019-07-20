@@ -1,4 +1,6 @@
-#include "stdafx.h"
+#include "pch.h"
+#include "framework.h"
+
 #include "SSLClient.h"
 #include "Utilities.h"
 #include "ActiveSock.h"
@@ -23,12 +25,8 @@ void SecurityContextTraits::Close(Type value)
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)
-	:readPtr(readBuffer)
-	,m_SocketStream(SocketStream)
-{
-}
-
-CSSLClient::~CSSLClient()
+  : m_SocketStream(SocketStream)
+  , readPtr(readBuffer)
 {
 }
 
@@ -49,12 +47,14 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 		hr = InitializeClass();
 		if FAILED(hr)
 			return hr;
-	}
-	if (!g_pSSPI)
 		return E_POINTER;
+	}
 	CertContextHandle hCertContext;
 	if (SelectClientCertificate)
+	{
 		hr = SelectClientCertificate(*hCertContext.set(), NULL, false);
+		if FAILED(hr) return hr;
+	}
 	// If a certificate is required, it will be requested later 
 	hr = CreateCredentialsFromCertificate(m_ClientCreds.set(), hCertContext.get());
 	if FAILED(hr) return hr;
@@ -104,7 +104,7 @@ HRESULT CSSLClient::InitializeClass()
 }
 
 // Return the last error value for this CSSLClient
-DWORD CSSLClient::GetLastError()
+DWORD CSSLClient::GetLastError() const
 {
 	if (m_LastError)
 		return m_LastError;
@@ -914,12 +914,12 @@ HRESULT CSSLClient::Disconnect()
 	return Status;
 }
 
-bool CSSLClient::getServerCertNameMatches()
+bool CSSLClient::getServerCertNameMatches() const
 {
 	return ServerCertNameMatches;
 }
 
-bool CSSLClient::getServerCertTrusted()
+bool CSSLClient::getServerCertTrusted() const
 {
 	return ServerCertTrusted;
 }

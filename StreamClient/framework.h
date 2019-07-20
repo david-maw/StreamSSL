@@ -1,8 +1,9 @@
 #pragma once
 
-#ifndef WINVER				
-#define WINVER _WIN32_WINNT_VISTA  // Allow use of features specific to Windows 6 (Vista) or later
-#endif
+#include "targetver.h"
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS      // some CString constructors will be explicit
+#define _AFX_NO_MFC_CONTROLS_IN_DIALOGS         // remove support for MFC controls in dialogs
 
 // The following commented code is for debugging memory leaks
 //#define _CRTDBG_MAP_ALLOC  
@@ -17,20 +18,25 @@
 //#endif
 
 // Define a bool to check if this is a DEBUG or RELEASE build
+#ifndef DEBUGFLAG_DEFINED
+#define DEBUGFLAG_DEFINED
 #if defined(_DEBUG)
 const bool debug = true;
 #else
 const bool debug = false;
 #endif
+#endif // DEBUGFLAG_DEFINED
 
 #define _AFXDLL
-#include <afxwin.h>
-#include <afxmt.h>
 
-// Windows SDK
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
 #endif
+
+#include <afx.h>
+#include <afxwin.h>         // MFC core and standard components
+#include <afxmt.h>
+
 #include <WS2tcpip.h>
 #define SECURITY_WIN32
 #include <security.h>
@@ -38,6 +44,3 @@ const bool debug = false;
 
 // Standard C++
 #include <iostream>
-
-// Application
-#include "Utilities.h"
