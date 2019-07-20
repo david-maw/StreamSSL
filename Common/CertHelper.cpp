@@ -341,7 +341,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 		if (pCertContext)	// We have a saved certificate context we no longer need, so free it
 			CertFreeCertificateContext(pCertContext);
 		pCertContext = CertDuplicateCertificateContext(pChainContext->rgpChain[0]->rgpElement[0]->pCertContext);
-		if (false && debug && pCertContext)
+		if (g_ShowCertInfo && debug && pCertContext)
 			ShowCertInfo(pCertContext, L"Certificate at the end of the chain selected");
 		CertFreeCertificateChain(pChainContext);
 		Status = SEC_E_OK;
