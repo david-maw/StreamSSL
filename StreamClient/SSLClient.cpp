@@ -44,16 +44,18 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 
 	if (!g_pSSPI)
 	{
-		hr = InitializeClass();
+		hr = InitializeClass(); 
 		if FAILED(hr)
 			return hr;
-		return E_POINTER;
+		if (!g_pSSPI) // InitializeClass should have assigned g_pSSPI if it worked
+			return E_POINTER;
 	}
 	CertContextHandle hCertContext;
 	if (SelectClientCertificate)
 	{
 		hr = SelectClientCertificate(*hCertContext.set(), NULL, false);
-		if FAILED(hr) return hr;
+		if FAILED(hr)
+			DebugMsg("Optional client certificate not selected");
 	}
 	// If a certificate is required, it will be requested later 
 	hr = CreateCredentialsFromCertificate(m_ClientCreds.set(), hCertContext.get());
