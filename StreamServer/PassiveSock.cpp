@@ -45,7 +45,6 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 {
 	DWORD
 		bytes_read = 0,
-		dwWait = 0,
 		msg_flags = 0;
 	int rc;
 
@@ -83,6 +82,7 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
 	{
 		CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
+		DWORD dwWait = 0;
 		if (TimeLeft.GetTotalSeconds() <= 0)
 			dwWait = WAIT_TIMEOUT;
 		else
@@ -115,15 +115,13 @@ int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
 // Receives exactly Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CPassiveSock::ReceiveBytes(void * const lpBuf, const size_t Len)
 {
-	size_t
-		bytes_received = 0,
-		total_bytes_received = 0;
+	size_t total_bytes_received = 0;
 
 	ArmRecvTimer(); // Allow RecvPartial to start timing
 
 	while (total_bytes_received < Len)
 	{
-		bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
 		if (bytes_received == SOCKET_ERROR)
 			return SOCKET_ERROR;
 		else if (bytes_received == 0)
@@ -176,7 +174,6 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, write_event };
-
 	msg_flags = 0;
 	dwWait = 0;
 	int rc;
@@ -187,15 +184,15 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 	// Create the overlapped I/O event and structures
 	memset(&os, 0, sizeof(OVERLAPPED));
 	os.hEvent = hEvents[1];
-  if (!WSAResetEvent(os.hEvent))
-  {
-    LastError = WSAGetLastError();
-    return SOCKET_ERROR;
-  }
+	if (!WSAResetEvent(os.hEvent))
+	{
+		LastError = WSAGetLastError();
+		return SOCKET_ERROR;
+	}
 
-  // Setup the buffers array
-  WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
-  rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
+	// Setup the buffers array
+	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
+	rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, NULL);
 	LastError = WSAGetLastError();
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
@@ -225,15 +222,13 @@ int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
 //sends all the data or returns a timeout
 int CPassiveSock::SendBytes(const void * const lpBuf, const size_t Len)
 {
-	size_t
-		bytes_sent = 0,
-		total_bytes_sent = 0;
+	size_t total_bytes_sent = 0;
 
 	SendEndTime = 0; // Allow it to be reset by Send
 
 	while (total_bytes_sent < Len)
 	{
-		bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		const size_t bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
 		if ((bytes_sent == SOCKET_ERROR))
 			return SOCKET_ERROR;
 		else if (bytes_sent == 0)

@@ -183,11 +183,10 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Read in progress, normal case
 	{
 		CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
-		DWORD dwWait{ WAIT_TIMEOUT };
 		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
 		if (0 < SecondsLeft)
 		{
-			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
+			const DWORD dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
 			if (dwWait == WAIT_OBJECT_0 + 1) // The read event 
 				IOCompleted = true;
 		}
@@ -222,13 +221,10 @@ int CActiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 // Receives exactly Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CActiveSock::RecvMsg(LPVOID lpBuf, const size_t Len)
 {
-	size_t
-		bytes_received = 0,
-		total_bytes_received = 0;
-
+	size_t total_bytes_received = 0;
 	while (total_bytes_received < Len)
 	{
-		bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
 		if (bytes_received == SOCKET_ERROR)
 			return SOCKET_ERROR;
 		else if (bytes_received == 0)
@@ -313,8 +309,8 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, write_event };
-	
-  // Reset the timer if it has been invalidated 
+
+	// Reset the timer if it has been invalidated 
 	const auto SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
 	// Create the overlapped I/O event and structures
@@ -337,12 +333,11 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 
 	if ((rc == SOCKET_ERROR) && (LastError == WSA_IO_PENDING))  // Write in progress
 	{
-		DWORD dwWait;
 		CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
 		const auto SecondsLeft = TimeLeft.GetTotalSeconds();
 		if (0 < SecondsLeft)
 		{
-			dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
+			const DWORD dwWait = WaitForMultipleObjects(2, hEvents, false, static_cast<DWORD>(SecondsLeft) * 1000);
 			if (dwWait == WAIT_OBJECT_0 + 1) // The write event
 				IOCompleted = true;
 		}
@@ -368,13 +363,10 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 //sends all the data or returns a timeout
 int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 {
-	ULONG
-		bytes_sent = 0,
-		total_bytes_sent = 0;
-
+	ULONG total_bytes_sent = 0;
 	while (total_bytes_sent < Len)
 	{
-		bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		const ULONG bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
 		if ((bytes_sent == SOCKET_ERROR))
 			return SOCKET_ERROR;
 		else if (bytes_sent == 0)

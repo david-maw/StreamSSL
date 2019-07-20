@@ -145,7 +145,6 @@ int wmain(int argc, WCHAR * argv[])
 	{
 		// Drive the server side by sending messages it expects
 		cout << "Socket connected to server, initializing SSL" << endl;
-		char Msg[100];
 		auto pSSLClient = make_unique<CSSLClient>(pActiveSock.get());
 		pSSLClient->ServerCertAcceptable = CertAcceptable;
 		pSSLClient->SelectClientCertificate = SelectClientCertificate;
@@ -164,6 +163,7 @@ int wmain(int argc, WCHAR * argv[])
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
 			int len = 0;
+			char Msg[100];
 			if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
 			{
 				cout << "Received '" << CStringA(Msg, len) << "'" << endl;

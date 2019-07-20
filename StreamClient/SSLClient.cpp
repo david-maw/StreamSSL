@@ -155,8 +155,6 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 // Because SSL is message oriented these calls send (or receive) a whole message
 int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 {
-
-	INT err;
 	INT i;
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];
@@ -209,7 +207,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 				return SOCKET_ERROR;
 			}
 		}
-		err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
+		const INT err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -811,10 +809,9 @@ bool CSSLClient::Close(bool closeUnderlyingSocket)
 
 HRESULT CSSLClient::Disconnect()
 {
-	DWORD           dwType;
+	DWORD           dwType = SCHANNEL_SHUTDOWN;
 	PBYTE           pbMessage;
 	DWORD           cbMessage;
-	DWORD           cbData;
 
 	SecBufferDesc   OutBuffer;
 	SecBuffer       OutBuffers[1];
@@ -825,8 +822,6 @@ HRESULT CSSLClient::Disconnect()
 	//
 	// Notify schannel that we are about to close the connection.
 	//
-
-	dwType = SCHANNEL_SHUTDOWN;
 
 	OutBuffers[0].pvBuffer = &dwType;
 	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
@@ -897,7 +892,7 @@ HRESULT CSSLClient::Disconnect()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = WSAGetLastError();
