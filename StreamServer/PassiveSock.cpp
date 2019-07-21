@@ -146,7 +146,7 @@ void CPassiveSock::SetTimeoutSeconds(int NewTimeoutSeconds)
 	}
 }
 
-int CPassiveSock::GetLastError() const
+DWORD CPassiveSock::GetLastError() const
 {
 	return LastError;
 }

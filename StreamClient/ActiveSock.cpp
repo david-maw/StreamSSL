@@ -40,7 +40,7 @@ CActiveSock::CActiveSock(HANDLE StopEvent)
 CActiveSock::~CActiveSock()
 {
 	if (ActualSocket != INVALID_SOCKET)
-		Close();
+		Disconnect();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -289,39 +289,15 @@ BOOL CActiveSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
-bool CActiveSock::Close()
+HRESULT CActiveSock::Disconnect()
 {
+	LastError = ERROR_SUCCESS;
+
 	if (ActualSocket == INVALID_SOCKET)
-	{
 		LastError = ERROR_HANDLES_CLOSED;
-		return false;
-	}
-
-  if (!WSACloseEvent(read_event))
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!WSACloseEvent(write_event))
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!CloseAndInvalidateSocket())
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!WSACleanup())
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-	}
-
-  return true;
+	else if (!(WSACloseEvent(read_event) || WSACloseEvent(write_event) || CloseAndInvalidateSocket() || WSACleanup()))
+	    LastError = ::WSAGetLastError();
+  return HRESULT_FROM_WIN32(LastError);
 }
 
 //sends a message, or part of one

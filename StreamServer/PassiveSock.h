@@ -11,7 +11,7 @@ class CPassiveSock : public ISocketStream
 public:
 	CPassiveSock(SOCKET, HANDLE);
 	virtual ~CPassiveSock();
-	int GetLastError() const override;
+	DWORD GetLastError() const override;
 	void SetTimeoutSeconds(int NewTimeoutSeconds);
 	void ArmRecvTimer();
 	void ArmSendTimer();
@@ -30,7 +30,7 @@ private:
 	WSAOVERLAPPED os;
 	bool RecvInitiated = false;
 	SOCKET ActualSocket;
-	int LastError = 0;
+	DWORD LastError = 0;
 	int TimeoutSeconds = 1;
 	HANDLE m_hStopEvent;
 };

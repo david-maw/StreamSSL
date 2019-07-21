@@ -155,7 +155,7 @@
     <ClInclude Include="..\Common\Include\CertHelper.h" />
     <ClInclude Include="..\Common\Include\CertRAII.h" />
     <ClInclude Include="..\Common\Include\Utilities.h" />
-    <ClInclude Include="ISocketStream.h" />
+    <ClInclude Include="..\Common\Include\ISocketStream.h" />
     <ClInclude Include="ActiveSock.h" />
     <ClInclude Include="EventWrapper.h" />
     <ClInclude Include="..\Common\Include\Handle.h" />

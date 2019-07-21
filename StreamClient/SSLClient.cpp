@@ -803,13 +803,13 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	return scRet;
 }
 
-bool CSSLClient::Close(bool closeUnderlyingSocket)
+bool CSSLClient::Disconnect(bool closeUnderlyingSocket)
 {
-	Disconnect();
-	return closeUnderlyingSocket ? m_SocketStream->Close() : true;
+	DisconnectSSL();
+	return closeUnderlyingSocket ? SUCCEEDED(m_SocketStream->Disconnect()) : true;
 }
 
-HRESULT CSSLClient::Disconnect()
+HRESULT CSSLClient::DisconnectSSL()
 {
 	DWORD           dwType = SCHANNEL_SHUTDOWN;
 	PBYTE           pbMessage;

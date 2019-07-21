@@ -29,7 +29,7 @@ public:
 	int SendMsg(LPCVOID lpBuf, const size_t Len);
 	BOOL ShutDown(int nHow = SD_BOTH);
 	DWORD GetLastError() const override;
-	bool Close() override; // Returns true if the close worked
+	HRESULT Disconnect() override; // Returns S_OK if the close worked
 protected:
 	SOCKET ActualSocket{ INVALID_SOCKET };
 	HANDLE m_hStopEvent{ nullptr };

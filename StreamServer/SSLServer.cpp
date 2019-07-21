@@ -104,7 +104,7 @@ HRESULT CSSLServer::InitializeClass()
 }
 
 // Return the last error value for this CSSLServer
-int CSSLServer::GetLastError() const
+DWORD CSSLServer::GetLastError() const
 {
 	if (m_LastError)
 		return m_LastError;
