@@ -160,10 +160,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Common\Include\BaseSock.h" />
     <ClInclude Include="..\Common\Include\CertHelper.h" />
     <ClInclude Include="..\Common\Include\CertRAII.h" />
     <ClInclude Include="..\Common\Include\Handle.h" />
-    <ClInclude Include="ISocketStream.h" />
+    <ClInclude Include="..\Common\Include\ISocketStream.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="PassiveSock.h" />
     <ClInclude Include="..\Common\Include\SecurityHandle.h" />
@@ -177,6 +178,7 @@
     <ClInclude Include="..\Common\Include\Utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\BaseSock.cpp" />
     <ClCompile Include="..\Common\CertHelper.cpp" />
     <ClCompile Include="..\Common\CertRAII.cpp" />
     <ClCompile Include="Listener.cpp" />

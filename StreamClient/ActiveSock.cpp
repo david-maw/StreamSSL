@@ -4,11 +4,6 @@
 #include "ActiveSock.h"
 #include "Utilities.h"
 
-#include <process.h>
-#include <stdlib.h>
-#include <WS2tcpip.h>
-#include <MSTcpIP.h>
-
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -18,21 +13,20 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CActiveSock
 
-WSADATA CActiveSock::WsaData;
 
 CActiveSock::CActiveSock(HANDLE StopEvent)
-  : m_hStopEvent(StopEvent)
+  : CBaseSock(StopEvent)
 {
 	//
 	// Initialize the WinSock subsystem.
 	//
+	WSADATA wsadata;
 
-	if (WSAStartup(0x0101, &WsaData) == SOCKET_ERROR)
+	if (WSAStartup(MAKEWORD(1,1), &wsadata) == SOCKET_ERROR)
 	{
 		DebugMsg("Error %d returned by WSAStartup", GetLastError());
 		throw "WSAStartup error";
 	}
-	ZeroMemory(&os, sizeof(os));
 	int rc = true;
 	setsockopt(ActualSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&rc, sizeof(int));
 }
@@ -40,7 +34,7 @@ CActiveSock::CActiveSock(HANDLE StopEvent)
 CActiveSock::~CActiveSock()
 {
 	if (ActualSocket != INVALID_SOCKET)
-		Close();
+		Disconnect();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -279,49 +273,15 @@ int CActiveSock::GetSendTimeoutSeconds() const
 	return SendTimeoutSeconds;
 }
 
-DWORD CActiveSock::GetLastError() const
+HRESULT CActiveSock::Disconnect()
 {
-	return LastError;
-}
+	LastError = ERROR_SUCCESS;
 
-BOOL CActiveSock::ShutDown(int nHow)
-{
-	return ::shutdown(ActualSocket, nHow);
-}
-
-bool CActiveSock::Close()
-{
 	if (ActualSocket == INVALID_SOCKET)
-	{
 		LastError = ERROR_HANDLES_CLOSED;
-		return false;
-	}
-
-  if (!WSACloseEvent(read_event))
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!WSACloseEvent(write_event))
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!CloseAndInvalidateSocket())
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!WSACleanup())
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-	}
-
-  return true;
+	else if (!(WSACloseEvent(read_event) || WSACloseEvent(write_event) || CloseAndInvalidateSocket() || WSACleanup()))
+	    LastError = ::WSAGetLastError();
+  return HRESULT_FROM_WIN32(LastError);
 }
 
 //sends a message, or part of one

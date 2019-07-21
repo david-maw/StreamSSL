@@ -35,9 +35,6 @@
     <ClInclude Include="EventWrapper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ISocketStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\Common\Include\Handle.h">
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
@@ -51,6 +48,12 @@
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Include\Utilities.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\ISocketStream.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\BaseSock.h">
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -74,6 +77,9 @@
       <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\Utilities.cpp">
+      <Filter>Source Files\Common Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\BaseSock.cpp">
       <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
   </ItemGroup>

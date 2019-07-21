@@ -15,10 +15,9 @@ static char THIS_FILE[] = __FILE__;
 // CPassiveSock
 
 CPassiveSock::CPassiveSock(SOCKET s, HANDLE hServerStopEvent)
- : ActualSocket(s)
- , m_hStopEvent(hServerStopEvent)
+ : CBaseSock(hServerStopEvent)
 {
-	ZeroMemory(&os, sizeof(os));
+	ActualSocket = s;
 	read_event = WSACreateEvent();  // if create fails we should return an error
 	WSAResetEvent(read_event);
 	write_event = WSACreateEvent();  // if create fails we should return an error
@@ -146,14 +145,9 @@ void CPassiveSock::SetTimeoutSeconds(int NewTimeoutSeconds)
 	}
 }
 
-int CPassiveSock::GetLastError() const
+DWORD CPassiveSock::GetLastError() const
 {
-	return LastError;
-}
-
-BOOL CPassiveSock::ShutDown(int nHow)
-{
-	return ::shutdown(ActualSocket, nHow);
+	return CBaseSock::GetLastError();
 }
 
 HRESULT CPassiveSock::Disconnect()
