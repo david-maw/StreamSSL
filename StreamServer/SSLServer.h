@@ -32,7 +32,7 @@ private:
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	HRESULT Startup();
-	void DecryptAndHandleConcatenatedShutdownMessage(SecBuffer(&Buffers)[4], SecBufferDesc& Message, int& err, SECURITY_STATUS& scRet);
+	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message);
 	int RecvEncrypted(void* const lpBuf, const size_t Len);
 	bool SSPINegotiateLoop();
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
