@@ -52,7 +52,8 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 		const HRESULT hr = InitializeClass();
 		if FAILED(hr)
 			return hr;
-		return E_POINTER;
+		if (!g_pSSPI) // InitializeClass should have assigned g_pSSPI if it worked
+			return E_POINTER;
 	}
 
 	if (lpBuf && (Len > 0))
