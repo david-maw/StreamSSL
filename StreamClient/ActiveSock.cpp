@@ -4,11 +4,6 @@
 #include "ActiveSock.h"
 #include "Utilities.h"
 
-#include <process.h>
-#include <stdlib.h>
-#include <WS2tcpip.h>
-#include <MSTcpIP.h>
-
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -18,21 +13,20 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CActiveSock
 
-WSADATA CActiveSock::WsaData;
 
 CActiveSock::CActiveSock(HANDLE StopEvent)
-  : m_hStopEvent(StopEvent)
+  : CBaseSock(StopEvent)
 {
 	//
 	// Initialize the WinSock subsystem.
 	//
+	WSADATA wsadata;
 
-	if (WSAStartup(0x0101, &WsaData) == SOCKET_ERROR)
+	if (WSAStartup(MAKEWORD(1,1), &wsadata) == SOCKET_ERROR)
 	{
 		DebugMsg("Error %d returned by WSAStartup", GetLastError());
 		throw "WSAStartup error";
 	}
-	ZeroMemory(&os, sizeof(os));
 	int rc = true;
 	setsockopt(ActualSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&rc, sizeof(int));
 }
@@ -277,16 +271,6 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 int CActiveSock::GetSendTimeoutSeconds() const
 {
 	return SendTimeoutSeconds;
-}
-
-DWORD CActiveSock::GetLastError() const
-{
-	return LastError;
-}
-
-BOOL CActiveSock::ShutDown(int nHow)
-{
-	return ::shutdown(ActualSocket, nHow);
 }
 
 HRESULT CActiveSock::Disconnect()
