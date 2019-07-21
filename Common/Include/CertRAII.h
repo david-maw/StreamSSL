@@ -1,5 +1,5 @@
 #pragma once
-#include "wincrypt.h"
+#include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
 
 /*
@@ -21,7 +21,7 @@ if a lot of methods are needed so the SecurityHandle.h approach works better the
 class CSP
 {
 public:
-	CSP();
+	CSP() = default;
 	~CSP();
 	bool AcquirePrivateKey(PCCERT_CONTEXT pCertContext);
 private:
@@ -43,7 +43,7 @@ public:
 class CryptKey
 {
 public:
-	CryptKey();
+	CryptKey() = default;
 	~CryptKey();
 	BOOL CryptGenKey(CryptProvider& prov);
 
@@ -54,7 +54,7 @@ private:
 class CertStore
 {
 public:
-	CertStore();
+	CertStore() = default;
 	~CertStore();
 	HCERTSTORE get() const;
 	operator bool() const;

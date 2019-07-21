@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SecurityHandle.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <functional>
@@ -10,8 +12,6 @@
 #define SECURITY_WIN32
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
-#include "SecurityHandle.h"
-
 
 class CActiveSock; // forward declaration
 
@@ -19,7 +19,7 @@ class CSSLClient
 {
 public:
 	explicit CSSLClient(CActiveSock *);
-	~CSSLClient();
+	~CSSLClient() = default;
 private:
 	static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;
@@ -35,7 +35,7 @@ private:
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes = 0;
 	CHAR plainText[MaxMsgSize * 2]{}; // Extra plaintext data not yet delivered
-	CHAR * plainTextPtr =  nullptr;
+	CHAR * plainTextPtr = nullptr;
 	DWORD plainTextBytes = 0;
 	void * readPtr = nullptr;
 	SecurityContextHandle m_hContext;
@@ -50,7 +50,7 @@ public:
 	// ISocketStream
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
 	int SendPartial(LPCVOID lpBuf, const ULONG Len);
-	DWORD GetLastError();
+	DWORD GetLastError() const;
 	bool Close(bool closeUnderlyingSocket = true);
 	// Regular class interface
 	HRESULT Disconnect();
@@ -60,6 +60,6 @@ public:
 	// Attributes
 	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
-	bool getServerCertNameMatches();
-	bool getServerCertTrusted();
+	bool getServerCertNameMatches() const;
+	bool getServerCertTrusted() const;
 };

@@ -109,7 +109,7 @@ public:
 		std::exchange(left.m_value, right.m_value);
 	}
 
-    // Define equality operators 
+	// Define equality operators 
 	bool operator==(Handle const & right) const noexcept
 	{
 		return T::Equal(get(), right.get());

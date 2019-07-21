@@ -2,12 +2,14 @@
 #include "framework.h"
 
 #include "CertHelper.h"
+#include "CertRAII.h"
+#include "SecurityHandle.h"
+#include "Utilities.h"
+
 #include <algorithm>
 #include <vector>
 #include <cryptuiapi.h>
 #include <string>
-#include "CertRAII.h"
-#include "SecurityHandle.h"
 
 #pragma comment(lib, "Cryptui.lib")
 #pragma comment(lib, "Dnsapi.lib")
@@ -142,7 +144,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
-    DebugMsg("Certificate %p '%S' is allowed to be used for server authentication.", pCertContext, pszFriendlyNameString);
+ 		DebugMsg("Certificate %p '%S' is allowed to be used for server authentication.", pCertContext, pszFriendlyNameString);
 		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, pszNameString, _countof(pszNameString)))
 			DebugMsg("CertGetNameString failed getting subject name.");
 		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
@@ -223,7 +225,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 
 	char * requiredUsage = szOID_PKIX_KP_CLIENT_AUTH;
 	CERT_ENHKEY_USAGE eku;
-	PCCERT_CONTEXT  pCertContextCurrent = nullptr;
+	PCCERT_CONTEXT pCertContextCurrent = nullptr;
 	eku.cUsageIdentifier = 1;
 	eku.rgpszUsageIdentifier = &requiredUsage;
 	// Find a client certificate. Note that this code just searches for a 
@@ -339,7 +341,7 @@ SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgCont
 		if (pCertContext)	// We have a saved certificate context we no longer need, so free it
 			CertFreeCertificateContext(pCertContext);
 		pCertContext = CertDuplicateCertificateContext(pChainContext->rgpChain[0]->rgpElement[0]->pCertContext);
-		if (false && debug && pCertContext)
+		if (g_ShowCertInfo && debug && pCertContext)
 			ShowCertInfo(pCertContext, L"Certificate at the end of the chain selected");
 		CertFreeCertificateChain(pChainContext);
 		Status = SEC_E_OK;
@@ -411,7 +413,6 @@ int hex_char_to_int(char c) {
 std::vector<byte> hexToBinary(const char * const str)
 {
 	std::vector<byte> boutput(20);
-	byte nibbleValue = 0;
 	byte byteValue = 0;
 	auto it = boutput.begin();
 	const char * p = str;
@@ -419,7 +420,7 @@ std::vector<byte> hexToBinary(const char * const str)
 
 	while (*p != 0 && str - p < 40 && it != boutput.end())
 	{
-		nibbleValue = static_cast<byte>(hex_char_to_int(*p++));
+		const byte nibbleValue = static_cast<byte>(hex_char_to_int(*p++));
 		if (nibbleValue >= 0)
 		{
 			highOrder = !highOrder;

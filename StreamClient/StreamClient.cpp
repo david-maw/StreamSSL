@@ -8,9 +8,10 @@
 #include "ActiveSock.h"
 #include "SSLClient.h"
 #include "EventWrapper.h"
+#include "CertHelper.h"
+
 #include <iostream>
 #include <iomanip>
-#include "CertHelper.h"
 
 using namespace std;
 
@@ -27,7 +28,7 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 		cout << "match" << endl;
 	else
 		cout << "mismatch" << endl;
-	if (false && debug && pCertContext)
+	if (g_ShowCertInfo && debug && pCertContext)
 		ShowCertInfo(pCertContext, L"Client Received Server Certificate");
 	return true; // Any certificate will do
 }
@@ -87,7 +88,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 		wcout << ", selected name: " << GetCertName(pCertContext).c_str() << endl; // wcout for WCHAR* handling
 	else
 		cout << ", no certificate found." << endl;
-	if (false && debug && pCertContext)
+	if (g_ShowCertInfo && debug && pCertContext)
 		ShowCertInfo(pCertContext, L"Client certificate being returned");
 	return Status;
 }

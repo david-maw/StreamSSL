@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "framework.h"
 
+#include "ActiveSock.h"
+#include "Utilities.h"
+
 #include <process.h>
 #include <stdlib.h>
 #include <WS2tcpip.h>
 #include <MSTcpIP.h>
-#include "Utilities.h"
-#include "ActiveSock.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -257,7 +258,7 @@ void CActiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 	}
 }
 
-int CActiveSock::GetRecvTimeoutSeconds()
+int CActiveSock::GetRecvTimeoutSeconds() const
 {
 	return RecvTimeoutSeconds;
 }
@@ -273,12 +274,12 @@ void CActiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 	}
 }
 
-int CActiveSock::GetSendTimeoutSeconds()
+int CActiveSock::GetSendTimeoutSeconds() const
 {
 	return SendTimeoutSeconds;
 }
 
-DWORD CActiveSock::GetLastError()
+DWORD CActiveSock::GetLastError() const
 {
 	return LastError;
 }
@@ -295,19 +296,32 @@ bool CActiveSock::Close()
 		LastError = ERROR_HANDLES_CLOSED;
 		return false;
 	}
-	else if (ShutDown() == FALSE)
-	{
-		WSACloseEvent(read_event);
-		WSACloseEvent(write_event);
-		WSACleanup();
-		CloseAndInvalidateSocket();
-		return true;
+
+  if (!WSACloseEvent(read_event))
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!WSACloseEvent(write_event))
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!CloseAndInvalidateSocket())
+  {
+    LastError = ::WSAGetLastError();
+    return false;
+  }
+
+  if (!WSACleanup())
+  {
+    LastError = ::WSAGetLastError();
+    return false;
 	}
-	else
-	{
-		LastError = ::WSAGetLastError();
-		return false;
-	}
+
+  return true;
 }
 
 //sends a message, or part of one
@@ -412,8 +426,9 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 	return (total_bytes_sent);
 }
 
-void CActiveSock::CloseAndInvalidateSocket()
+bool CActiveSock::CloseAndInvalidateSocket()
 {
-	closesocket(ActualSocket);
+	const auto nRet = closesocket(ActualSocket);
 	ActualSocket = INVALID_SOCKET;
+	return nRet == 0;
 }
