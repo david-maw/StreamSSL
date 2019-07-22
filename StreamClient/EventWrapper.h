@@ -36,5 +36,5 @@ public:
 
 private:
 	HANDLE
-    m_Event{ nullptr };
+	m_Event{ nullptr };
 };

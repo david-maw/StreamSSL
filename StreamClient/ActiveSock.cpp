@@ -21,7 +21,7 @@ static char THIS_FILE[] = __FILE__;
 WSADATA CActiveSock::WsaData;
 
 CActiveSock::CActiveSock(HANDLE StopEvent)
-  : m_hStopEvent(StopEvent)
+	: m_hStopEvent(StopEvent)
 {
 	//
 	// Initialize the WinSock subsystem.
@@ -103,7 +103,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//		wprintf(L"setsockopt for SO_KEEPALIVE failed with error: %d\n",
 	//			LastError);
 	//		CloseAndInvalidateSocket();
-	//		return false;       
+	//		return false;
 	//	}
 
 	//// Now set keepalive timings
@@ -121,34 +121,34 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//	LastError = WSAGetLastError() ;
 	//	wprintf(L"WSAIoctl to set keepalive failed with error: %d\n", LastError);
 	//	CloseAndInvalidateSocket();
-	//	return false;       
+	//	return false;
 	//}
 
-  if (!read_event)
-  {
-    read_event = WSACreateEvent();
-  }
+ 	if (!read_event)
+ 	{
+		read_event = WSACreateEvent();
+ 	}
 
-  if (read_event != WSA_INVALID_EVENT)
-  {
-    if (!write_event)
-    {
-      write_event = WSACreateEvent();
-    }
-    if (write_event != WSA_INVALID_EVENT)
-    {
-      if (WSAResetEvent(read_event))
-      {
-        if (WSAResetEvent(write_event))
-        {
-          return true;
-        }
-      }
-    }
-  }
+	if (read_event != WSA_INVALID_EVENT)
+	{
+		if (!write_event)
+		{
+			write_event = WSACreateEvent();
+		}
+		if (write_event != WSA_INVALID_EVENT)
+		{
+			if (WSAResetEvent(read_event))
+			{
+				if (WSAResetEvent(write_event))
+				{
+					return true;
+				}
+			}
+		}
+	}
 
-  LastError = WSAGetLastError();
-  return false;
+	LastError = WSAGetLastError();
+	return false;
 }
 
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
@@ -297,31 +297,31 @@ bool CActiveSock::Close()
 		return false;
 	}
 
-  if (!WSACloseEvent(read_event))
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!WSACloseEvent(write_event))
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!CloseAndInvalidateSocket())
-  {
-    LastError = ::WSAGetLastError();
-    return false;
-  }
-
-  if (!WSACleanup())
-  {
-    LastError = ::WSAGetLastError();
-    return false;
+	if (!WSACloseEvent(read_event))
+	{
+		LastError = ::WSAGetLastError();
+		return false;
 	}
 
-  return true;
+	if (!WSACloseEvent(write_event))
+	{
+		LastError = ::WSAGetLastError();
+		return false;
+	}
+
+	if (!CloseAndInvalidateSocket())
+	{
+		LastError = ::WSAGetLastError();
+		return false;
+	}
+
+	if (!WSACleanup())
+	{
+		LastError = ::WSAGetLastError();
+		return false;
+	}
+
+	return true;
 }
 
 //sends a message, or part of one
@@ -394,14 +394,14 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		{
 			return bytes_sent;
 		}
-    else
-    {	// A bad thing happened
-      const int e = WSAGetLastError();
-      if (e == 0) // The socket was closed
-        return 0;
-      else if (LastError == 0)
-        LastError = e;
-    }
+		else
+		{	// A bad thing happened
+			const int e = WSAGetLastError();
+			if (e == 0) // The socket was closed
+				return 0;
+			else if (LastError == 0)
+				LastError = e;
+		}
 	}
 	return SOCKET_ERROR;
 }
