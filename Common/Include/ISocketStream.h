@@ -9,5 +9,5 @@ public:
 	// Sends up to Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len) = 0;
 	virtual DWORD GetLastError() const = 0;
-	virtual bool Close() = 0; // Returns true if the close worked
+	virtual HRESULT Disconnect() = 0; // Returns true if the close worked
 };
