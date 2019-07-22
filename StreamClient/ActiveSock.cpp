@@ -279,9 +279,14 @@ HRESULT CActiveSock::Disconnect()
 
 	if (ActualSocket == INVALID_SOCKET)
 		LastError = ERROR_HANDLES_CLOSED;
-	else if (!(WSACloseEvent(read_event) || WSACloseEvent(write_event) || CloseAndInvalidateSocket() || WSACleanup()))
-	    LastError = ::WSAGetLastError();
-  return HRESULT_FROM_WIN32(LastError);
+	else if (WSACloseEvent(read_event) && WSACloseEvent(write_event) && CloseAndInvalidateSocket() && (WSACleanup() == 0))
+		DebugMsg("Disconnect succeeded");
+	else
+	{
+		LastError = ::WSAGetLastError();
+		DebugMsg("Disconnect failed, WSAGetLastError returned 0x%.8x", LastError);
+	}
+	return HRESULT_FROM_WIN32(LastError);
 }
 
 //sends a message, or part of one
@@ -386,6 +391,7 @@ int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 	return (total_bytes_sent);
 }
 
+// Retrrn true if it worked
 bool CActiveSock::CloseAndInvalidateSocket()
 {
 	const auto nRet = closesocket(ActualSocket);
