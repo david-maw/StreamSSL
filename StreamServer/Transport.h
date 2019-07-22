@@ -8,7 +8,7 @@ class ISocketStream;
 class CTransport
 {
 private:
-	std::unique_ptr <CSSLServer>  SSLServer;
+	std::unique_ptr <CSSLServer> SSLServer;
 	std::unique_ptr <CPassiveSock> PassiveSock;
 public:
 	ISocketStream * SocketStream;
