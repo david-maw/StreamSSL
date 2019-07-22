@@ -170,9 +170,12 @@ int wmain(int argc, WCHAR * argv[])
 			if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
 			{
 				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
+				// Receive a second message, ignore errors
+				if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
+					cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				cout << "Shutting down SSL" << endl;
 				::Sleep(1000); // Give the next message a chance to arrive at the server separately
-				pSSLClient->Close(false);
+				pSSLClient->Disconnect(false);
 				// The TCP connection still exists and can be used to send messages, though
 				// this is rarely done, here's an example of doing it
 				cout << "Sending first unencrypted data message" << endl;
@@ -202,7 +205,7 @@ int wmain(int argc, WCHAR * argv[])
 			cout << "SSL client initialize failed" << endl;
 		}
 		::SetEvent(ShutDownEvent); // Used to early exit any async send or receive that are in process
-		pActiveSock->Close();
+		pActiveSock->Disconnect();
 	}
 	else
 	{

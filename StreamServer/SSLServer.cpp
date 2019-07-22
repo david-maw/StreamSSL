@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "framework.h"
 
+#include <iomanip>
 #include "SSLServer.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
@@ -66,13 +67,15 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 	// Perform SSL handshake
 	if (!SSPINegotiateLoop())
 	{
+		auto hr = HRESULT_FROM_WIN32(GetLastError());
 		DebugMsg("Couldn't connect");
-		if (IsUserAdmin())
-			std::cout << "SSL handshake failed." << std::endl;
+		if (hr == SEC_E_UNKNOWN_CREDENTIALS)
+			std::cout << "SSL handshake failed with 'Unknown Credentials' be sure server has rights to cert private key" << std::endl;
+		else if (IsUserAdmin())
+			std::cout << "SSL handshake failed, error 0x" << std::hex << std::setw(8) << std::setfill('0') << hr << std::endl;
 		else
-			std::cout << "SSL handshake failed, perhaps because you are not running as administrator." << std::endl;
-		int le = GetLastError();
-		return le == 0 ? E_FAIL : HRESULT_FROM_WIN32(le);
+			std::cout << "SSL handshake failed, perhaps because the server is not running as administrator., Error 0x" << std::hex << std::setw(8) << std::setfill('0') << hr << std::endl;
+		return hr == S_OK ? E_FAIL : hr; // Always return an error, because the handshake failed even if we don't know the details
 	}
 
 	// Find out how big the header and trailer will be:
@@ -104,7 +107,7 @@ HRESULT CSSLServer::InitializeClass()
 }
 
 // Return the last error value for this CSSLServer
-int CSSLServer::GetLastError() const
+DWORD CSSLServer::GetLastError() const
 {
 	if (m_LastError)
 		return m_LastError;
@@ -168,8 +171,9 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 
 // This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
 // shutdown message with other data concatenated, at least as of Windows 10, July 2019.
-void CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffer (&Buffers)[4], SecBufferDesc& Message, int & err, SECURITY_STATUS& scRet)
+SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message)
 {
+	SECURITY_STATUS scRet;
 	const int headerLen = 5, shutdownLen = 26;
 	if (((CHAR*)readPtr)[0] == 21 // Alert message type
 		&& readBufferBytes > (shutdownLen + headerLen) // Could be a shutdown message followed by something else
@@ -178,18 +182,20 @@ void CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffer (&Buffers
 		)
 	{
 		DebugMsg("Looks like a concatenated shutdown message and something else");
-		PrintHexDump(err, readPtr, true);
-		Buffers[0].cbBuffer = shutdownLen + headerLen;
+		PrintHexDump(readBufferBytes, readPtr, true);
+		Message.pBuffers[0].cbBuffer = shutdownLen + headerLen;
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
 		if (scRet == SEC_I_CONTEXT_EXPIRED)
 		{
-			Buffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
-			Buffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
-			Buffers[1].BufferType = SECBUFFER_EXTRA;
+			//  Put a reference to the unprocessed data in Message.pBuffers[1]
+			Message.pBuffers[1].pvBuffer = (CHAR*)readPtr + shutdownLen + headerLen;
+			Message.pBuffers[1].cbBuffer = readBufferBytes - shutdownLen - headerLen;
+			Message.pBuffers[1].BufferType = SECBUFFER_EXTRA;
 		}
 	}
 	else
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+	return scRet;
 }
 
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
@@ -227,7 +233,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
-		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
+		scRet = DecryptAndHandleConcatenatedShutdownMessage(Message);
 		readBufferBytes = 0; // We have consumed them
 	}
 
@@ -263,7 +269,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 		// This is a horrible kludge because apparently DecryptMessage isn't smart enough to recognize a
 		// shutdown message with other data concatenated
-		DecryptAndHandleConcatenatedShutdownMessage(Buffers, Message, err, scRet);
+		scRet = DecryptAndHandleConcatenatedShutdownMessage(Message);
 	}
 
 	PSecBuffer pDataBuffer(nullptr); // Points to databuffer if there is one
@@ -510,6 +516,12 @@ bool CSSLServer::SSPINegotiateLoop()
 				{  // Figure out what certificate we might want to use, either using SNI or the local host name
 					std::wstring serverName = SSLHelper.GetSNI();
 					scRet = GetCredHandleFor(serverName, SelectServerCert, &hServerCreds);
+					if (FAILED(scRet))
+					{
+						DebugMsg("GetCredHandleFor Failed with error code %lx", scRet);
+						m_LastError = scRet;
+						return false;
+					}
 				}
 			}
 		}

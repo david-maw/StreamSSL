@@ -155,8 +155,9 @@
     <ClInclude Include="..\Common\Include\CertHelper.h" />
     <ClInclude Include="..\Common\Include\CertRAII.h" />
     <ClInclude Include="..\Common\Include\Utilities.h" />
-    <ClInclude Include="ISocketStream.h" />
+    <ClInclude Include="..\Common\Include\ISocketStream.h" />
     <ClInclude Include="ActiveSock.h" />
+    <ClInclude Include="..\Common\Include\BaseSock.h" />
     <ClInclude Include="EventWrapper.h" />
     <ClInclude Include="..\Common\Include\Handle.h" />
     <ClInclude Include="..\Common\Include\SecurityHandle.h" />
@@ -185,6 +186,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\Common\BaseSock.cpp" />
     <ClCompile Include="SSLClient.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>

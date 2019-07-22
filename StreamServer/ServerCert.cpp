@@ -85,9 +85,12 @@ SECURITY_STATUS GetCredHandleFor(std::wstring serverName, SelectServerCertType S
 		{
 			CredHandle hServerCred{};
 			status = CreateCredentialsFromCertificate(&hServerCred, pCertContext);
-			credMap.emplace(localServerName, hServerCred); // The server credentials are owned by the map now
-			*phCreds = hServerCred;
-			return SEC_E_OK;
+			if SUCCEEDED(status)
+			{
+				credMap.emplace(localServerName, hServerCred); // The server credentials are owned by the map now
+				*phCreds = hServerCred;
+			}
+			return status;
 		}
 		else
 		{
