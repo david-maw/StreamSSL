@@ -45,15 +45,15 @@ private:
 	int RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len);
 	bool ServerCertNameMatches{ false };
 	bool ServerCertTrusted{ false };
+	HRESULT DisconnectSSL();
 
 public:
 	// ISocketStream
 	int RecvPartial(LPVOID lpBuf, const ULONG Len);
 	int SendPartial(LPCVOID lpBuf, const ULONG Len);
 	DWORD GetLastError() const;
-	bool Close(bool closeUnderlyingSocket = true);
+	bool Disconnect(bool closeUnderlyingSocket = true);
 	// Regular class interface
-	HRESULT Disconnect();
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
 	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
