@@ -97,7 +97,7 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//		wprintf(L"setsockopt for SO_KEEPALIVE failed with error: %d\n",
 	//			LastError);
 	//		CloseAndInvalidateSocket();
-	//		return false;       
+	//		return false;
 	//	}
 
 	//// Now set keepalive timings
@@ -115,34 +115,34 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//	LastError = WSAGetLastError() ;
 	//	wprintf(L"WSAIoctl to set keepalive failed with error: %d\n", LastError);
 	//	CloseAndInvalidateSocket();
-	//	return false;       
+	//	return false;
 	//}
 
-  if (!read_event)
-  {
-    read_event = WSACreateEvent();
-  }
+ 	if (!read_event)
+ 	{
+		read_event = WSACreateEvent();
+ 	}
 
-  if (read_event != WSA_INVALID_EVENT)
-  {
-    if (!write_event)
-    {
-      write_event = WSACreateEvent();
-    }
-    if (write_event != WSA_INVALID_EVENT)
-    {
-      if (WSAResetEvent(read_event))
-      {
-        if (WSAResetEvent(write_event))
-        {
-          return true;
-        }
-      }
-    }
-  }
+	if (read_event != WSA_INVALID_EVENT)
+	{
+		if (!write_event)
+		{
+			write_event = WSACreateEvent();
+		}
+		if (write_event != WSA_INVALID_EVENT)
+		{
+			if (WSAResetEvent(read_event))
+			{
+				if (WSAResetEvent(write_event))
+				{
+					return true;
+				}
+			}
+		}
+	}
 
-  LastError = WSAGetLastError();
-  return false;
+	LastError = WSAGetLastError();
+	return false;
 }
 
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
@@ -354,14 +354,14 @@ int CActiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		{
 			return bytes_sent;
 		}
-    else
-    {	// A bad thing happened
-      const int e = WSAGetLastError();
-      if (e == 0) // The socket was closed
-        return 0;
-      else if (LastError == 0)
-        LastError = e;
-    }
+		else
+		{	// A bad thing happened
+			const int e = WSAGetLastError();
+			if (e == 0) // The socket was closed
+				return 0;
+			else if (LastError == 0)
+				LastError = e;
+		}
 	}
 	return SOCKET_ERROR;
 }
