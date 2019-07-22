@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "framework.h"
 
+#include <iomanip>
 #include "SSLServer.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
@@ -66,13 +67,15 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 	// Perform SSL handshake
 	if (!SSPINegotiateLoop())
 	{
+		auto hr = HRESULT_FROM_WIN32(GetLastError());
 		DebugMsg("Couldn't connect");
-		if (IsUserAdmin())
-			std::cout << "SSL handshake failed." << std::endl;
+		if (hr == SEC_E_UNKNOWN_CREDENTIALS)
+			std::cout << "SSL handshake failed with 'Unknown Credentials' be sure server has rights to cert private key" << std::endl;
+		else if (IsUserAdmin())
+			std::cout << "SSL handshake failed, error 0x" << std::hex << std::setw(8) << std::setfill('0') << hr << std::endl;
 		else
-			std::cout << "SSL handshake failed, perhaps because you are not running as administrator." << std::endl;
-		int le = GetLastError();
-		return le == 0 ? E_FAIL : HRESULT_FROM_WIN32(le);
+			std::cout << "SSL handshake failed, perhaps because the server is not running as administrator., Error 0x" << std::hex << std::setw(8) << std::setfill('0') << hr << std::endl;
+		return hr == S_OK ? E_FAIL : hr; // Always return an error, because the handshake failed even if we don't know the details
 	}
 
 	// Find out how big the header and trailer will be:
@@ -513,6 +516,12 @@ bool CSSLServer::SSPINegotiateLoop()
 				{  // Figure out what certificate we might want to use, either using SNI or the local host name
 					std::wstring serverName = SSLHelper.GetSNI();
 					scRet = GetCredHandleFor(serverName, SelectServerCert, &hServerCreds);
+					if (FAILED(scRet))
+					{
+						DebugMsg("GetCredHandleFor Failed with error code %lx", scRet);
+						m_LastError = scRet;
+						return false;
+					}
 				}
 			}
 		}
