@@ -25,6 +25,10 @@ public:
 	int SendPartial(LPCVOID lpBuf, const size_t Len) override;
 	HRESULT Disconnect() override; // Returns S_OK if the close worked
 
+protected:
+	using CBaseSock::ActualSocket;
+	using CBaseSock::m_hStopEvent;
+
 private:
 	CTime RecvEndTime;
 	CTime SendEndTime;
