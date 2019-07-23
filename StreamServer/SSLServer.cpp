@@ -143,7 +143,7 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 		else
 		{
 			// We need to read data from the socket
-			m_SocketStream->ArmRecvTimer();
+			m_SocketStream->StartRecvTimer();
 			int err = m_SocketStream->RecvPartial(lpBuf, Len);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
