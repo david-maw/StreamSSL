@@ -28,6 +28,10 @@ public:
 	int SendPartial(LPCVOID lpBuf, const size_t Len) override;
 	HRESULT Disconnect() override; // Returns S_OK if the close worked
 
+protected:
+	using CBaseSock::ActualSocket;
+	using CBaseSock::m_hStopEvent;
+
 private:
 	bool CloseAndInvalidateSocket();
 	int SendTimeoutSeconds{ 1 }, RecvTimeoutSeconds{ 1 }; // Default timeout is 1 seconds, encourages callers to set it

@@ -193,7 +193,7 @@ int wmain(int argc, WCHAR * argv[])
 					else
 					{
 						cout << "Sleeping before sending termination to give the last message time to arrive" << endl;
-						::Sleep(1000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
+						::Sleep(3000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
 					}
 				}
 			}
