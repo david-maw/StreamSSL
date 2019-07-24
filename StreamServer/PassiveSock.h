@@ -11,7 +11,10 @@ class CPassiveSock : private CBaseSock, public ISocketStream
 public:
 	explicit CPassiveSock(SOCKET, HANDLE);
 	virtual ~CPassiveSock();
-	using CBaseSock::SetTimeoutSeconds;
+	using CBaseSock::SetSendTimeoutSeconds;
+	using CBaseSock::GetSendTimeoutSeconds;
+	using CBaseSock::SetRecvTimeoutSeconds;
+	using CBaseSock::GetRecvTimeoutSeconds;
 	using CBaseSock::StartRecvTimer;
 	using CBaseSock::StartSendTimer;
 	int ReceiveBytes(void * const lpBuf, const size_t Len);

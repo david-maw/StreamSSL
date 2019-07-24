@@ -148,7 +148,9 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 					cout << "Received plaintext '" << MsgText << "'" << endl;
 				}
 				ShowDelay(Started);
-				if (StreamSock->GetLastError() == ERROR_TIMEOUT)
+				if (len == 0)
+					cout << "Receive reported socket shutting down" << endl;
+				else if (StreamSock->GetLastError() == ERROR_TIMEOUT)
 					cout << "Receive timed out" << endl;
 				else if (StreamSock->GetLastError() == WSA_IO_PENDING)
 					cout << "Receive not completed" << endl;

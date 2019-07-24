@@ -78,15 +78,6 @@ BOOL CBaseSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
-void CBaseSock::SetTimeoutSeconds(int NewTimeoutSeconds)
-{
-	if (NewTimeoutSeconds > 0)
-	{
-		TimeoutSeconds = NewTimeoutSeconds;
-		// SendEndTime and RecvEndTime are untouched, because a Send or receive may be in process
-	}
-}
-
 void CBaseSock::StartRecvTimer()
 {
 	RecvEndTime = 0; // Allow it to be set next time RecvPartial is called

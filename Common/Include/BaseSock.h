@@ -6,7 +6,6 @@ protected:
 	CBaseSock(HANDLE StopEvent);
 	~CBaseSock();
 
-	void SetTimeoutSeconds(int NewTimeoutSeconds);
 	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
 	int GetRecvTimeoutSeconds() const;
 	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
@@ -38,7 +37,6 @@ protected:
 	WSAOVERLAPPED os{};
 	CTime RecvEndTime;
 	CTime SendEndTime;
-	int TimeoutSeconds = 1;
 	int SendTimeoutSeconds{ 1 }, RecvTimeoutSeconds{ 1 }; // Default timeout is 1 seconds, encourages callers to set it
 };
 
