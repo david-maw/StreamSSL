@@ -143,12 +143,17 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 		else
 		{
 			// We need to read data from the socket
-			m_SocketStream->ArmRecvTimer();
+			m_SocketStream->StartRecvTimer();
 			int err = m_SocketStream->RecvPartial(lpBuf, Len);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
-				if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
+				if (err == 0)
+				{
+					DebugMsg("Recv reported socket shutting down");
+					return 0;
+				}
+				else if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
 				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
 					DebugMsg("Recv Overlapped operations will complete later");
@@ -201,6 +206,8 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
 int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
+	m_SocketStream->StartRecvTimer();
+
 	INT err;
 	INT i;
 	SecBufferDesc   Message;
@@ -361,6 +368,8 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 // whatever plaintext data the caller provides
 int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 {
+	m_SocketStream->StartSendTimer();
+
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
 

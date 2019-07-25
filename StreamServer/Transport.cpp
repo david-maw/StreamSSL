@@ -22,7 +22,8 @@ CTransport::CTransport(SOCKET s, CListener * Listener) // constructor requires a
 	Listener ->IncrementTransportCount();
 	PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
 	SocketStream = PassiveSock.get();
-	PassiveSock->SetTimeoutSeconds(60);
+	PassiveSock->SetSendTimeoutSeconds(10);
+	PassiveSock->SetRecvTimeoutSeconds(60);
 	SSLServer = std::make_unique<CSSLServer>(PassiveSock.get());
 	SSLServer->SelectServerCert = Listener->SelectServerCert;
 	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;

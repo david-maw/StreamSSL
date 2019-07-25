@@ -55,7 +55,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	std::wstring TCPSocketText = string_format(L"%i", TCPSocket);
 
 	WSADATA wsadata;
-	if (WSAStartup(MAKEWORD(2, 0), &wsadata))
+	if (WSAStartup(MAKEWORD(1, 1), &wsadata))
 		return UnknownError;
 
 	// Get list of addresses to listen on
