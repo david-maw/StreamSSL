@@ -15,7 +15,6 @@ class CSSLServer : public ISocketStream
 public:
 	explicit CSSLServer(CPassiveSock *);
 	~CSSLServer();
-	ISocketStream * getSocketStream();
 	int RecvPartial(void * const lpBuf, const size_t Len) override;
 	int SendPartial(const void * const lpBuf, const size_t Len) override;
 	DWORD GetLastError() const override;

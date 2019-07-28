@@ -16,12 +16,18 @@ static char THIS_FILE[] = __FILE__;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+// A CTransport conbines a CPassiveSock to do the actual data transmission with an SSLServer which
+// adds SSL capability to the data transmission object. It is passed a reference to a CListener object
+// which acts as a class factory for incoming socket connections.
+// Once a CTransport instance is created it will be passed to a worker thread which will use it to 
+// run the user provided code originally passed to the CSSLServer the client actually declared
+// (a reference to that code is stored in the Listener). 
+
 CTransport::CTransport(SOCKET s, CListener * Listener) // constructor requires a socket already assigned
 	: m_Listener(Listener)
 {
 	Listener ->IncrementTransportCount();
 	PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
-	SocketStream = PassiveSock.get();
 	PassiveSock->SetSendTimeoutSeconds(10);
 	PassiveSock->SetRecvTimeoutSeconds(60);
 	SSLServer = std::make_unique<CSSLServer>(PassiveSock.get());
@@ -30,7 +36,7 @@ CTransport::CTransport(SOCKET s, CListener * Listener) // constructor requires a
 	HRESULT hr = SSLServer->Initialize();
 	if SUCCEEDED(hr)
 	{
-		SocketStream = SSLServer.get();
+		SocketStream = SSLServer.get(); // Redirect the ISocketSteam interface to the code in CSSLServer 
 		IsConnected = true;
 	}
 	else
@@ -58,17 +64,4 @@ CTransport::CTransport(SOCKET s, CListener * Listener) // constructor requires a
 CTransport::~CTransport()
 {
 	m_Listener->IncrementTransportCount(-1);
-}
-
-int CTransport::Recv(void * const lpBuf, const int MaxLen)
-{
-	if (!IsConnected) return -1;
-	int Len = SocketStream->RecvPartial(lpBuf, MaxLen);
-	return Len;
-}
-
-int CTransport::Send(const void * const lpBuf, const int RequestedLen)
-{
-	if (!IsConnected) return -1;
-	return PassiveSock->SendPartial(lpBuf, RequestedLen);
 }

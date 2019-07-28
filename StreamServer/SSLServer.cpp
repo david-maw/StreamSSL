@@ -39,12 +39,6 @@ CSSLServer::~CSSLServer()
 // to change implementation later
 PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
 
-// Return an ISocketStream interface to the SSL connection to anyone that needs one
-ISocketStream * CSSLServer::getSocketStream()
-{
-	return m_SocketStream; // for now, return 'this' later, once we can do SSL
-}
-
 // Set up the connection, including SSL handshake, certificate selection/validation
 HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 {

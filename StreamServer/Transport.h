@@ -13,9 +13,7 @@ private:
 public:
 	ISocketStream * SocketStream;
 	bool IsConnected{ false };
-	int Recv(void * const lpBuf, const int MaxLen);
 	CTransport(SOCKET s, CListener * Listener);
 	virtual ~CTransport();
 	CListener* m_Listener;
-	int Send(const void * const lpBuf, const int RequestedLen);
 };
