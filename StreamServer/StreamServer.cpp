@@ -11,7 +11,7 @@ using namespace std;
 
 // This method is called when the first client tries to connect in order to allow a certificate to be selected to send to the client
 // It has to wait for the client connect request because the client tells the server what identity it expects it to present
-// This is called SNI (Server Name Indication) and it is a relatively new SSL feature
+// This is called SNI (Server Name Indication) and it is a relatively new (it began to become available about 2005) SSL/TLS feature
 SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)
 {
 	SECURITY_STATUS status = SEC_E_INVALID_HANDLE;
@@ -43,7 +43,7 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 	return nullptr != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
 }
 
-// Run arbitrary code and return process information
+// This function simply runs arbitrary code and returns process information to the caller, it's just a handy utility function
 bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 { // Not strictly needed but it makes testing easier
 	STARTUPINFO si = {};
@@ -79,6 +79,7 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = nullptr)
 	}
 }
 
+// If the elapsed time since the time specified by the parameter is a second or more, display it, otherwise do nothing
 void ShowDelay(CTime& Started)
 {
 	CTimeSpan Waited = CTime::GetCurrentTime() - Started;
@@ -87,7 +88,7 @@ void ShowDelay(CTime& Started)
 	Started = CTime::GetCurrentTime(); // Restart the timer
 }
 
-// Main method, called first by the operating system when the codefile is run
+// The function called first by the operating system when the codefile is run
 int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 {
 	UNREFERENCED_PARAMETER(argc);
