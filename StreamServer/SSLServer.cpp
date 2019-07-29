@@ -3,6 +3,7 @@
 
 #include <iomanip>
 #include "SSLServer.h"
+#include "Listener.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
 #include "ServerCert.h"
@@ -25,7 +26,7 @@ void SecurityContextTraits::Close(Type value)
 
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means to send messages to a client (a CPassiveSock).
-CSSLServer::CSSLServer(CPassiveSock * SocketStream)
+CSSLServer::CSSLServer(CPassiveSock* SocketStream)
 	: m_SocketStream(SocketStream)
 	, readPtr(readBuffer)
 {
@@ -33,11 +34,57 @@ CSSLServer::CSSLServer(CPassiveSock * SocketStream)
 
 CSSLServer::~CSSLServer()
 {
+	if (m_Listener)
+		m_Listener->IncrementWorkerCount(-1);
 }
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
 PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
+
+CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
+{
+	Listener->IncrementWorkerCount();
+	auto PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
+	PassiveSock->SetSendTimeoutSeconds(10);
+	PassiveSock->SetRecvTimeoutSeconds(60);
+	auto SSLServer = new CSSLServer(PassiveSock.release());
+	SSLServer->m_Listener = Listener;
+	SSLServer->SelectServerCert = Listener->SelectServerCert;
+	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
+	HRESULT hr = SSLServer->Initialize();
+	if SUCCEEDED(hr)
+	{
+		SSLServer->IsConnected = true;
+	}
+	else
+	{
+		int err = SSLServer->GetLastError();
+		delete SSLServer;
+		SSLServer = nullptr;
+		if (hr == SEC_E_INVALID_TOKEN)
+			Listener->LogWarning(L"SSL token invalid, perhaps the client rejected our certificate");
+		else if (hr == CRYPT_E_NOT_FOUND)
+			Listener->LogWarning(L"A usable SSL certificate could not be found");
+		else if (hr == E_ACCESSDENIED)
+			Listener->LogWarning(L"Could not access certificate store, is this program running with administrative privileges?");
+		else if (hr == SEC_E_UNKNOWN_CREDENTIALS)
+			Listener->LogWarning(L"Credentials unknown, is this program running with administrative privileges?");
+		else if (hr == SEC_E_CERT_UNKNOWN)
+			Listener->LogWarning(L"The returned client certificate was unacceptable");
+		else
+		{
+			std::wstring m = string_format(L"SSL could not be used, hr =0x%lx, lasterror=0x%lx", hr, err);
+			Listener->LogWarning(m.c_str());
+		}
+	}
+	return SSLServer;
+}
+
+CListener* CSSLServer::GetListener() const
+{
+	return m_Listener;
+}
 
 // Set up the connection, including SSL handshake, certificate selection/validation
 HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
@@ -439,6 +486,11 @@ int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 	return static_cast<int>(Len);
+}
+
+ISocketStream* CSSLServer::GetSocketStream()
+{
+	return dynamic_cast<ISocketStream*>(this);
 }
 
 // Negotiate a connection with the client, sending and receiving messages until the
