@@ -6,12 +6,12 @@ protected:
 	CBaseSock(HANDLE StopEvent);
 	~CBaseSock();
 
-	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
-	int GetRecvTimeoutSeconds() const;
-	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
-	int GetSendTimeoutSeconds() const;
-	void StartRecvTimer();
-	void StartSendTimer();
+	virtual void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
+	virtual int GetRecvTimeoutSeconds() const;
+	virtual void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
+	virtual int GetSendTimeoutSeconds() const;
+	virtual void StartRecvTimer();
+	virtual void StartSendTimer();
 
 	BOOL ShutDown(int nHow = SD_BOTH); // will eventually be private, once all refernces move to this class 
 	// Methods used for ISocketStream

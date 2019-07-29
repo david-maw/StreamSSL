@@ -31,7 +31,7 @@ CPassiveSock::~CPassiveSock()
 
 
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
-int CPassiveSock::RecvPartial(void * const lpBuf, const size_t Len)
+int CPassiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
 	return CBaseSock::RecvPartial(lpBuf, Len);
 }
@@ -71,7 +71,7 @@ HRESULT CPassiveSock::Disconnect()
 
 
 //sends a message, or part of one
-int CPassiveSock::SendPartial(const void * const lpBuf, const size_t Len)
+int CPassiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 {
 	return CBaseSock::SendPartial(lpBuf,Len);
 }
@@ -97,4 +97,35 @@ int CPassiveSock::SendBytes(const void * const lpBuf, const size_t Len)
 			total_bytes_sent += bytes_sent;
 	}; // loop
 	return (static_cast<int>(total_bytes_sent));
+}
+
+
+void CPassiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
+{
+	CBaseSock::SetRecvTimeoutSeconds(NewRecvTimeoutSeconds);
+}
+
+int CPassiveSock::GetRecvTimeoutSeconds() const
+{
+	return CBaseSock::GetRecvTimeoutSeconds();
+}
+
+void CPassiveSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
+{
+	CBaseSock::SetSendTimeoutSeconds(NewSendTimeoutSeconds);
+}
+
+int CPassiveSock::GetSendTimeoutSeconds() const
+{
+	return CBaseSock::GetSendTimeoutSeconds();
+}
+
+void CPassiveSock::StartRecvTimer()
+{
+	CBaseSock::StartRecvTimer();
+}
+
+void CPassiveSock::StartSendTimer()
+{
+	CBaseSock::StartSendTimer();
 }

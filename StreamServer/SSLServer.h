@@ -19,11 +19,19 @@ public:
 	// This call is normally from a CListener.
 	static CSSLServer* Create(SOCKET s, CListener* Listener);
 	~CSSLServer();
+	// ISocketStream functions
 	int RecvPartial(void * const lpBuf, const size_t Len) override;
 	int SendPartial(const void * const lpBuf, const size_t Len) override;
-	ISocketStream* GetSocketStream();
 	DWORD GetLastError() const override;
 	HRESULT Disconnect() override;
+	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
+	int GetRecvTimeoutSeconds() const;
+	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
+	int GetSendTimeoutSeconds() const;
+	void StartRecvTimer();
+	void StartSendTimer();
+
+	ISocketStream* GetSocketStream();
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
 	HRESULT Initialize(const void * const lpBuf = nullptr, const size_t Len = 0);

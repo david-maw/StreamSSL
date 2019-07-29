@@ -851,4 +851,34 @@ HRESULT CSSLServer::Disconnect()
 	return S_OK;
 }
 
+void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
+{
+	m_SocketStream->SetRecvTimeoutSeconds(NewRecvTimeoutSeconds);
+}
+
+int CSSLServer::GetRecvTimeoutSeconds() const
+{
+	return m_SocketStream->GetRecvTimeoutSeconds();
+}
+
+void CSSLServer::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
+{
+	m_SocketStream->SetSendTimeoutSeconds(NewSendTimeoutSeconds);
+}
+
+int CSSLServer::GetSendTimeoutSeconds() const
+{
+	return m_SocketStream->GetSendTimeoutSeconds();
+}
+
+void CSSLServer::StartRecvTimer()
+{
+	m_SocketStream->StartRecvTimer();
+}
+
+void CSSLServer::StartSendTimer()
+{
+	m_SocketStream->StartSendTimer();
+}
+
 // End of CSSLServer declarations
