@@ -120,6 +120,24 @@ int CBaseSock::GetSendTimeoutSeconds() const
 	return SendTimeoutSeconds;
 }
 
+// Receives no more than Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out before receiving MinLen
+int CBaseSock::RecvMsg(LPVOID lpBuf, const size_t Len)
+{
+	StartRecvTimer();
+	size_t total_bytes_received = 0;
+	while (total_bytes_received < Len)
+	{
+		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		if (bytes_received == SOCKET_ERROR)
+			return SOCKET_ERROR;
+		else if (bytes_received == 0)
+			break; // socket is closed, no data left to receive
+		else
+			total_bytes_received += bytes_received;
+	}; // loop
+	return (static_cast<int>(total_bytes_received));
+}
+
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
 int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
@@ -214,6 +232,26 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	return SOCKET_ERROR;
 }
 
+//sends all the data requested or returns a timeout
+int CBaseSock::SendMsg(LPCVOID lpBuf, const size_t Len)
+{
+	StartSendTimer();
+	ULONG total_bytes_sent = 0;
+	while (total_bytes_sent < Len)
+	{
+		const ULONG bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		if ((bytes_sent == SOCKET_ERROR))
+			return SOCKET_ERROR;
+		else if (bytes_sent == 0)
+			if (total_bytes_sent == 0)
+				return SOCKET_ERROR;
+			else
+				break; // socket is closed, no chance of sending more
+		else
+			total_bytes_sent += bytes_sent;
+	}; // loop
+	return (total_bytes_sent);
+}
 
 //sends a message, or part of one
 int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)

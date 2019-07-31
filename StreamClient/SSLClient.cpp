@@ -190,6 +190,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	}
 
+	m_SocketStream->StartRecvTimer(); // The whole message must be received before timeout seconds elapse
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
 		size_t freeBytesAtStart = static_cast<int>((CHAR*)readPtr - &readBuffer[0]);

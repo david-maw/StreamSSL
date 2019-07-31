@@ -15,9 +15,9 @@ protected:
 
 	BOOL ShutDown(int nHow = SD_BOTH); // will eventually be private, once all refernces move to this class 
 	// Methods used for ISocketStream
-	// Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
+	virtual int RecvMsg(LPVOID lpBuf, const size_t Len);
+	virtual int SendMsg(LPCVOID lpBuf, const size_t Len);
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len);
-	// Sends up to Len bytes of data and returns the amount sent - or SOCKET_ERROR if it times out
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len);
 	virtual DWORD GetLastError() const;
 	virtual HRESULT Disconnect();

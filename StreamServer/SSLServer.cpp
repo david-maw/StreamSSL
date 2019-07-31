@@ -25,7 +25,7 @@ void SecurityContextTraits::Close(Type value)
 }
 
 // The CSSLServer class, this declares an SSL server side implementation that requires
-// some means to send messages to a client (a CPassiveSock).
+// some means (in this case a CPassiveSock) to exchange messages with a client.
 CSSLServer::CSSLServer(CPassiveSock* SocketStream)
 	: m_SocketStream(SocketStream)
 	, readPtr(readBuffer)
@@ -42,6 +42,7 @@ CSSLServer::~CSSLServer()
 // to change implementation later
 PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
 
+// Creates an SSLServer in response to an incoming connection (a socket) detected by a CListener 
 CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 {
 	Listener->IncrementWorkerCount();
@@ -81,6 +82,7 @@ CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 	return SSLServer;
 }
 
+// Return the CListener instance this connection came from
 CListener* CSSLServer::GetListener() const
 {
 	return m_Listener;
@@ -475,7 +477,7 @@ int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->SendPartial(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->SendMsg(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
 	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
@@ -849,6 +851,16 @@ HRESULT CSSLServer::Disconnect()
 		PrintHexDump(cbData, pbMessage);
 	}
 	return S_OK;
+}
+
+int CSSLServer::SendMsg(LPCVOID lpBuf, const size_t Len)
+{
+	return m_SocketStream->SendMsg(lpBuf, Len);
+}
+
+int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len)
+{
+	return m_SocketStream->RecvMsg(lpBuf, Len);
 }
 
 void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)

@@ -10,10 +10,6 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-/////////////////////////////////////////////////////////////////////////////
-// CActiveSock
-
-
 CActiveSock::CActiveSock(HANDLE StopEvent)
   : CBaseSock(StopEvent)
 {
@@ -24,10 +20,6 @@ CActiveSock::~CActiveSock()
 	if (ActualSocket != INVALID_SOCKET)
 		Disconnect();
 }
-
-/////////////////////////////////////////////////////////////////////////////
-// CActiveSock member functions
-
 
 bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 {
@@ -107,44 +99,4 @@ bool CActiveSock::Connect(LPCTSTR HostName, USHORT PortNumber)
 	//}
 
 	return SUCCEEDED(Setup());
-}
-
-
-// Receives exactly Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
-int CActiveSock::RecvMsg(LPVOID lpBuf, const size_t Len)
-{
-	StartRecvTimer();
-	size_t total_bytes_received = 0;
-	while (total_bytes_received < Len)
-	{
-		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
-		if (bytes_received == SOCKET_ERROR)
-			return SOCKET_ERROR;
-		else if (bytes_received == 0)
-			break; // socket is closed, no data left to receive
-		else
-			total_bytes_received += bytes_received;
-	}; // loop
-	return (static_cast<int>(total_bytes_received));
-}
-
-//sends all the data or returns a timeout
-int CActiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
-{
-	StartSendTimer();
-	ULONG total_bytes_sent = 0;
-	while (total_bytes_sent < Len)
-	{
-		const ULONG bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
-		if ((bytes_sent == SOCKET_ERROR))
-			return SOCKET_ERROR;
-		else if (bytes_sent == 0)
-			if (total_bytes_sent == 0)
-				return SOCKET_ERROR;
-			else
-				break; // socket is closed, no chance of sending more
-		else
-			total_bytes_sent += bytes_sent;
-	}; // loop
-	return (total_bytes_sent);
 }
