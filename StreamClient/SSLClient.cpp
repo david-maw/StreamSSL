@@ -113,7 +113,46 @@ DWORD CSSLClient::GetLastError() const
 	else
 		return m_SocketStream->GetLastError();
 }
-int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
+
+
+int CSSLClient::SendMsg(LPCVOID lpBuf, const size_t Len)
+{
+	StartSendTimer();
+	size_t total_bytes_sent = 0;
+	while (total_bytes_sent < Len)
+	{
+		const size_t bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		if ((bytes_sent == SOCKET_ERROR))
+			return SOCKET_ERROR;
+		else if (bytes_sent == 0)
+			if (total_bytes_sent == 0)
+				return SOCKET_ERROR;
+			else
+				break; // socket is closed, no chance of sending more
+		else
+			total_bytes_sent += bytes_sent;
+	}; // loop
+	return static_cast<int>(total_bytes_sent);
+}
+
+int CSSLClient::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
+{
+	StartRecvTimer();
+	size_t total_bytes_received = 0;
+	while (total_bytes_received < MinLen)
+	{
+		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		if (bytes_received == SOCKET_ERROR)
+			return SOCKET_ERROR;
+		else if (bytes_received == 0)
+			break; // socket is closed, no data left to receive
+		else
+			total_bytes_received += bytes_received;
+	}; // loop
+	return (static_cast<int>(total_bytes_received));
+}
+
+int CSSLClient::RecvPartial(LPVOID lpBuf, const size_t Len)
 {
 	if (plainTextBytes > 0)
 	{	// There are stored bytes, just return them
@@ -124,12 +163,12 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 
 		if (Len >= plainTextBytes)
 		{
-			int bytesReturned = plainTextBytes;
+			auto bytesReturned = plainTextBytes;
 			DebugMsg("All %d cached plaintext bytes can be returned", plainTextBytes);
 			if (false) PrintHexDump(plainTextBytes, plainTextPtr);
 			memcpy_s(lpBuf, Len, plainTextPtr, plainTextBytes);
 			plainTextBytes = 0;
-			return bytesReturned;
+			return static_cast<int>(bytesReturned);
 		}
 		else
 		{	// More bytes are stored than the caller requested, so return some, store the rest until the next call
@@ -138,7 +177,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 			plainTextBytes -= Len;
 			DebugMsg("%d cached plaintext bytes can be returned, %d remain", Len, plainTextBytes);
 			if (false) PrintHexDump(plainTextBytes, plainTextPtr);
-			return Len;
+			return static_cast<int>(Len);
 		}
 	}
 
@@ -155,7 +194,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 }
 
 // Because SSL is message oriented these calls send (or receive) a whole message
-int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
+int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 {
 	INT i;
 	SecBufferDesc   Message;
@@ -185,7 +224,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		DebugMsg("Using the saved %d bytes from server", readBufferBytes);
 		if (false) PrintHexDump(readBufferBytes, readPtr);
 		Buffers[0].pvBuffer = readPtr;
-		Buffers[0].cbBuffer = readBufferBytes;
+		Buffers[0].cbBuffer = static_cast<unsigned long>(readBufferBytes);
 		Buffers[0].BufferType = SECBUFFER_DATA;
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	}
@@ -210,7 +249,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 				return SOCKET_ERROR;
 			}
 		}
-		const INT err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
+		const INT err = m_SocketStream->RecvMsg((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -230,7 +269,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		readBufferBytes += err;
 
 		Buffers[0].pvBuffer = readPtr;
-		Buffers[0].cbBuffer = readBufferBytes;
+		Buffers[0].cbBuffer = static_cast<unsigned long>(readBufferBytes);
 		Buffers[0].BufferType = SECBUFFER_DATA;
 
 		Buffers[1].BufferType = SECBUFFER_EMPTY;
@@ -298,7 +337,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 			return SOCKET_ERROR;
 		}
 		else
-			pDataBuffer->cbBuffer = Len; // Pretend we only saw Len bytes
+			pDataBuffer->cbBuffer = static_cast<unsigned long>(Len); // Pretend we only saw Len bytes
 	}
 
 	// See if there was any extra data read beyond what was needed for the message we are handling
@@ -335,7 +374,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
+int CSSLClient::SendPartial(LPCVOID lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -379,7 +418,7 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 	Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
 
 	Buffers[1].pvBuffer = writeBuffer + Sizes.cbHeader;
-	Buffers[1].cbBuffer = Len;
+	Buffers[1].cbBuffer = static_cast<unsigned long>(Len);
 	Buffers[1].BufferType = SECBUFFER_DATA;
 
 	Buffers[2].pvBuffer = writeBuffer + Sizes.cbHeader + Len;
@@ -405,13 +444,13 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 	m_LastError = 0;
 
 	DebugMsg("SendPartial %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	if (false) PrintHexDump(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
+	if (false) PrintHexDump(static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
 		DebugMsg("SendPartial failed: %ld", m_SocketStream->GetLastError());
 		return SOCKET_ERROR;
 	}
-	return Len;
+	return static_cast<int>(Len);
 } // SendPartial
 
 // Negotiate a connection with the server, sending and receiving messages until the
@@ -523,7 +562,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		{
 			if (fDoRead)
 			{
-				cbData = m_SocketStream->RecvPartial(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
+				cbData = m_SocketStream->RecvMsg(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
 				if (cbData == SOCKET_ERROR)
 				{
 					DebugMsg("**** Error %d reading data from server", WSAGetLastError());
@@ -1030,4 +1069,14 @@ SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds
 	}
 
 	return SEC_E_OK;
+}
+
+void CSSLClient::StartRecvTimer()
+{
+	m_SocketStream->StartRecvTimer();
+}
+
+void CSSLClient::StartSendTimer()
+{
+	m_SocketStream->StartSendTimer();
 }

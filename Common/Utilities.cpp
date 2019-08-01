@@ -156,9 +156,9 @@ void DebugMsg(const WCHAR* pszFormat, ...)
 
 
 
-static void PrintHexDumpActual(DWORD length, const void * const buf, const bool verbose)
+static void PrintHexDumpActual(size_t length, const void * const buf, const bool verbose)
 {
-	DWORD i, count, index;
+	size_t i, count, index;
 	CHAR rgbDigits[] = "0123456789abcdef";
 	CHAR rgbLine[100];
 	const auto * buffer = static_cast<const byte *>(buf);
@@ -170,7 +170,7 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 	{
 		count = (length > 16) ? 16 : length;
 
-		sprintf_s(rgbLine, sizeof(rgbLine), "%4.4x  ", index);
+		sprintf_s(rgbLine, sizeof(rgbLine), "%zd  ", index);
 		char cbLine = 6;
 
 		for (i = 0; i < count; i++)
@@ -207,12 +207,12 @@ static void PrintHexDumpActual(DWORD length, const void * const buf, const bool 
 	}
 }
 
-void PrintHexDump(DWORD length, const void * const buf)
+void PrintHexDump(size_t length, const void * const buf)
 {
 	if (debug) PrintHexDumpActual(length, buf, false);
 }
 
-void PrintHexDump(DWORD length, const void * const buf, const bool verbose)
+void PrintHexDump(size_t length, const void * const buf, const bool verbose)
 {
 	if (debug) PrintHexDumpActual(length, buf, verbose);
 }

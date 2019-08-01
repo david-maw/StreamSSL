@@ -167,11 +167,11 @@ int wmain(int argc, WCHAR * argv[])
 			cout << "Listening for message from server" << endl;
 			int len = 0;
 			char Msg[100];
-			if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
+			if (0 < (len = pSSLClient->RecvMsg(Msg, sizeof(Msg))))
 			{
 				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				// Receive a second message, ignore errors
-				if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
+				if (0 < (len = pSSLClient->RecvMsg(Msg, sizeof(Msg))))
 					cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				cout << "Shutting down SSL" << endl;
 				::Sleep(1000); // Give the next message a chance to arrive at the server separately

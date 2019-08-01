@@ -79,13 +79,35 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = nullptr)
 	}
 }
 
+CTime DelayStarted = 0;
+
 // If the elapsed time since the time specified by the parameter is a second or more, display it, otherwise do nothing
-void ShowDelay(CTime& Started)
+void ShowDelay()
 {
-	CTimeSpan Waited = CTime::GetCurrentTime() - Started;
-	if (Waited.GetTotalSeconds() > 0)
-		cout << "Waited " << Waited.GetTotalSeconds() << " seconds" << endl;
-	Started = CTime::GetCurrentTime(); // Restart the timer
+	if (DelayStarted != 0)
+	{
+		CTimeSpan Waited = CTime::GetCurrentTime() - DelayStarted;
+		if (Waited.GetTotalSeconds() > 0)
+			cout << "Waited " << Waited.GetTotalSeconds() << " seconds" << endl;
+	}
+	DelayStarted = CTime::GetCurrentTime(); // Restart the timer
+}
+
+void ShowResult(int len, DWORD LastError)
+{
+	ShowDelay();
+	if (len == 0)
+		cout << "socket shutting down" << endl;
+	else if (LastError == ERROR_TIMEOUT)
+		cout << "socket timed out" << endl;
+	else if (LastError == WSA_IO_PENDING)
+		cout << "socket I/O not completed" << endl;
+	else if (LastError == ERROR_OPERATION_ABORTED)
+		cout << "socket operation failed" << endl;
+	else if (LastError == WSAECONNRESET)
+		cout << "socket connection was reset" << endl;
+	else
+		cout << "socket operation returned an error, LastError = " << LastError << endl;
 }
 
 // The function called first by the operating system when the codefile is run
@@ -111,7 +133,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 
 		CStringA sentMsg("Hello from server");
 		cout << "A connection has been made, worker started, sending '" << sentMsg <<"'" << endl;
-		if ((len =StreamSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength())) != sentMsg.GetLength())
+		if ((len = StreamSock->SendMsg(sentMsg.GetBuffer(), sentMsg.GetLength())) != sentMsg.GetLength())
 			cout << "Wrong number of characters sent" << endl;
 		if (len < 0)
 		{
@@ -120,11 +142,10 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 			else
 				cout << "Send returned an error" << endl;
 		}
-		CTime Started = CTime::GetCurrentTime();
-		len = StreamSock->RecvPartial(MsgText, sizeof(MsgText) - 1);
+		len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1);
 		if (len > 0)
 		{
-			ShowDelay(Started);
+			ShowDelay();
 			MsgText[len] = '\0'; // Terminate the string, for convenience
 			cout << "Received " << MsgText << endl;
 			// At this point the client is just waiting for a message or for the connection to close
@@ -132,10 +153,10 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 			StreamSock->SendPartial("Goodbye from server", 19);
 			::Sleep(1000); // Give incoming messages chance to pile up
 			// Now loop receiving and decrypting messages until an error (probably SSL shutdown) is received
-			while ((len = StreamSock->RecvPartial(MsgText, sizeof(MsgText) - 1)) > 0)
+			while ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) > 0)
 			{
 				MsgText[len] = '\0'; // Terminate the string, for convenience
-				ShowDelay(Started);
+				ShowDelay();
 				cout << "Received '" << MsgText << "'" << endl;
 			}
 			if (StreamSock->GetLastError() == SEC_I_CONTEXT_EXPIRED)
@@ -145,39 +166,28 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 				StreamSock->SetRecvTimeoutSeconds(4);
 				while (true)
 				{
-					if ((len = StreamSock->RecvPartial(MsgText, sizeof(MsgText) - 1)) <= 0)
+					if ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) <= 0)
 					{
 						if (len == INVALID_SOCKET && StreamSock->GetLastError() == ERROR_TIMEOUT)
 						{
 							// Just a timeout, it's ok to retry that, so just do so
-							ShowDelay(Started);
+							ShowDelay();
 							cout << "Initial receive timed out, retrying" << endl;
-							if ((len = StreamSock->RecvPartial(MsgText, sizeof(MsgText) - 1)) <= 0)
+							if ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) <= 0)
 								break;
 						}
 						else
 							break;
 					}
 					MsgText[len] = '\0'; // Terminate the string, for convenience
-					ShowDelay(Started);
+					ShowDelay();
 					cout << "Received plaintext '" << MsgText << "'" << endl;
 				}
-				ShowDelay(Started);
-				if (len == 0)
-					cout << "Receive reported socket shutting down" << endl;
-				else if (StreamSock->GetLastError() == ERROR_TIMEOUT)
-					cout << "Receive timed out" << endl;
-				else if (StreamSock->GetLastError() == WSA_IO_PENDING)
-					cout << "Receive not completed" << endl;
-				else if (StreamSock->GetLastError() == ERROR_OPERATION_ABORTED)
-					cout << "Receive failed" << endl;
-				else if (StreamSock->GetLastError() == WSAECONNRESET)
-					cout << "The connection was reset" << endl;
-				else
-					cout << "Socket Recv returned an error, LastError = " << StreamSock->GetLastError() << endl;
+				ShowDelay();
+				ShowResult(len, StreamSock->GetLastError());
 			}
 			else
-				cout << "Recv returned an error" << endl;
+				ShowResult(len, StreamSock->GetLastError());
 		}
 		else
 			cout << "No response data received" << endl;

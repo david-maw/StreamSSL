@@ -33,26 +33,30 @@ private:
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
-	DWORD readBufferBytes = 0;
+	size_t readBufferBytes = 0;
 	CHAR plainText[MaxMsgSize * 2]{}; // Extra plaintext data not yet delivered
 	CHAR * plainTextPtr = nullptr;
-	DWORD plainTextBytes = 0;
+	size_t plainTextBytes = 0;
 	void * readPtr = nullptr;
 	SecurityContextHandle m_hContext;
 	SecPkgContext_StreamSizes Sizes{};
 	static SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, const PCCERT_CONTEXT pCertContext);
 	SECURITY_STATUS GetNewClientCredentials();
-	int RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len);
+	int RecvPartialEncrypted(LPVOID lpBuf, const size_t Len);
 	bool ServerCertNameMatches{ false };
 	bool ServerCertTrusted{ false };
 	HRESULT DisconnectSSL();
 
 public:
 	// ISocketStream
-	int RecvPartial(LPVOID lpBuf, const ULONG Len);
-	int SendPartial(LPCVOID lpBuf, const ULONG Len);
+	int RecvPartial(LPVOID lpBuf, const size_t Len);
+	int SendPartial(LPCVOID lpBuf, const size_t Len);
 	DWORD GetLastError() const;
 	bool Disconnect(bool closeUnderlyingSocket = true);
+	int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
+	int SendMsg(LPCVOID lpBuf, const size_t Len);
+	void StartRecvTimer();
+	void StartSendTimer();
 	// Regular class interface
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection

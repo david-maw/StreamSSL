@@ -4,7 +4,7 @@ class ISocketStream
 protected:
 	~ISocketStream() = default; // Disallow polymorphic destruction
 public:
-	virtual int RecvMsg(LPVOID lpBuf, const size_t Len) = 0;
+	virtual int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) = 0;
 	virtual int SendMsg(LPCVOID lpBuf, const size_t Len) = 0;
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len) = 0;
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len) = 0;

@@ -41,9 +41,9 @@ int CPassiveSock::SendMsg(LPCVOID lpBuf, const size_t Len)
 	return CBaseSock::SendMsg(lpBuf, Len);
 }
 
-int CPassiveSock::RecvMsg(LPVOID lpBuf, const size_t Len)
+int CPassiveSock::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
-	return CBaseSock::RecvMsg(lpBuf, Len);
+	return CBaseSock::RecvMsg(lpBuf, Len, MinLen);
 }
 
 HRESULT CPassiveSock::Disconnect()

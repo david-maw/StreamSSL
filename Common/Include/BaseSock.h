@@ -15,7 +15,7 @@ protected:
 
 	BOOL ShutDown(int nHow = SD_BOTH); // will eventually be private, once all refernces move to this class 
 	// Methods used for ISocketStream
-	virtual int RecvMsg(LPVOID lpBuf, const size_t Len);
+	virtual int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
 	virtual int SendMsg(LPCVOID lpBuf, const size_t Len);
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len);
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len);

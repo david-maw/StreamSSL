@@ -187,7 +187,7 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 		{
 			// We need to read data from the socket
 			m_SocketStream->StartRecvTimer();
-			int err = m_SocketStream->RecvPartial(lpBuf, Len);
+			int err = m_SocketStream->RecvMsg(lpBuf, Len);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
@@ -289,7 +289,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+		err = m_SocketStream->RecvMsg((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -545,7 +545,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	{
 		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
-			const DWORD err = m_SocketStream->RecvPartial(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			const DWORD err = m_SocketStream->RecvMsg(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
@@ -855,12 +855,39 @@ HRESULT CSSLServer::Disconnect()
 
 int CSSLServer::SendMsg(LPCVOID lpBuf, const size_t Len)
 {
-	return m_SocketStream->SendMsg(lpBuf, Len);
+	StartSendTimer();
+	size_t total_bytes_sent = 0;
+	while (total_bytes_sent < Len)
+	{
+		const size_t bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		if ((bytes_sent == SOCKET_ERROR))
+			return SOCKET_ERROR;
+		else if (bytes_sent == 0)
+			if (total_bytes_sent == 0)
+				return SOCKET_ERROR;
+			else
+				break; // socket is closed, no chance of sending more
+		else
+			total_bytes_sent += bytes_sent;
+	}; // loop
+	return static_cast<int>(total_bytes_sent);
 }
 
-int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len)
+int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
-	return m_SocketStream->RecvMsg(lpBuf, Len);
+	StartRecvTimer();
+	size_t total_bytes_received = 0;
+	while (total_bytes_received < MinLen)
+	{
+		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		if (bytes_received == SOCKET_ERROR)
+			return SOCKET_ERROR;
+		else if (bytes_received == 0)
+			break; // socket is closed, no data left to receive
+		else
+			total_bytes_received += bytes_received;
+	}; // loop
+	return (static_cast<int>(total_bytes_received));
 }
 
 void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)

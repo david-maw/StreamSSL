@@ -121,11 +121,11 @@ int CBaseSock::GetSendTimeoutSeconds() const
 }
 
 // Receives no more than Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out before receiving MinLen
-int CBaseSock::RecvMsg(LPVOID lpBuf, const size_t Len)
+int CBaseSock::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
 	StartRecvTimer();
 	size_t total_bytes_received = 0;
-	while (total_bytes_received < Len)
+	while (total_bytes_received < MinLen)
 	{
 		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
 		if (bytes_received == SOCKET_ERROR)
