@@ -6,7 +6,7 @@
 // CPassiveSock
 
 
-class CPassiveSock : private virtual CBaseSock, public ISocketStream
+class CPassiveSock : private CBaseSock, public virtual ISocketStream
 {
 public:
 	explicit CPassiveSock(SOCKET, HANDLE);
