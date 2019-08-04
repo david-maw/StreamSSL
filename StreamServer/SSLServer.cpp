@@ -158,7 +158,7 @@ DWORD CSSLServer::GetLastError() const
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
+int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
@@ -186,8 +186,7 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 		else
 		{
 			// We need to read data from the socket
-			m_SocketStream->StartRecvTimer();
-			int err = m_SocketStream->RecvMsg(lpBuf, Len);
+			int err = m_SocketStream->RecvMsg(lpBuf, Len, MinLen);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
@@ -409,7 +408,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
+int CSSLServer::SendMsg(LPCVOID lpBuf, const size_t Len)
 {
 	m_SocketStream->StartSendTimer();
 
@@ -480,8 +479,8 @@ int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 	err = m_SocketStream->SendMsg(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
-	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	PrintHexDump(static_cast<DWORD>(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer), writeBuffer);
+	DebugMsg("Send %d encrypted bytes to client", static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	PrintHexDump(static_cast<DWORD>(static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer), writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
 		DebugMsg("Send failed: %ld", m_SocketStream->GetLastError());
@@ -633,7 +632,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
-				const DWORD err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				const DWORD err = m_SocketStream->CPassiveSock::SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{
@@ -837,7 +836,7 @@ HRESULT CSSLServer::Disconnect()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		const DWORD cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->SendMsg(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = m_SocketStream->GetLastError();
@@ -853,42 +852,6 @@ HRESULT CSSLServer::Disconnect()
 	return S_OK;
 }
 
-int CSSLServer::SendMsg(LPCVOID lpBuf, const size_t Len)
-{
-	StartSendTimer();
-	size_t total_bytes_sent = 0;
-	while (total_bytes_sent < Len)
-	{
-		const size_t bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
-		if ((bytes_sent == SOCKET_ERROR))
-			return SOCKET_ERROR;
-		else if (bytes_sent == 0)
-			if (total_bytes_sent == 0)
-				return SOCKET_ERROR;
-			else
-				break; // socket is closed, no chance of sending more
-		else
-			total_bytes_sent += bytes_sent;
-	}; // loop
-	return static_cast<int>(total_bytes_sent);
-}
-
-int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
-{
-	StartRecvTimer();
-	size_t total_bytes_received = 0;
-	while (total_bytes_received < MinLen)
-	{
-		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
-		if (bytes_received == SOCKET_ERROR)
-			return SOCKET_ERROR;
-		else if (bytes_received == 0)
-			break; // socket is closed, no data left to receive
-		else
-			total_bytes_received += bytes_received;
-	}; // loop
-	return (static_cast<int>(total_bytes_received));
-}
 
 void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 {

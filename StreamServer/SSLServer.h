@@ -22,8 +22,6 @@ public:
 	// ISocketStream functions
 	int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
 	int SendMsg(LPCVOID lpBuf, const size_t Len);
-	int RecvPartial(void * const lpBuf, const size_t Len) override;
-	int SendPartial(const void * const lpBuf, const size_t Len) override;
 	DWORD GetLastError() const override;
 	HRESULT Disconnect() override;
 	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);

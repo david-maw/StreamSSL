@@ -49,8 +49,6 @@ private:
 
 public:
 	// ISocketStream
-	int RecvPartial(LPVOID lpBuf, const size_t Len);
-	int SendPartial(LPCVOID lpBuf, const size_t Len);
 	DWORD GetLastError() const;
 	bool Disconnect(bool closeUnderlyingSocket = true);
 	int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);

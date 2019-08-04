@@ -13,8 +13,6 @@ public:
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 	using CBaseSock::RecvMsg;
 	using CBaseSock::SendMsg;
-	using CBaseSock::RecvPartial;
-	using CBaseSock::SendPartial;
 	using CBaseSock::GetLastError;
 	using CBaseSock::Disconnect;
 	using CBaseSock::SetRecvTimeoutSeconds;

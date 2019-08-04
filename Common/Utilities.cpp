@@ -170,7 +170,7 @@ static void PrintHexDumpActual(size_t length, const void * const buf, const bool
 	{
 		count = (length > 16) ? 16 : length;
 
-		sprintf_s(rgbLine, sizeof(rgbLine), "%zd  ", index);
+		sprintf_s(rgbLine, sizeof(rgbLine), "%4Ix  ", index);
 		char cbLine = 6;
 
 		for (i = 0; i < count; i++)

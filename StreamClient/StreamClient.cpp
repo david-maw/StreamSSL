@@ -158,11 +158,11 @@ int wmain(int argc, WCHAR * argv[])
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
 			cout << "Sending greeting" << endl;
 			CStringA sentMsg("Hello from client");
-			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+			if (pSSLClient->SendMsg(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Sending second greeting" << endl;
 			sentMsg ="Hello again from client";
-			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+			if (pSSLClient->SendMsg(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
 			int len = 0;
@@ -180,7 +180,7 @@ int wmain(int argc, WCHAR * argv[])
 				// this is rarely done, here's an example of doing it
 				cout << "Sending first unencrypted data message" << endl;
 				sentMsg = "First block of unencrypted data from client";
-				if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+				if (pActiveSock->SendMsg(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 					cout << "Wrong number of characters sent" << endl;
 				else
 				{
@@ -188,7 +188,7 @@ int wmain(int argc, WCHAR * argv[])
 					::Sleep(6000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
 					cout << "Sending second unencrypted data message" << endl;
 					sentMsg = "Second block of unencrypted data from client";
-					if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+					if (pActiveSock->SendMsg(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 						cout << "Wrong number of characters sent" << endl;
 					else
 					{

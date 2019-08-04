@@ -114,46 +114,9 @@ DWORD CSSLClient::GetLastError() const
 		return m_SocketStream->GetLastError();
 }
 
-
-int CSSLClient::SendMsg(LPCVOID lpBuf, const size_t Len)
-{
-	StartSendTimer();
-	size_t total_bytes_sent = 0;
-	while (total_bytes_sent < Len)
-	{
-		const size_t bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
-		if ((bytes_sent == SOCKET_ERROR))
-			return SOCKET_ERROR;
-		else if (bytes_sent == 0)
-			if (total_bytes_sent == 0)
-				return SOCKET_ERROR;
-			else
-				break; // socket is closed, no chance of sending more
-		else
-			total_bytes_sent += bytes_sent;
-	}; // loop
-	return static_cast<int>(total_bytes_sent);
-}
-
 int CSSLClient::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
-	StartRecvTimer();
-	size_t total_bytes_received = 0;
-	while (total_bytes_received < MinLen)
-	{
-		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
-		if (bytes_received == SOCKET_ERROR)
-			return SOCKET_ERROR;
-		else if (bytes_received == 0)
-			break; // socket is closed, no data left to receive
-		else
-			total_bytes_received += bytes_received;
-	}; // loop
-	return (static_cast<int>(total_bytes_received));
-}
-
-int CSSLClient::RecvPartial(LPVOID lpBuf, const size_t Len)
-{
+	UNREFERENCED_PARAMETER(MinLen);
 	if (plainTextBytes > 0)
 	{	// There are stored bytes, just return them
 		DebugMsg("There are cached plaintext %d bytes", plainTextBytes);
@@ -374,7 +337,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLClient::SendPartial(LPCVOID lpBuf, const size_t Len)
+int CSSLClient::SendMsg(LPCVOID lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -934,7 +897,7 @@ HRESULT CSSLClient::DisconnectSSL()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		const DWORD cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->SendMsg(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = WSAGetLastError();

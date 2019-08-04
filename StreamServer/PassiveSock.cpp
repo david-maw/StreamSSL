@@ -26,11 +26,6 @@ CPassiveSock::~CPassiveSock()
 {
 }
 
-int CPassiveSock::RecvPartial(LPVOID lpBuf, const size_t Len)
-{
-	return CBaseSock::RecvPartial(lpBuf, Len);
-}
-
 DWORD CPassiveSock::GetLastError() const
 {
 	return CBaseSock::GetLastError();
@@ -49,11 +44,6 @@ int CPassiveSock::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 HRESULT CPassiveSock::Disconnect()
 {
 	return ShutDown() ? HRESULT_FROM_WIN32(GetLastError()) : S_OK;
-}
-
-int CPassiveSock::SendPartial(LPCVOID lpBuf, const size_t Len)
-{
-	return CBaseSock::SendPartial(lpBuf,Len);
 }
 
 void CPassiveSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)

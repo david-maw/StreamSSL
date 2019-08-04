@@ -150,7 +150,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 			cout << "Received " << MsgText << endl;
 			// At this point the client is just waiting for a message or for the connection to close
 			cout << "Sending 'Goodbye from server' and listening for client messages" << endl;
-			StreamSock->SendPartial("Goodbye from server", 19);
+			StreamSock->SendMsg("Goodbye from server", 19);
 			::Sleep(1000); // Give incoming messages chance to pile up
 			// Now loop receiving and decrypting messages until an error (probably SSL shutdown) is received
 			while ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) > 0)
