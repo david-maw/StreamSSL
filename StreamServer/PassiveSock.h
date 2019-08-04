@@ -1,33 +1,17 @@
 #pragma once
 #include "BaseSock.h"
-#include "ISocketStream.h"
 
-/////////////////////////////////////////////////////////////////////////////
-// CPassiveSock
-
-
-class CPassiveSock : private CBaseSock, public virtual ISocketStream
+class CPassiveSock : public CBaseSock
 {
 public:
+	// Allow creation from a received SOCKET
 	explicit CPassiveSock(SOCKET, HANDLE);
-	virtual ~CPassiveSock();
-
-	// ISocketStream interface, these items have to be defined so a cast to ISocketStream works
-	DWORD GetLastError() const override; 
-	int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	int SendMsg(LPCVOID lpBuf, const size_t Len);
-	HRESULT Disconnect() override; // Returns S_OK if the close worked
-	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds) override;
-	int GetRecvTimeoutSeconds() const override;
-	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds) override;
-	int GetSendTimeoutSeconds() const override;
-	void StartRecvTimer() override;
-	void StartSendTimer() override;
-
-protected:
-	using CBaseSock::ActualSocket;
-	using CBaseSock::m_hStopEvent;
-
+	// Disallow creation of an active socket
+	CPassiveSock(HANDLE) = delete;
+	// Disconnect has different meaning in client and server sockets, annoyingly...
+	HRESULT Disconnect();
 private:
+	// Disallow the active socket connect function
+	using CBaseSock::Connect;
 };
 

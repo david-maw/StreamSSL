@@ -1,28 +1,11 @@
 #pragma once
 #include "BaseSock.h"
 
-/////////////////////////////////////////////////////////////////////////////
-// CActiveSock
-
-
-class CActiveSock : private CBaseSock
+class CActiveSock : public CBaseSock
 {
 public:
+	// Active socket which will use "Connect" to a specified destination
 	explicit CActiveSock(HANDLE StopEvent);
-	virtual ~CActiveSock();
-	bool Connect(LPCTSTR HostName, USHORT PortNumber);
-	using CBaseSock::RecvMsg;
-	using CBaseSock::SendMsg;
-	using CBaseSock::GetLastError;
-	using CBaseSock::Disconnect;
-	using CBaseSock::SetRecvTimeoutSeconds;
-	using CBaseSock::GetRecvTimeoutSeconds;
-	using CBaseSock::SetSendTimeoutSeconds;
-	using CBaseSock::GetSendTimeoutSeconds;
-	using CBaseSock::StartRecvTimer;
-	using CBaseSock::StartSendTimer;
-
-protected:
-	using CBaseSock::ActualSocket;
-	using CBaseSock::m_hStopEvent;
+	// Do not allow passive socket binding to an existing socket
+	CActiveSock(SOCKET s, HANDLE StopEvent) = delete;
 };

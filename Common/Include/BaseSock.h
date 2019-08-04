@@ -1,10 +1,16 @@
 #pragma once
-class CBaseSock
+#include "ISocketStream.h"
+class CBaseSock: public virtual ISocketStream
 {
-protected:
+public:
 	// Constructor
-	CBaseSock(HANDLE StopEvent);
+	CBaseSock() = delete;
+	CBaseSock(CBaseSock&) = delete;
+	CBaseSock(CBaseSock&&) = delete;
+	explicit CBaseSock(HANDLE StopEvent);
+	explicit CBaseSock(SOCKET s, HANDLE StopEvent);
 	~CBaseSock();
+	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 
 	virtual void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
 	virtual int GetRecvTimeoutSeconds() const;
@@ -13,7 +19,7 @@ protected:
 	virtual void StartRecvTimer();
 	virtual void StartSendTimer();
 
-	BOOL ShutDown(int nHow = SD_BOTH); // will eventually be private, once all refernces move to this class 
+	BOOL ShutDown(int nHow = SD_BOTH);
 	// Methods used for ISocketStream
 	virtual int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
 	virtual int SendMsg(LPCVOID lpBuf, const size_t Len);
@@ -22,14 +28,13 @@ protected:
 	virtual DWORD GetLastError() const;
 	virtual HRESULT Disconnect();
 
-	HRESULT Setup();
-
-	bool CloseAndInvalidateSocket();
-
-	// Items which are protected in inherited classes
+protected:
 	SOCKET ActualSocket{ INVALID_SOCKET };
 	HANDLE m_hStopEvent{ nullptr };
 
+private:
+	HRESULT Setup();
+	bool CloseAndInvalidateSocket();
 	DWORD LastError = 0;
 	bool RecvInitiated = false;
 	WSAEVENT write_event{ nullptr };
