@@ -61,10 +61,9 @@ HRESULT CBaseSock::Setup()
 
 HRESULT CBaseSock::Disconnect(bool CloseUnderlyingConnection)
 {
-	UNREFERENCED_PARAMETER(CloseUnderlyingConnection);
 	LastError = ERROR_SUCCESS;
 
-	if (ActualSocket == INVALID_SOCKET)
+	if (ActualSocket == INVALID_SOCKET || !CloseUnderlyingConnection)
 		return S_OK;
 	else if (WSACloseEvent(read_event) && WSACloseEvent(write_event) && CloseAndInvalidateSocket())
 		DebugMsg("Disconnect succeeded");
