@@ -24,9 +24,9 @@ public:
 	int Send(LPCVOID lpBuf, const size_t Len);
 	DWORD GetLastError() const override;
 	HRESULT Disconnect() override;
-	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
+	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true);
 	int GetRecvTimeoutSeconds() const;
-	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
+	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true);
 	int GetSendTimeoutSeconds() const;
 	void StartRecvTimer();
 	void StartSendTimer();

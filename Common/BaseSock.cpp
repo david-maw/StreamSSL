@@ -87,17 +87,38 @@ BOOL CBaseSock::ShutDown(int nHow)
 	return ::shutdown(ActualSocket, nHow);
 }
 
+// The general model of timer logic is this - if you want to control the timer, call StartxxxTimer and it will
+// be started immediately and used when RecvPartial or SendPartial is called.  It times whole messages, not the fragments TCP/IP
+// may deliver. So receiving an SSL message should happen within <timeout> seconds, whether it arrives in one 
+// piece or many.
+//
+// Setting the send or recv timeout generally switches back to automated operation (meaning Send and Recv start
+// the relevant timer whenever they are called) but there's an extra parameter to SetxxxTimoutSeconds so you can 
+// specify manual behaviour explicitly if you wish.
+
+void CBaseSock::StartRecvTimerInternal()
+{
+	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
+}
+
+void CBaseSock::StartSendTimerInternal()
+{
+	SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
+}
+
 void CBaseSock::StartRecvTimer()
 {
-	RecvEndTime = 0; // Allow it to be set next time RecvPartial is called
+	RecvTimerAutomatic = false; // It will be set manually (by calling this method) from now on
+	StartRecvTimerInternal();
 }
 
 void CBaseSock::StartSendTimer()
 {
-	SendEndTime = 0; // Allow it to be set next time SendPartial is called
+	SendTimerAutomatic = false; // It will be set manually (by callong this method) from now on
+	StartSendTimerInternal();
 }
 
-void CBaseSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
+void CBaseSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic)
 {
 	if (NewRecvTimeoutSeconds == INFINITE)
 		NewRecvTimeoutSeconds = MAXINT;
@@ -106,6 +127,7 @@ void CBaseSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 		RecvTimeoutSeconds = NewRecvTimeoutSeconds;
 		// RecvEndTime is untouched because a receive may be in process
 	}
+	RecvTimerAutomatic = NewTimerAutomatic;
 }
 
 int CBaseSock::GetRecvTimeoutSeconds() const
@@ -113,7 +135,7 @@ int CBaseSock::GetRecvTimeoutSeconds() const
 	return RecvTimeoutSeconds;
 }
 
-void CBaseSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
+void CBaseSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic)
 {
 	if (NewSendTimeoutSeconds == INFINITE)
 		NewSendTimeoutSeconds = MAXINT;
@@ -122,6 +144,7 @@ void CBaseSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 		SendTimeoutSeconds = NewSendTimeoutSeconds;
 		// SendEndTime is untouched, because a Send may be in process
 	}
+	SendTimerAutomatic = NewTimerAutomatic;
 }
 
 int CBaseSock::GetSendTimeoutSeconds() const
@@ -132,7 +155,8 @@ int CBaseSock::GetSendTimeoutSeconds() const
 // Receives no more than Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out before receiving MinLen
 int CBaseSock::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
-	StartRecvTimer();
+	if (RecvTimerAutomatic)
+		StartRecvTimerInternal();
 	size_t total_bytes_received = 0;
 	while (total_bytes_received < MinLen)
 	{
@@ -157,15 +181,11 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
-	// If the timer has been invalidated, restart it
-	if (RecvEndTime == 0)
-		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 	const CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
 	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
 	if (SecondsLeft <= 0)
 	{
 		LastError = ERROR_TIMEOUT;
-		StartRecvTimer();
 		return SOCKET_ERROR;
 	}
 
@@ -244,7 +264,8 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 //sends all the data requested or returns a timeout
 int CBaseSock::Send(LPCVOID lpBuf, const size_t Len)
 {
-	StartSendTimer();
+	if (SendTimerAutomatic)
+		StartSendTimerInternal();
 	ULONG total_bytes_sent = 0;
 	while (total_bytes_sent < Len)
 	{
@@ -278,16 +299,11 @@ int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	if (!WSAResetEvent(os.hEvent))
 	{
 		LastError = WSAGetLastError();
-		StartSendTimer();
 		return SOCKET_ERROR;
 	}
 
 	// Setup the buffer array
 	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
-
-	// If the timer has been invalidated, restart it
-	if (SendEndTime == 0)
-		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
 	const int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();

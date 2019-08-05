@@ -17,9 +17,9 @@ public:
 	virtual int Send(LPCVOID lpBuf, const size_t Len);
 	virtual DWORD GetLastError() const;
 	virtual HRESULT Disconnect();
-	virtual void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
+	virtual void SetRecvTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true);
 	virtual int GetRecvTimeoutSeconds() const;
-	virtual void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
+	virtual void SetSendTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true);
 	virtual int GetSendTimeoutSeconds() const;
 	virtual void StartRecvTimer();
 	virtual void StartSendTimer();
@@ -31,6 +31,8 @@ public:
 protected:
 	SOCKET ActualSocket{ INVALID_SOCKET };
 	HANDLE m_hStopEvent{ nullptr };
+	virtual void StartRecvTimerInternal();
+	virtual void StartSendTimerInternal();
 
 private:
 	HRESULT Setup();
@@ -42,6 +44,8 @@ private:
 	WSAOVERLAPPED os{};
 	CTime RecvEndTime;
 	CTime SendEndTime;
+	bool RecvTimerAutomatic = true;
+	bool SendTimerAutomatic = true;
 	int SendTimeoutSeconds{ 1 }, RecvTimeoutSeconds{ 1 }; // Default timeout is 1 seconds, encourages callers to set it
 };
 

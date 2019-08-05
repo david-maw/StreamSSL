@@ -160,6 +160,7 @@ DWORD CSSLServer::GetLastError() const
 
 int CSSLServer::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
+	StartRecvTimer();
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
 	else
@@ -248,8 +249,6 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
 int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
-	m_SocketStream->StartRecvTimer();
-
 	INT err;
 	INT i;
 	SecBufferDesc   Message;
@@ -853,9 +852,9 @@ HRESULT CSSLServer::Disconnect()
 }
 
 
-void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
+void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic)
 {
-	m_SocketStream->SetRecvTimeoutSeconds(NewRecvTimeoutSeconds);
+	m_SocketStream->SetRecvTimeoutSeconds(NewRecvTimeoutSeconds, NewTimerAutomatic);
 }
 
 int CSSLServer::GetRecvTimeoutSeconds() const
@@ -863,9 +862,9 @@ int CSSLServer::GetRecvTimeoutSeconds() const
 	return m_SocketStream->GetRecvTimeoutSeconds();
 }
 
-void CSSLServer::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
+void CSSLServer::SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic)
 {
-	m_SocketStream->SetSendTimeoutSeconds(NewSendTimeoutSeconds);
+	m_SocketStream->SetSendTimeoutSeconds(NewSendTimeoutSeconds, NewTimerAutomatic);
 }
 
 int CSSLServer::GetSendTimeoutSeconds() const
