@@ -25,8 +25,8 @@ void SecurityContextTraits::Close(Type value)
 }
 
 // The CSSLServer class, this declares an SSL server side implementation that requires
-// some means (in this case a CPassiveSock) to exchange messages with a client.
-CSSLServer::CSSLServer(CPassiveSock* SocketStream)
+// some means (anything with an ISocketStream interface) to exchange messages with a client.
+CSSLServer::CSSLServer(ISocketStream* SocketStream)
 	: m_SocketStream(SocketStream)
 	, readPtr(readBuffer)
 {
@@ -631,7 +631,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
-				const DWORD err = m_SocketStream->CPassiveSock::Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				const DWORD err = m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{

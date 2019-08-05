@@ -42,12 +42,12 @@ public:
 
 private:
 	// Note, private constructor
-	explicit CSSLServer(CPassiveSock*);
+	explicit CSSLServer(ISocketStream*);
 	HRESULT ShutDownSSL();
 	CListener* m_Listener;
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
-	std::unique_ptr <CPassiveSock> m_SocketStream;
+	ISocketStream* m_SocketStream;
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message);
