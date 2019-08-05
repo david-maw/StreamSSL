@@ -12,6 +12,11 @@ public:
 	~CBaseSock();
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 
+	// Methods used for ISocketStream
+	virtual int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
+	virtual int Send(LPCVOID lpBuf, const size_t Len);
+	virtual DWORD GetLastError() const;
+	virtual HRESULT Disconnect();
 	virtual void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
 	virtual int GetRecvTimeoutSeconds() const;
 	virtual void SetSendTimeoutSeconds(int NewSendTimeoutSeconds);
@@ -20,13 +25,8 @@ public:
 	virtual void StartSendTimer();
 
 	BOOL ShutDown(int nHow = SD_BOTH);
-	// Methods used for ISocketStream
-	virtual int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	virtual int SendMsg(LPCVOID lpBuf, const size_t Len);
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len);
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len);
-	virtual DWORD GetLastError() const;
-	virtual HRESULT Disconnect();
 
 protected:
 	SOCKET ActualSocket{ INVALID_SOCKET };

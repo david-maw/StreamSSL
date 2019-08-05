@@ -4,8 +4,8 @@ class ISocketStream
 protected:
 	~ISocketStream() = default; // Disallow polymorphic destruction
 public:
-	virtual int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) = 0;
-	virtual int SendMsg(LPCVOID lpBuf, const size_t Len) = 0;
+	virtual int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) = 0;
+	virtual int Send(LPCVOID lpBuf, const size_t Len) = 0;
 	virtual DWORD GetLastError() const = 0;
 	virtual HRESULT Disconnect() = 0; // Returns true if the close worked
 	virtual void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds) = 0;

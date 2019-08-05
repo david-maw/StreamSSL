@@ -158,7 +158,7 @@ DWORD CSSLServer::GetLastError() const
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
+int CSSLServer::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
@@ -186,7 +186,7 @@ int CSSLServer::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 		else
 		{
 			// We need to read data from the socket
-			int err = m_SocketStream->RecvMsg(lpBuf, Len, MinLen);
+			int err = m_SocketStream->Recv(lpBuf, Len, MinLen);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
@@ -288,7 +288,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->RecvMsg((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -408,7 +408,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::SendMsg(LPCVOID lpBuf, const size_t Len)
+int CSSLServer::Send(LPCVOID lpBuf, const size_t Len)
 {
 	m_SocketStream->StartSendTimer();
 
@@ -476,7 +476,7 @@ int CSSLServer::SendMsg(LPCVOID lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->SendMsg(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->Send(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
 	DebugMsg("Send %d encrypted bytes to client", static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
@@ -544,7 +544,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	{
 		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
-			const DWORD err = m_SocketStream->RecvMsg(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			const DWORD err = m_SocketStream->Recv(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
@@ -632,7 +632,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
-				const DWORD err = m_SocketStream->CPassiveSock::SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				const DWORD err = m_SocketStream->CPassiveSock::Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{
@@ -836,7 +836,7 @@ HRESULT CSSLServer::Disconnect()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		const DWORD cbData = m_SocketStream->SendMsg(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->Send(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = m_SocketStream->GetLastError();

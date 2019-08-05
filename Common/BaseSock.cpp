@@ -130,7 +130,7 @@ int CBaseSock::GetSendTimeoutSeconds() const
 }
 
 // Receives no more than Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out before receiving MinLen
-int CBaseSock::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
+int CBaseSock::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
 	StartRecvTimer();
 	size_t total_bytes_received = 0;
@@ -242,7 +242,7 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 }
 
 //sends all the data requested or returns a timeout
-int CBaseSock::SendMsg(LPCVOID lpBuf, const size_t Len)
+int CBaseSock::Send(LPCVOID lpBuf, const size_t Len)
 {
 	StartSendTimer();
 	ULONG total_bytes_sent = 0;

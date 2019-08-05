@@ -114,7 +114,7 @@ DWORD CSSLClient::GetLastError() const
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLClient::RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen)
+int CSSLClient::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
 	UNREFERENCED_PARAMETER(MinLen);
 	if (plainTextBytes > 0)
@@ -208,22 +208,22 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 			}
 			else
 			{
-				DebugMsg("RecvMsg Buffer inexplicably full");
+				DebugMsg("Recv Buffer inexplicably full");
 				return SOCKET_ERROR;
 			}
 		}
-		const INT err = m_SocketStream->RecvMsg((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
+		const INT err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
 			if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
-				DebugMsg("RecvMsg timed out");
+				DebugMsg("Recv timed out");
 			else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
-				DebugMsg("RecvMsg Overlapped operations will complete later");
+				DebugMsg("Recv Overlapped operations will complete later");
 			else if (WSAECONNRESET == m_SocketStream->GetLastError())
-				DebugMsg("RecvMsg failed, the socket was closed by the other host");
+				DebugMsg("Recv failed, the socket was closed by the other host");
 			else
-				DebugMsg("RecvMsg failed: %ld", m_SocketStream->GetLastError());
+				DebugMsg("Recv failed: %ld", m_SocketStream->GetLastError());
 			return SOCKET_ERROR;
 		}
 		DebugMsg(" ");
@@ -337,7 +337,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLClient::SendMsg(LPCVOID lpBuf, const size_t Len)
+int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -403,18 +403,18 @@ int CSSLClient::SendMsg(LPCVOID lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->SendMsg(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->Send(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
-	DebugMsg("SendPartial %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	DebugMsg("CSSLClient::Send %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	if (false) PrintHexDump(static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
-		DebugMsg("SendPartial failed: %ld", m_SocketStream->GetLastError());
+		DebugMsg("CSSLClient::Send failed: %ld", m_SocketStream->GetLastError());
 		return SOCKET_ERROR;
 	}
 	return static_cast<int>(Len);
-} // SendPartial
+}
 
 // Negotiate a connection with the server, sending and receiving messages until the
 // negotiation succeeds or fails
@@ -473,7 +473,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	// Send response to server if there is one.
 	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 	{
-		cbData = m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+		cbData = m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 		if ((cbData == SOCKET_ERROR) || (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer))
 		{
 			DebugMsg("**** Error %d sending data to server (1)", WSAGetLastError());
@@ -525,7 +525,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		{
 			if (fDoRead)
 			{
-				cbData = m_SocketStream->RecvMsg(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
+				cbData = m_SocketStream->Recv(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
 				if (cbData == SOCKET_ERROR)
 				{
 					DebugMsg("**** Error %d reading data from server", WSAGetLastError());
@@ -644,7 +644,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
-				cbData = this->m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				cbData = this->m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				if (cbData == SOCKET_ERROR || cbData == 0)
 				{
 					DWORD err = m_SocketStream->GetLastError();
@@ -897,7 +897,7 @@ HRESULT CSSLClient::DisconnectSSL()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		const DWORD cbData = m_SocketStream->SendMsg(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->Send(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = WSAGetLastError();

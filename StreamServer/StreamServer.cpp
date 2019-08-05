@@ -133,7 +133,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 
 		CStringA sentMsg("Hello from server");
 		cout << "A connection has been made, worker started, sending '" << sentMsg <<"'" << endl;
-		if ((len = StreamSock->SendMsg(sentMsg.GetBuffer(), sentMsg.GetLength())) != sentMsg.GetLength())
+		if ((len = StreamSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength())) != sentMsg.GetLength())
 			cout << "Wrong number of characters sent" << endl;
 		if (len < 0)
 		{
@@ -142,7 +142,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 			else
 				cout << "Send returned an error" << endl;
 		}
-		len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1);
+		len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1);
 		if (len > 0)
 		{
 			ShowDelay();
@@ -150,10 +150,10 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 			cout << "Received " << MsgText << endl;
 			// At this point the client is just waiting for a message or for the connection to close
 			cout << "Sending 'Goodbye from server' and listening for client messages" << endl;
-			StreamSock->SendMsg("Goodbye from server", 19);
+			StreamSock->Send("Goodbye from server", 19);
 			::Sleep(1000); // Give incoming messages chance to pile up
 			// Now loop receiving and decrypting messages until an error (probably SSL shutdown) is received
-			while ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) > 0)
+			while ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) > 0)
 			{
 				MsgText[len] = '\0'; // Terminate the string, for convenience
 				ShowDelay();
@@ -166,14 +166,14 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 				StreamSock->SetRecvTimeoutSeconds(4);
 				while (true)
 				{
-					if ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) <= 0)
+					if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
 					{
 						if (len == INVALID_SOCKET && StreamSock->GetLastError() == ERROR_TIMEOUT)
 						{
 							// Just a timeout, it's ok to retry that, so just do so
 							ShowDelay();
 							cout << "Initial receive timed out, retrying" << endl;
-							if ((len = StreamSock->RecvMsg(MsgText, sizeof(MsgText) - 1)) <= 0)
+							if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
 								break;
 						}
 						else

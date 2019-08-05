@@ -20,8 +20,8 @@ public:
 	static CSSLServer* Create(SOCKET s, CListener* Listener);
 	~CSSLServer();
 	// ISocketStream functions
-	int RecvMsg(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	int SendMsg(LPCVOID lpBuf, const size_t Len);
+	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
+	int Send(LPCVOID lpBuf, const size_t Len);
 	DWORD GetLastError() const override;
 	HRESULT Disconnect() override;
 	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds);
