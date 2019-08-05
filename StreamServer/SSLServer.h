@@ -3,12 +3,6 @@
 #include "SecurityHandle.h"
 
 #include <functional>
-#include <wincrypt.h>
-#pragma comment(lib, "crypt32.lib")
-#include <wintrust.h>
-#define SECURITY_WIN32
-#include <security.h>
-#pragma comment(lib, "secur32.lib")
 
 class CListener;
 

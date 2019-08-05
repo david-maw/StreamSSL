@@ -1,17 +1,7 @@
 #pragma once
 
 #include "SecurityHandle.h"
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <functional>
-#include <wincrypt.h>
-#pragma comment(lib, "crypt32.lib")
-#include <wintrust.h>
-#include <schannel.h>
-#define SECURITY_WIN32
-#include <security.h>
-#pragma comment(lib, "secur32.lib")
 
 class CActiveSock; // forward declaration
 
@@ -27,7 +17,6 @@ private:
 	int m_LastError{ 0 };
 	bool m_encrypting = false;
 	static HRESULT InitializeClass();
-	HRESULT Startup();
 	SECURITY_STATUS SSPINegotiateLoop(WCHAR* ServerName);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
