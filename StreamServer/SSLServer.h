@@ -23,7 +23,7 @@ public:
 	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
 	int Send(LPCVOID lpBuf, const size_t Len);
 	DWORD GetLastError() const override;
-	HRESULT Disconnect() override;
+	HRESULT Disconnect(bool CloseUnderlyingConnection) override;
 	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true);
 	int GetRecvTimeoutSeconds() const;
 	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true);
@@ -43,6 +43,7 @@ public:
 private:
 	// Note, private constructor
 	explicit CSSLServer(CPassiveSock*);
+	HRESULT ShutDownSSL();
 	CListener* m_Listener;
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;

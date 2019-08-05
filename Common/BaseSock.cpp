@@ -59,8 +59,9 @@ HRESULT CBaseSock::Setup()
 	return HRESULT_FROM_WIN32(LastError);
 }
 
-HRESULT CBaseSock::Disconnect()
+HRESULT CBaseSock::Disconnect(bool CloseUnderlyingConnection)
 {
+	UNREFERENCED_PARAMETER(CloseUnderlyingConnection);
 	LastError = ERROR_SUCCESS;
 
 	if (ActualSocket == INVALID_SOCKET)
@@ -80,11 +81,6 @@ bool CBaseSock::CloseAndInvalidateSocket()
 	const auto nRet = closesocket(ActualSocket);
 	ActualSocket = INVALID_SOCKET;
 	return nRet == 0;
-}
-
-BOOL CBaseSock::ShutDown(int nHow)
-{
-	return ::shutdown(ActualSocket, nHow);
 }
 
 // The general model of timer logic is this - if you want to control the timer, call StartxxxTimer and it will

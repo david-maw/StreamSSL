@@ -16,7 +16,7 @@ public:
 	virtual int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
 	virtual int Send(LPCVOID lpBuf, const size_t Len);
 	virtual DWORD GetLastError() const;
-	virtual HRESULT Disconnect();
+	virtual HRESULT Disconnect(bool CloseUnderlyingConnection = true);
 	virtual void SetRecvTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true);
 	virtual int GetRecvTimeoutSeconds() const;
 	virtual void SetSendTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true);
@@ -24,7 +24,6 @@ public:
 	virtual void StartRecvTimer();
 	virtual void StartSendTimer();
 
-	BOOL ShutDown(int nHow = SD_BOTH);
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len);
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len);
 

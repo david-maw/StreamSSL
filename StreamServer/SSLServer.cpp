@@ -742,13 +742,24 @@ bool CSSLServer::SSPINegotiateLoop()
 	return false;
 }
 
+HRESULT CSSLServer::Disconnect(bool CloseUnderlyingConnection)
+{
+	HRESULT hr = m_encrypting ? ShutDownSSL() : S_OK;
+	if FAILED(hr)
+		return hr;
+	if (CloseUnderlyingConnection)
+		return m_SocketStream->Disconnect(CloseUnderlyingConnection);
+	else
+		return hr;
+}
+
 // In theory a connection may switch in and out of SSL mode but
 // that's rare and this implementation does not support it (it's 
 // challenging to separate the SSL shutdown message from unencrypted
 // messages following it). So, this just sends a shutdown message.
-HRESULT CSSLServer::Disconnect()
-{
 
+HRESULT CSSLServer::ShutDownSSL()
+{
 	if (!m_encrypting)
 	{
 		DebugMsg("Disconnect called when we are not encrypting");

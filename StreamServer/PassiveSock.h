@@ -8,8 +8,7 @@ public:
 	explicit CPassiveSock(SOCKET, HANDLE);
 	// Disallow creation of an active socket
 	CPassiveSock(HANDLE) = delete;
-	// Disconnect has different meaning in client and server sockets, annoyingly...
-	HRESULT Disconnect();
+
 private:
 	// Disallow the active socket connect function
 	using CBaseSock::Connect;
