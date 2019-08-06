@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 using namespace std;
 
@@ -71,7 +72,8 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 			else
 			{
 				DWORD LastError = GetLastError();
-				cout << endl << "**** Error 0x" << std::hex << std::setw(8) << std::setfill('0') << LastError << " in CreateCertificate" << endl
+				wcout << endl << L"**** Error 0x" << std::hex << std::setw(8) << std::setfill(L'0') << LastError 
+					<< L"(" << WinErrorMsg(LastError) << L") in CreateCertificate" << endl
 					<< "Client certificate";
 				Status = HRESULT_FROM_WIN32(LastError);
 			}
@@ -202,7 +204,7 @@ int wmain(int argc, WCHAR * argv[])
 		}
 		else
 		{
-			cout << "SSL client initialize failed" << endl;
+			wcout << L"SSL client initialize failed: " << WinErrorMsg(hr) << endl;
 		}
 		::SetEvent(ShutDownEvent); // Used to early exit any async send or receive that are in process
 		pActiveSock->Disconnect();

@@ -7,6 +7,9 @@
 #include "ISocketStream.h"
 #include "Utilities.h"
 
+#include <iostream>
+#include <string>
+
 using namespace std;
 
 // This method is called when the first client tries to connect in order to allow a certificate to be selected to send to the client
@@ -98,16 +101,8 @@ void ShowResult(int len, DWORD LastError)
 	ShowDelay();
 	if (len == 0)
 		cout << "socket shutting down" << endl;
-	else if (LastError == ERROR_TIMEOUT)
-		cout << "socket timed out" << endl;
-	else if (LastError == WSA_IO_PENDING)
-		cout << "socket I/O not completed" << endl;
-	else if (LastError == ERROR_OPERATION_ABORTED)
-		cout << "socket operation failed" << endl;
-	else if (LastError == WSAECONNRESET)
-		cout << "socket connection was reset" << endl;
 	else
-		cout << "socket operation returned an error, LastError = " << LastError << endl;
+		wcout << L"socket operation returned an error, LastError: " << WinErrorMsg(LastError) << endl;
 }
 
 // The function called first by the operating system when the codefile is run
