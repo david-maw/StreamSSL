@@ -21,7 +21,7 @@ std::wstring string_format(const WCHAR* pszFormat, ...) {
 	std::unique_ptr<WCHAR[]> formatted;
 	va_list ap;
 	while (true) {
-		formatted.reset(new WCHAR[n]); /* Wrap the plain char array into the unique_ptr */
+		formatted = std::make_unique<WCHAR[]>(n); /* Wrap the plain char array into the unique_ptr */
 		wcscpy_s(&formatted[0], n, pszFormat);
 		va_start(ap, pszFormat);
 		const int final_n = _vsnwprintf_s(&formatted[0],n, n, pszFormat, ap);

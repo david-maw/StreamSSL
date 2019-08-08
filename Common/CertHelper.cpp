@@ -420,7 +420,7 @@ std::vector<byte> hexToBinary(const char * const str)
 
 	while (*p != 0 && str - p < 40 && it != boutput.end())
 	{
-		const byte nibbleValue = static_cast<byte>(hex_char_to_int(*p++));
+		const auto nibbleValue = static_cast<byte>(hex_char_to_int(*p++));
 		if (nibbleValue >= 0)
 		{
 			highOrder = !highOrder;
@@ -442,8 +442,8 @@ std::vector<byte> hexToBinary(const char * const str)
 // that is not exported, so you have to link to it dynamically. Also various required structures and
 // methods are not in the header file, so they have to be declared.
 
-typedef
-BOOL(WINAPI * PFNCCERTDISPLAYPROC)(
+using PFNCCERTDISPLAYPROC =
+BOOL(WINAPI *)(
 	_In_ PCCERT_CONTEXT	pCertContext,
 	_In_ HWND			hWndSelCertDlg,
 	_In_ void			*pvCallbackData
@@ -468,8 +468,8 @@ typedef struct _CRYPTUI_SELECTCERTIFICATE_STRUCT {
 	HCERTSTORE			hSelectedCertStore;
 } CRYPTUI_SELECTCERTIFICATE_STRUCT, *PCRYPTUI_SELECTCERTIFICATE_STRUCT;
 
-typedef
-PCCERT_CONTEXT(WINAPI * CryptUIDlgSelectCertificate) (
+using CryptUIDlgSelectCertificate =
+PCCERT_CONTEXT(WINAPI *) (
 	PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
 	);
 
@@ -1036,7 +1036,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	SubjectIssuerBlob.pbData = &CertName[0];
 
 	// Prepare key provider structure for certificate
-	CRYPT_KEY_PROV_INFO KeyProvInfo{ 0 };
+	CRYPT_KEY_PROV_INFO KeyProvInfo{ nullptr };
 	KeyProvInfo.pwszContainerName = cryptprovider.KeyContainerName;
 	KeyProvInfo.pwszProvName = nullptr;
 	KeyProvInfo.dwProvType = PROV_RSA_FULL;
@@ -1046,7 +1046,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	KeyProvInfo.dwKeySpec = AT_SIGNATURE;
 
 	// Prepare algorithm structure for certificate
-	CRYPT_ALGORITHM_IDENTIFIER SignatureAlgorithm{ 0 };
+	CRYPT_ALGORITHM_IDENTIFIER SignatureAlgorithm{ nullptr };
 	SignatureAlgorithm.pszObjId = szOID_RSA_SHA1RSA;
 
 	// Prepare Expiration date for certificate

@@ -206,7 +206,7 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 		RecvInitiated = true;
 		// Setup the buffers array
 		WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(lpBuf) };
-		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, NULL); // Start an asynchronous read
+		rc = WSARecv(ActualSocket, &buffer, 1, &bytes_read, &msg_flags, &os, nullptr); // Start an asynchronous read
 		LastError = WSAGetLastError();
 	}
 
