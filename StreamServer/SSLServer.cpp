@@ -3,6 +3,7 @@
 
 #include <iomanip>
 #include "SSLServer.h"
+#include "Listener.h"
 #include "SSLHelper.h"
 #include "CertHelper.h"
 #include "ServerCert.h"
@@ -24,8 +25,8 @@ void SecurityContextTraits::Close(Type value)
 }
 
 // The CSSLServer class, this declares an SSL server side implementation that requires
-// some means to send messages to a client (a CPassiveSock).
-CSSLServer::CSSLServer(CPassiveSock * SocketStream)
+// some means (anything with an ISocketStream interface) to exchange messages with a client.
+CSSLServer::CSSLServer(ISocketStream* SocketStream)
 	: m_SocketStream(SocketStream)
 	, readPtr(readBuffer)
 {
@@ -33,16 +34,58 @@ CSSLServer::CSSLServer(CPassiveSock * SocketStream)
 
 CSSLServer::~CSSLServer()
 {
+	if (m_Listener)
+		m_Listener->IncrementWorkerCount(-1);
 }
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
 PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
 
-// Return an ISocketStream interface to the SSL connection to anyone that needs one
-ISocketStream * CSSLServer::getSocketStream()
+// Creates an SSLServer in response to an incoming connection (a socket) detected by a CListener 
+CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 {
-	return m_SocketStream; // for now, return 'this' later, once we can do SSL
+	Listener->IncrementWorkerCount();
+	auto PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
+	PassiveSock->SetSendTimeoutSeconds(10);
+	PassiveSock->SetRecvTimeoutSeconds(60);
+	auto SSLServer = new CSSLServer(PassiveSock.release());
+	SSLServer->m_Listener = Listener;
+	SSLServer->SelectServerCert = Listener->SelectServerCert;
+	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
+	HRESULT hr = SSLServer->Initialize();
+	if SUCCEEDED(hr)
+	{
+		SSLServer->IsConnected = true;
+	}
+	else
+	{
+		int err = SSLServer->GetLastError();
+		delete SSLServer;
+		SSLServer = nullptr;
+		if (hr == SEC_E_INVALID_TOKEN)
+			Listener->LogWarning(L"SSL token invalid, perhaps the client rejected our certificate");
+		else if (hr == CRYPT_E_NOT_FOUND)
+			Listener->LogWarning(L"A usable SSL certificate could not be found");
+		else if (hr == E_ACCESSDENIED)
+			Listener->LogWarning(L"Could not access certificate store, is this program running with administrative privileges?");
+		else if (hr == SEC_E_UNKNOWN_CREDENTIALS)
+			Listener->LogWarning(L"Credentials unknown, is this program running with administrative privileges?");
+		else if (hr == SEC_E_CERT_UNKNOWN)
+			Listener->LogWarning(L"The returned client certificate was unacceptable");
+		else
+		{
+			std::wstring m = string_format(L"SSL could not be used, hr =0x%lx, lasterror=0x%lx", hr, err);
+			Listener->LogWarning(m.c_str());
+		}
+	}
+	return SSLServer;
+}
+
+// Return the CListener instance this connection came from
+CListener* CSSLServer::GetListener() const
+{
+	return m_Listener;
 }
 
 // Set up the connection, including SSL handshake, certificate selection/validation
@@ -115,8 +158,9 @@ DWORD CSSLServer::GetLastError() const
 		return m_SocketStream->GetLastError();
 }
 
-int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
+int CSSLServer::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
+	StartRecvTimer();
 	if (m_encrypting)
 		return RecvEncrypted(lpBuf, Len);
 	else
@@ -143,8 +187,7 @@ int CSSLServer::RecvPartial(void* const lpBuf, const size_t Len)
 		else
 		{
 			// We need to read data from the socket
-			m_SocketStream->StartRecvTimer();
-			int err = m_SocketStream->RecvPartial(lpBuf, Len);
+			int err = m_SocketStream->Recv(lpBuf, Len, MinLen);
 			m_LastError = 0; // Means use the one from m_SocketStream
 			if ((err == SOCKET_ERROR) || (err == 0))
 			{
@@ -206,8 +249,6 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
 int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
-	m_SocketStream->StartRecvTimer();
-
 	INT err;
 	INT i;
 	SecBufferDesc   Message;
@@ -246,7 +287,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -366,7 +407,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
+int CSSLServer::Send(LPCVOID lpBuf, const size_t Len)
 {
 	m_SocketStream->StartSendTimer();
 
@@ -434,17 +475,22 @@ int CSSLServer::SendPartial(const void * const lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->SendPartial(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->Send(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
-	DebugMsg("Send %d encrypted bytes to client", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	PrintHexDump(static_cast<DWORD>(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer), writeBuffer);
+	DebugMsg("Send %d encrypted bytes to client", static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	PrintHexDump(static_cast<DWORD>(static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer), writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
 		DebugMsg("Send failed: %ld", m_SocketStream->GetLastError());
 		return SOCKET_ERROR;
 	}
 	return static_cast<int>(Len);
+}
+
+ISocketStream* CSSLServer::GetSocketStream()
+{
+	return dynamic_cast<ISocketStream*>(this);
 }
 
 // Negotiate a connection with the client, sending and receiving messages until the
@@ -497,7 +543,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	{
 		if (readBufferBytes == 0 || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{	// Read some more bytes if available, we may read more than is needed for this phase of handshake 
-			const DWORD err = m_SocketStream->RecvPartial(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
+			const DWORD err = m_SocketStream->Recv(readBuffer + readBufferBytes, sizeof(readBuffer) - readBufferBytes);
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
@@ -585,7 +631,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
 				// Send response to client if there is one
-				const DWORD err = m_SocketStream->CPassiveSock::SendPartial(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				const DWORD err = m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				m_LastError = 0;
 				if (err == SOCKET_ERROR || err == 0)
 				{
@@ -696,13 +742,24 @@ bool CSSLServer::SSPINegotiateLoop()
 	return false;
 }
 
+HRESULT CSSLServer::Disconnect(bool CloseUnderlyingConnection)
+{
+	HRESULT hr = m_encrypting ? ShutDownSSL() : S_OK;
+	if FAILED(hr)
+		return hr;
+	if (CloseUnderlyingConnection)
+		return m_SocketStream->Disconnect(CloseUnderlyingConnection);
+	else
+		return hr;
+}
+
 // In theory a connection may switch in and out of SSL mode but
 // that's rare and this implementation does not support it (it's 
 // challenging to separate the SSL shutdown message from unencrypted
 // messages following it). So, this just sends a shutdown message.
-HRESULT CSSLServer::Disconnect()
-{
 
+HRESULT CSSLServer::ShutDownSSL()
+{
 	if (!m_encrypting)
 	{
 		DebugMsg("Disconnect called when we are not encrypting");
@@ -789,7 +846,7 @@ HRESULT CSSLServer::Disconnect()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		const DWORD cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->Send(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = m_SocketStream->GetLastError();
@@ -803,6 +860,37 @@ HRESULT CSSLServer::Disconnect()
 		PrintHexDump(cbData, pbMessage);
 	}
 	return S_OK;
+}
+
+
+void CSSLServer::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic)
+{
+	m_SocketStream->SetRecvTimeoutSeconds(NewRecvTimeoutSeconds, NewTimerAutomatic);
+}
+
+int CSSLServer::GetRecvTimeoutSeconds() const
+{
+	return m_SocketStream->GetRecvTimeoutSeconds();
+}
+
+void CSSLServer::SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic)
+{
+	m_SocketStream->SetSendTimeoutSeconds(NewSendTimeoutSeconds, NewTimerAutomatic);
+}
+
+int CSSLServer::GetSendTimeoutSeconds() const
+{
+	return m_SocketStream->GetSendTimeoutSeconds();
+}
+
+void CSSLServer::StartRecvTimer()
+{
+	m_SocketStream->StartRecvTimer();
+}
+
+void CSSLServer::StartSendTimer()
+{
+	m_SocketStream->StartSendTimer();
 }
 
 // End of CSSLServer declarations

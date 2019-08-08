@@ -174,7 +174,6 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Transport.h" />
     <ClInclude Include="..\Common\Include\Utilities.h" />
   </ItemGroup>
   <ItemGroup>
@@ -193,7 +192,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="StreamServer.cpp" />
-    <ClCompile Include="Transport.cpp" />
     <ClCompile Include="..\Common\Utilities.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

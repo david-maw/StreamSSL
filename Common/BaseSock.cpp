@@ -4,6 +4,15 @@
 #include "BaseSock.h"
 #include "Utilities.h"
 
+CBaseSock::CBaseSock(SOCKET s, HANDLE StopEvent)
+	: CBaseSock(StopEvent)
+{
+	ActualSocket = s;
+	if FAILED(Setup())
+		throw("Setup failed");
+}
+
+
 CBaseSock::CBaseSock(HANDLE StopEvent)
 : m_hStopEvent(StopEvent)
 {
@@ -50,11 +59,11 @@ HRESULT CBaseSock::Setup()
 	return HRESULT_FROM_WIN32(LastError);
 }
 
-HRESULT CBaseSock::Disconnect()
+HRESULT CBaseSock::Disconnect(bool CloseUnderlyingConnection)
 {
 	LastError = ERROR_SUCCESS;
 
-	if (ActualSocket == INVALID_SOCKET)
+	if (ActualSocket == INVALID_SOCKET || !CloseUnderlyingConnection)
 		return S_OK;
 	else if (WSACloseEvent(read_event) && WSACloseEvent(write_event) && CloseAndInvalidateSocket())
 		DebugMsg("Disconnect succeeded");
@@ -73,22 +82,38 @@ bool CBaseSock::CloseAndInvalidateSocket()
 	return nRet == 0;
 }
 
-BOOL CBaseSock::ShutDown(int nHow)
+// The general model of timer logic is this - if you want to control the timer, call StartxxxTimer and it will
+// be started immediately and used when RecvPartial or SendPartial is called.  It times whole messages, not the fragments TCP/IP
+// may deliver. So receiving an SSL message should happen within <timeout> seconds, whether it arrives in one 
+// piece or many.
+//
+// Setting the send or recv timeout generally switches back to automated operation (meaning Send and Recv start
+// the relevant timer whenever they are called) but there's an extra parameter to SetxxxTimoutSeconds so you can 
+// specify manual behaviour explicitly if you wish.
+
+void CBaseSock::StartRecvTimerInternal()
 {
-	return ::shutdown(ActualSocket, nHow);
+	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
+}
+
+void CBaseSock::StartSendTimerInternal()
+{
+	SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 }
 
 void CBaseSock::StartRecvTimer()
 {
-	RecvEndTime = 0; // Allow it to be set next time RecvPartial is called
+	RecvTimerAutomatic = false; // It will be set manually (by calling this method) from now on
+	StartRecvTimerInternal();
 }
 
 void CBaseSock::StartSendTimer()
 {
-	SendEndTime = 0; // Allow it to be set next time SendPartial is called
+	SendTimerAutomatic = false; // It will be set manually (by callong this method) from now on
+	StartSendTimerInternal();
 }
 
-void CBaseSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
+void CBaseSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic)
 {
 	if (NewRecvTimeoutSeconds == INFINITE)
 		NewRecvTimeoutSeconds = MAXINT;
@@ -97,6 +122,7 @@ void CBaseSock::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds)
 		RecvTimeoutSeconds = NewRecvTimeoutSeconds;
 		// RecvEndTime is untouched because a receive may be in process
 	}
+	RecvTimerAutomatic = NewTimerAutomatic;
 }
 
 int CBaseSock::GetRecvTimeoutSeconds() const
@@ -104,7 +130,7 @@ int CBaseSock::GetRecvTimeoutSeconds() const
 	return RecvTimeoutSeconds;
 }
 
-void CBaseSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
+void CBaseSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic)
 {
 	if (NewSendTimeoutSeconds == INFINITE)
 		NewSendTimeoutSeconds = MAXINT;
@@ -113,11 +139,31 @@ void CBaseSock::SetSendTimeoutSeconds(int NewSendTimeoutSeconds)
 		SendTimeoutSeconds = NewSendTimeoutSeconds;
 		// SendEndTime is untouched, because a Send may be in process
 	}
+	SendTimerAutomatic = NewTimerAutomatic;
 }
 
 int CBaseSock::GetSendTimeoutSeconds() const
 {
 	return SendTimeoutSeconds;
+}
+
+// Receives no more than Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out before receiving MinLen
+int CBaseSock::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
+{
+	if (RecvTimerAutomatic)
+		StartRecvTimerInternal();
+	size_t total_bytes_received = 0;
+	while (total_bytes_received < MinLen)
+	{
+		const size_t bytes_received = RecvPartial((char*)lpBuf + total_bytes_received, Len - total_bytes_received);
+		if (bytes_received == SOCKET_ERROR)
+			return SOCKET_ERROR;
+		else if (bytes_received == 0)
+			break; // socket is closed, no data left to receive
+		else
+			total_bytes_received += bytes_received;
+	}; // loop
+	return (static_cast<int>(total_bytes_received));
 }
 
 // Receives up to Len bytes of data and returns the amount received - or SOCKET_ERROR if it times out
@@ -130,15 +176,11 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
-	// If the timer has been invalidated, restart it
-	if (RecvEndTime == 0)
-		RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
 	const CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
 	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
 	if (SecondsLeft <= 0)
 	{
 		LastError = ERROR_TIMEOUT;
-		StartRecvTimer();
 		return SOCKET_ERROR;
 	}
 
@@ -214,6 +256,27 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	return SOCKET_ERROR;
 }
 
+//sends all the data requested or returns a timeout
+int CBaseSock::Send(LPCVOID lpBuf, const size_t Len)
+{
+	if (SendTimerAutomatic)
+		StartSendTimerInternal();
+	ULONG total_bytes_sent = 0;
+	while (total_bytes_sent < Len)
+	{
+		const ULONG bytes_sent = SendPartial((char*)lpBuf + total_bytes_sent, Len - total_bytes_sent);
+		if ((bytes_sent == SOCKET_ERROR))
+			return SOCKET_ERROR;
+		else if (bytes_sent == 0)
+			if (total_bytes_sent == 0)
+				return SOCKET_ERROR;
+			else
+				break; // socket is closed, no chance of sending more
+		else
+			total_bytes_sent += bytes_sent;
+	}; // loop
+	return (total_bytes_sent);
+}
 
 //sends a message, or part of one
 int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)
@@ -231,16 +294,11 @@ int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	if (!WSAResetEvent(os.hEvent))
 	{
 		LastError = WSAGetLastError();
-		StartSendTimer();
 		return SOCKET_ERROR;
 	}
 
 	// Setup the buffer array
 	WSABUF buffer{ static_cast<ULONG>(Len), static_cast<char*>(const_cast<void*>(lpBuf)) };
-
-	// If the timer has been invalidated, restart it
-	if (SendEndTime == 0)
-		SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
 
 	const int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();
@@ -297,4 +355,84 @@ int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 		}
 	}
 	return SOCKET_ERROR;
+}
+
+bool CBaseSock::Connect(LPCTSTR HostName, USHORT PortNumber)
+{
+	int iResult;
+	BOOL bSuccess;
+	SOCKADDR_STORAGE LocalAddr = { 0 };
+	SOCKADDR_STORAGE RemoteAddr = { 0 };
+	DWORD dwLocalAddr = sizeof(LocalAddr);
+	DWORD dwRemoteAddr = sizeof(RemoteAddr);
+	WCHAR PortName[10] = { 0 };
+	timeval Timeout = { 0 };
+
+	Timeout.tv_sec = GetSendTimeoutSeconds();
+
+	_itot_s(PortNumber, PortName, _countof(PortName), 10);
+
+	ActualSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (ActualSocket == INVALID_SOCKET) {
+		DebugMsg("socket failed with error: %d\n", WSAGetLastError());
+		return false;
+	}
+
+	// Note that WSAConnectByName requires Vista or Server 2008
+	bSuccess = WSAConnectByName(ActualSocket, const_cast<LPWSTR>(HostName),
+		PortName, &dwLocalAddr,
+		(SOCKADDR*)& LocalAddr,
+		&dwRemoteAddr,
+		(SOCKADDR*)& RemoteAddr,
+		&Timeout,
+		nullptr);
+
+	if (!bSuccess) {
+		LastError = WSAGetLastError();
+		DebugMsg("**** WsaConnectByName Error %d connecting to \"%S\" (%S)",
+			LastError,
+			HostName,
+			PortName);
+		CloseAndInvalidateSocket();
+		return false;
+	}
+	iResult = setsockopt(ActualSocket, SOL_SOCKET,
+		0x7010 /*SO_UPDATE_CONNECT_CONTEXT*/, nullptr, 0);
+	if (iResult == SOCKET_ERROR) {
+		LastError = WSAGetLastError();
+		DebugMsg("setsockopt for SO_UPDATE_CONNECT_CONTEXT failed with error: %d", LastError);
+		CloseAndInvalidateSocket();
+		return false;
+	}
+	//// At this point we have a connection, so set up keepalives so we can detect if the host disconnects
+	//// This code is commented out because it does not seen to be helpful
+	//BOOL so_keepalive = TRUE;
+	//int iResult = setsockopt(ActualSocket, SOL_SOCKET, SO_KEEPALIVE, (const char *)&so_keepalive, sizeof(so_keepalive));
+	//	if (iResult == SOCKET_ERROR){
+	//		LastError = WSAGetLastError();
+	//		wprintf(L"setsockopt for SO_KEEPALIVE failed with error: %d\n",
+	//			LastError);
+	//		CloseAndInvalidateSocket();
+	//		return false;
+	//	}
+
+	//// Now set keepalive timings
+
+	//DWORD dwBytes = 0;
+	//tcp_keepalive sKA_Settings = {0}, sReturned = {0} ;
+
+	//sKA_Settings.onoff = 1 ;
+	//sKA_Settings.keepalivetime = 1000; // Keep Alive in 1 sec.
+	//sKA_Settings.keepaliveinterval = 1000 ; // Resend if No-Reply
+	//if (WSAIoctl(ActualSocket, SIO_KEEPALIVE_VALS, &sKA_Settings,
+	//	sizeof(sKA_Settings), &sReturned, sizeof(sReturned), &dwBytes,
+	//	NULL, NULL) != 0)
+	//{
+	//	LastError = WSAGetLastError() ;
+	//	wprintf(L"WSAIoctl to set keepalive failed with error: %d\n", LastError);
+	//	CloseAndInvalidateSocket();
+	//	return false;
+	//}
+
+	return SUCCEEDED(Setup());
 }

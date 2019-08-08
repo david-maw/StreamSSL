@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 using namespace std;
 
@@ -71,7 +72,8 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 			else
 			{
 				DWORD LastError = GetLastError();
-				cout << endl << "**** Error 0x" << std::hex << std::setw(8) << std::setfill('0') << LastError << " in CreateCertificate" << endl
+				wcout << endl << L"**** Error 0x" << std::hex << std::setw(8) << std::setfill(L'0') << LastError 
+					<< L"(" << WinErrorMsg(LastError) << L") in CreateCertificate" << endl
 					<< "Client certificate";
 				Status = HRESULT_FROM_WIN32(LastError);
 			}
@@ -158,20 +160,20 @@ int wmain(int argc, WCHAR * argv[])
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
 			cout << "Sending greeting" << endl;
 			CStringA sentMsg("Hello from client");
-			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+			if (pSSLClient->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Sending second greeting" << endl;
 			sentMsg ="Hello again from client";
-			if (pSSLClient->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+			if (pSSLClient->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
 			int len = 0;
 			char Msg[100];
-			if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
+			if (0 < (len = pSSLClient->Recv(Msg, sizeof(Msg))))
 			{
 				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				// Receive a second message, ignore errors
-				if (0 < (len = pSSLClient->RecvPartial(Msg, sizeof(Msg))))
+				if (0 < (len = pSSLClient->Recv(Msg, sizeof(Msg))))
 					cout << "Received '" << CStringA(Msg, len) << "'" << endl;
 				cout << "Shutting down SSL" << endl;
 				::Sleep(1000); // Give the next message a chance to arrive at the server separately
@@ -180,7 +182,7 @@ int wmain(int argc, WCHAR * argv[])
 				// this is rarely done, here's an example of doing it
 				cout << "Sending first unencrypted data message" << endl;
 				sentMsg = "First block of unencrypted data from client";
-				if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+				if (pActiveSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 					cout << "Wrong number of characters sent" << endl;
 				else
 				{
@@ -188,7 +190,7 @@ int wmain(int argc, WCHAR * argv[])
 					::Sleep(6000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
 					cout << "Sending second unencrypted data message" << endl;
 					sentMsg = "Second block of unencrypted data from client";
-					if (pActiveSock->SendPartial(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+					if (pActiveSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
 						cout << "Wrong number of characters sent" << endl;
 					else
 					{
@@ -202,7 +204,7 @@ int wmain(int argc, WCHAR * argv[])
 		}
 		else
 		{
-			cout << "SSL client initialize failed" << endl;
+			wcout << L"SSL client initialize failed: " << WinErrorMsg(hr) << endl;
 		}
 		::SetEvent(ShutDownEvent); // Used to early exit any async send or receive that are in process
 		pActiveSock->Disconnect();

@@ -113,8 +113,10 @@ DWORD CSSLClient::GetLastError() const
 	else
 		return m_SocketStream->GetLastError();
 }
-int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
+
+int CSSLClient::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 {
+	UNREFERENCED_PARAMETER(MinLen);
 	if (plainTextBytes > 0)
 	{	// There are stored bytes, just return them
 		DebugMsg("There are cached plaintext %d bytes", plainTextBytes);
@@ -124,12 +126,12 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 
 		if (Len >= plainTextBytes)
 		{
-			int bytesReturned = plainTextBytes;
+			auto bytesReturned = plainTextBytes;
 			DebugMsg("All %d cached plaintext bytes can be returned", plainTextBytes);
 			if (false) PrintHexDump(plainTextBytes, plainTextPtr);
 			memcpy_s(lpBuf, Len, plainTextPtr, plainTextBytes);
 			plainTextBytes = 0;
-			return bytesReturned;
+			return static_cast<int>(bytesReturned);
 		}
 		else
 		{	// More bytes are stored than the caller requested, so return some, store the rest until the next call
@@ -138,7 +140,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 			plainTextBytes -= Len;
 			DebugMsg("%d cached plaintext bytes can be returned, %d remain", Len, plainTextBytes);
 			if (false) PrintHexDump(plainTextBytes, plainTextPtr);
-			return Len;
+			return static_cast<int>(Len);
 		}
 	}
 
@@ -155,7 +157,7 @@ int CSSLClient::RecvPartial(LPVOID lpBuf, const ULONG Len)
 }
 
 // Because SSL is message oriented these calls send (or receive) a whole message
-int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
+int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 {
 	INT i;
 	SecBufferDesc   Message;
@@ -185,11 +187,12 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		DebugMsg("Using the saved %d bytes from server", readBufferBytes);
 		if (false) PrintHexDump(readBufferBytes, readPtr);
 		Buffers[0].pvBuffer = readPtr;
-		Buffers[0].cbBuffer = readBufferBytes;
+		Buffers[0].cbBuffer = static_cast<unsigned long>(readBufferBytes);
 		Buffers[0].BufferType = SECBUFFER_DATA;
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	}
 
+	StartRecvTimer(); // The whole message must be received before timeout seconds elapse
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
 		size_t freeBytesAtStart = static_cast<int>((CHAR*)readPtr - &readBuffer[0]);
@@ -205,22 +208,22 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 			}
 			else
 			{
-				DebugMsg("RecvMsg Buffer inexplicably full");
+				DebugMsg("Recv Buffer inexplicably full");
 				return SOCKET_ERROR;
 			}
 		}
-		const INT err = m_SocketStream->RecvPartial((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
+		const INT err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
 			if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
-				DebugMsg("RecvMsg timed out");
+				DebugMsg("Recv timed out");
 			else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
-				DebugMsg("RecvMsg Overlapped operations will complete later");
+				DebugMsg("Recv Overlapped operations will complete later");
 			else if (WSAECONNRESET == m_SocketStream->GetLastError())
-				DebugMsg("RecvMsg failed, the socket was closed by the other host");
+				DebugMsg("Recv failed, the socket was closed by the other host");
 			else
-				DebugMsg("RecvMsg failed: %ld", m_SocketStream->GetLastError());
+				DebugMsg("Recv failed: %ld", m_SocketStream->GetLastError());
 			return SOCKET_ERROR;
 		}
 		DebugMsg(" ");
@@ -229,7 +232,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 		readBufferBytes += err;
 
 		Buffers[0].pvBuffer = readPtr;
-		Buffers[0].cbBuffer = readBufferBytes;
+		Buffers[0].cbBuffer = static_cast<unsigned long>(readBufferBytes);
 		Buffers[0].BufferType = SECBUFFER_DATA;
 
 		Buffers[1].BufferType = SECBUFFER_EMPTY;
@@ -297,7 +300,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 			return SOCKET_ERROR;
 		}
 		else
-			pDataBuffer->cbBuffer = Len; // Pretend we only saw Len bytes
+			pDataBuffer->cbBuffer = static_cast<unsigned long>(Len); // Pretend we only saw Len bytes
 	}
 
 	// See if there was any extra data read beyond what was needed for the message we are handling
@@ -334,7 +337,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const ULONG Len)
 
 // Send an encrypted message containing an encrypted version of 
 // whatever plaintext data the caller provides
-int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
+int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 {
 	if (!lpBuf || Len > MaxMsgSize)
 		return SOCKET_ERROR;
@@ -378,7 +381,7 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 	Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
 
 	Buffers[1].pvBuffer = writeBuffer + Sizes.cbHeader;
-	Buffers[1].cbBuffer = Len;
+	Buffers[1].cbBuffer = static_cast<unsigned long>(Len);
 	Buffers[1].BufferType = SECBUFFER_DATA;
 
 	Buffers[2].pvBuffer = writeBuffer + Sizes.cbHeader + Len;
@@ -400,18 +403,18 @@ int CSSLClient::SendPartial(LPCVOID lpBuf, const ULONG Len)
 		return SOCKET_ERROR;
 	}
 
-	err = m_SocketStream->SendMsg(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	err = m_SocketStream->Send(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
 
-	DebugMsg("SendPartial %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	if (false) PrintHexDump(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
+	DebugMsg("CSSLClient::Send %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	if (false) PrintHexDump(static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
-		DebugMsg("SendPartial failed: %ld", m_SocketStream->GetLastError());
+		DebugMsg("CSSLClient::Send failed: %ld", m_SocketStream->GetLastError());
 		return SOCKET_ERROR;
 	}
-	return Len;
-} // SendPartial
+	return static_cast<int>(Len);
+}
 
 // Negotiate a connection with the server, sending and receiving messages until the
 // negotiation succeeds or fails
@@ -470,7 +473,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	// Send response to server if there is one.
 	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 	{
-		cbData = m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+		cbData = m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 		if ((cbData == SOCKET_ERROR) || (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer))
 		{
 			DebugMsg("**** Error %d sending data to server (1)", WSAGetLastError());
@@ -522,7 +525,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 		{
 			if (fDoRead)
 			{
-				cbData = m_SocketStream->RecvPartial(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
+				cbData = m_SocketStream->Recv(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
 				if (cbData == SOCKET_ERROR)
 				{
 					DebugMsg("**** Error %d reading data from server", WSAGetLastError());
@@ -641,7 +644,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 
 			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 			{
-				cbData = this->m_SocketStream->SendMsg(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				cbData = this->m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				if (cbData == SOCKET_ERROR || cbData == 0)
 				{
 					DWORD err = m_SocketStream->GetLastError();
@@ -894,7 +897,7 @@ HRESULT CSSLClient::DisconnectSSL()
 
 	if (pbMessage != nullptr && cbMessage != 0)
 	{
-		const DWORD cbData = m_SocketStream->SendPartial(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->Send(pbMessage, cbMessage);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = WSAGetLastError();
@@ -1029,4 +1032,14 @@ SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds
 	}
 
 	return SEC_E_OK;
+}
+
+void CSSLClient::StartRecvTimer()
+{
+	m_SocketStream->StartRecvTimer();
+}
+
+void CSSLClient::StartSendTimer()
+{
+	m_SocketStream->StartSendTimer();
 }

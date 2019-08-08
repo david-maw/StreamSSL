@@ -2,6 +2,7 @@
 #include "framework.h"
 
 #include "Listener.h"
+#include "SSLServer.h" 
 #include "Utilities.h"
 
 // CListener object, listens for connections on one thread, and initiates a worker
@@ -30,12 +31,11 @@ CListener::~CListener()
 // then call the Lambda function passed in via the BeginListening method
 UINT __cdecl CListener::Worker(void * v)
 {
-	CTransport * Transport = reinterpret_cast<CTransport*>(v);
-	CListener * Listener = Transport->m_Listener;
-
+	std::unique_ptr<CSSLServer> SSLServer(reinterpret_cast<CSSLServer*>(v));
 	SetThreadName("Connection Worker");
-	(Listener->m_actualwork)(Transport->SocketStream);
-	delete Transport;
+	// Invoke the caller provided function defining the work to do, passing an interface which
+	// allows the user code to send and receive messages and so on.  
+	(SSLServer->GetListener()->m_actualwork)(SSLServer->GetSocketStream());
 	return 0;
 }
 
@@ -135,11 +135,11 @@ void CListener::BeginListening(std::function<void(ISocketStream * StreamSock)> a
 	m_ListenerThread = AfxBeginThread(ListenerWorker, this);
 }
 
-void CListener::IncrementTransportCount(int i)
+void CListener::IncrementWorkerCount(int i)
 {
-	m_TransportCountLock.Lock();
-	m_TransportCount += i;
-	m_TransportCountLock.Unlock();
+	m_WorkerCountLock.Lock();
+	m_WorkerCount += i;
+	m_WorkerCountLock.Unlock();
 }
 
 // Stop listening, tells the listener thread it can stop, then waits for it to terminate
@@ -171,7 +171,7 @@ void CListener::Listen()
 	SOCKET iReadSocket = NULL;
 	//WCHAR MsgText[100];
 
-	m_TransportCount = 0;
+	m_WorkerCount = 0;
 
 	DebugMsg("Start CListener::Listen method");
 
@@ -218,24 +218,24 @@ void CListener::Listen()
 		// A request to open a socket has been received, begin a thread to handle that connection
 		DebugMsg("Starting worker");
 
-		CTransport * Transport = new CTransport(iReadSocket, this); // Deleted by worker thread
-		if (Transport->IsConnected)
-			AfxBeginThread(Worker, Transport);
+		auto SSLServer = CSSLServer::Create(iReadSocket, this);
+		if (SSLServer->IsConnected)
+			AfxBeginThread(Worker, SSLServer);
 		else
-			delete Transport;
+			delete SSLServer;
 		iReadSocket = INVALID_SOCKET;
 	}
 	// Either we're done, or there has been a problem, wait for all the worker threads to terminate
 	Sleep(500);
-	m_TransportCountLock.Lock();
-	while (m_TransportCount)
+	m_WorkerCountLock.Lock();
+	while (m_WorkerCount)
 	{
-		m_TransportCountLock.Unlock();
+		m_WorkerCountLock.Unlock();
 		Sleep(1000);
-		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", m_TransportCount);
-		m_TransportCountLock.Lock();
+		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", m_WorkerCount);
+		m_WorkerCountLock.Lock();
 	};
-	m_TransportCountLock.Unlock();
+	m_WorkerCountLock.Unlock();
 	if ((iReadSocket != NULL) && (iReadSocket != INVALID_SOCKET))
 		closesocket(iReadSocket);
 	DebugMsg("End Listen method");
