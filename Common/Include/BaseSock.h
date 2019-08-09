@@ -13,16 +13,16 @@ public:
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 
 	// Methods used for ISocketStream
-	virtual int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	virtual int Send(LPCVOID lpBuf, const size_t Len);
-	virtual DWORD GetLastError() const;
-	virtual HRESULT Disconnect(bool CloseUnderlyingConnection = true);
-	virtual void SetRecvTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true);
-	virtual int GetRecvTimeoutSeconds() const;
-	virtual void SetSendTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true);
-	virtual int GetSendTimeoutSeconds() const;
-	virtual void StartRecvTimer();
-	virtual void StartSendTimer();
+	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) override;
+	int Send(LPCVOID lpBuf, const size_t Len) override;
+	DWORD GetLastError() const override;
+	HRESULT Disconnect(bool CloseUnderlyingConnection = true) override;
+	void SetRecvTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true) override;
+	int GetRecvTimeoutSeconds() const override;
+	void SetSendTimeoutSeconds(int NewTimeoutSeconds, bool NewTimerAutomatic = true) override;
+	int GetSendTimeoutSeconds() const override;
+	void StartRecvTimer() override;
+	void StartSendTimer() override;
 
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len);
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len);
