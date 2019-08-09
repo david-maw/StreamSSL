@@ -39,7 +39,7 @@ private:
 public:
 	// ISocketStream
 	DWORD GetLastError() const;
-	bool Disconnect(bool closeUnderlyingSocket = true);
+	HRESULT Disconnect(bool closeUnderlyingSocket = true);
 	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
 	int Send(LPCVOID lpBuf, const size_t Len);
 	void StartRecvTimer();

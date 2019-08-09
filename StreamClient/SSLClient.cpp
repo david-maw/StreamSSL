@@ -806,10 +806,12 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 	return scRet;
 }
 
-bool CSSLClient::Disconnect(bool closeUnderlyingSocket)
+HRESULT CSSLClient::Disconnect(bool closeUnderlyingSocket)
 {
-	DisconnectSSL();
-	return closeUnderlyingSocket ? SUCCEEDED(m_SocketStream->Disconnect()) : true;
+	HRESULT hr = DisconnectSSL();
+	if FAILED(hr)
+		return hr;
+	return closeUnderlyingSocket ? m_SocketStream->Disconnect() : S_OK;
 }
 
 HRESULT CSSLClient::DisconnectSSL()
