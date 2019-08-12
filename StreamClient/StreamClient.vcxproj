@@ -154,7 +154,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -170,7 +170,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -186,7 +186,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -202,7 +202,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -220,7 +220,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -240,7 +240,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -260,7 +260,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -280,7 +280,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.\;..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\;Include;..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -294,12 +294,12 @@
     <ClInclude Include="..\Common\Include\CertRAII.h" />
     <ClInclude Include="..\Common\Include\Utilities.h" />
     <ClInclude Include="..\Common\Include\ISocketStream.h" />
-    <ClInclude Include="ActiveSock.h" />
     <ClInclude Include="..\Common\Include\BaseSock.h" />
-    <ClInclude Include="EventWrapper.h" />
     <ClInclude Include="..\Common\Include\Handle.h" />
     <ClInclude Include="..\Common\Include\SecurityHandle.h" />
-    <ClInclude Include="SSLClient.h" />
+    <ClInclude Include="Include\ActiveSock.h" />
+    <ClInclude Include="Include\EventWrapper.h" />
+    <ClInclude Include="Include\SSLClient.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
