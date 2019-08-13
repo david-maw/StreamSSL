@@ -197,3 +197,5 @@ ModelManifest.xml
 /Zipped/
 /StreamSSL.VC.db
 /.vs5/
+Debug Static Library
+Release Static Library
