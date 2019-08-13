@@ -26,15 +26,6 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ActiveSock.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SSLClient.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EventWrapper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\Common\Include\Handle.h">
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
@@ -55,6 +46,15 @@
     </ClInclude>
     <ClInclude Include="..\Common\Include\BaseSock.h">
       <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ActiveSock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\EventWrapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\SSLClient.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

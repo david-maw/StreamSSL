@@ -29,9 +29,6 @@
     <ClInclude Include="SSLServer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Listener.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PassiveSock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -61,6 +58,9 @@
     </ClInclude>
     <ClInclude Include="..\Common\Include\BaseSock.h">
       <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Listener.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
