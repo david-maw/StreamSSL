@@ -9,11 +9,11 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Common Headers">
-      <UniqueIdentifier>{671b7d48-41ef-4a34-a15d-db6e477bb90f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Common Sources">
       <UniqueIdentifier>{17883f1f-bcff-41e8-a73d-12d627f7f227}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Common Headers">
+      <UniqueIdentifier>{671b7d48-41ef-4a34-a15d-db6e477bb90f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -59,9 +59,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="StreamClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ActiveSock.cpp">
