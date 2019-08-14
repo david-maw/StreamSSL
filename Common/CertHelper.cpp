@@ -468,10 +468,7 @@ typedef struct _CRYPTUI_SELECTCERTIFICATE_STRUCT {
 	HCERTSTORE			hSelectedCertStore;
 } CRYPTUI_SELECTCERTIFICATE_STRUCT, *PCRYPTUI_SELECTCERTIFICATE_STRUCT;
 
-using CryptUIDlgSelectCertificate =
-PCCERT_CONTEXT(WINAPI *) (
-	PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc
-	);
+using CryptUIDlgSelectCertificate = PCCERT_CONTEXT(WINAPI *) (PCRYPTUI_SELECTCERTIFICATE_STRUCT pcsc);
 
 // Make sure the certificate is a valid server certificate, for example, does the name match, do you have a private key,
 // is the certificate allowed to be used for server identification

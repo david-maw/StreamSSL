@@ -13,4 +13,3 @@ private:
 	// Disallow the active socket connect function
 	using CBaseSock::Connect;
 };
-

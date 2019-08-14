@@ -232,7 +232,7 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 		DebugMsg("Looks like a concatenated shutdown message and something else");
 		PrintHexDump(readBufferBytes, readPtr, true);
 		Message.pBuffers[0].cbBuffer = shutdownLen + headerLen;
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 		if (scRet == SEC_I_CONTEXT_EXPIRED)
 		{
 			//  Put a reference to the unprocessed data in Message.pBuffers[1]
@@ -242,7 +242,7 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 		}
 	}
 	else
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	return scRet;
 }
 
@@ -504,7 +504,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	SecBuffer            InBuffers[2];
 	SecBuffer            OutBuffers[1];
 	DWORD                dwSSPIOutFlags = 0;
-	bool				 ContextHandleValid = (bool)m_hContext;
+	auto				 ContextHandleValid = (bool)m_hContext;
 
 	if (m_encrypting)
 	{
@@ -614,7 +614,7 @@ bool CSSLServer::SSPINegotiateLoop()
 
 		scRet = g_pSSPI->AcceptSecurityContext(
 			&hServerCreds,									// Which certificate to use, already established
-			ContextHandleValid ? m_hContext.getunsaferef() : NULL, // The context handle if we have one, ask to make one if this is first call
+			ContextHandleValid ? m_hContext.getunsaferef() : nullptr, // The context handle if we have one, ask to make one if this is first call
 			&InBuffer,										// Input buffer list
 			dwSSPIFlags,									// What we require of the connection
 			0,													// Data representation, not used 
@@ -822,10 +822,10 @@ HRESULT CSSLServer::ShutDownSSL()
 	Status = g_pSSPI->AcceptSecurityContext(
 		&hServerCreds,				// Which certificate to use, already established
 		m_hContext.getunsaferef(),				  	// The context handle
-		NULL,						// Input buffer list
+		nullptr,						// Input buffer list
 		dwSSPIFlags,				// What we require of the connection
 		0,								// Data representation, not used 
-		NULL,							// Returned context handle, not used, because we already have one
+		nullptr,							// Returned context handle, not used, because we already have one
 		&OutBuffer,					// [out] The output buffer, for messages to be sent to the other end
 		&dwSSPIOutFlags,			// [out] The flags associated with the negotiated connection
 		&tsExpiry);					// [out] Receives context expiration time

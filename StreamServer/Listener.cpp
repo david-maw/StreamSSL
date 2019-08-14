@@ -12,7 +12,7 @@ CListener::CListener()
 	for (int i = 0; i < FD_SETSIZE; i++)
 	{
 		m_iListenSockets[i] = INVALID_SOCKET;
-		m_hSocketEvents[i] = NULL;
+		m_hSocketEvents[i] = nullptr;
 	}
 }
 
@@ -42,7 +42,7 @@ UINT __cdecl CListener::Worker(void * v)
 // Worker process for connection listening
 UINT __cdecl CListener::ListenerWorker(LPVOID v)
 {
-	CListener * Listener = static_cast<CListener*>(v); // See _beginthread call for parameter definition
+	auto * Listener = static_cast<CListener*>(v); // See _beginthread call for parameter definition
 
 	SetThreadName("Listener");
 	Listener->Listen();
@@ -64,7 +64,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	Hints.ai_family = PF_UNSPEC;
 	Hints.ai_socktype = SOCK_STREAM;
 	Hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
-	if (GetAddrInfo(NULL, TCPSocketText.c_str(), &Hints, &AddrInfo) != 0)
+	if (GetAddrInfo(nullptr, TCPSocketText.c_str(), &Hints, &AddrInfo) != 0)
 	{
 		WCHAR MsgText[100];
 		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i", GetLastError());
@@ -74,7 +74,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 
 	// Create one or more passive sockets to listen on
 	int i;
-	for (i = 0, AI = AddrInfo; AI != NULL; AI = AI->ai_next)
+	for (i = 0, AI = AddrInfo; AI != nullptr; AI = AI->ai_next)
 	{
 		// Did we receive more addresses than we can handle?  Highly unlikely, but check anyway.
 		if (i == FD_SETSIZE) break;
@@ -86,10 +86,10 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		// LogWarning(MsgText);
 
 		m_hSocketEvents[i] = CreateEvent(
-			NULL,		// no security attributes
+			nullptr,		// no security attributes
 			true,		// manual reset event
 			false,		// not signaled
-			NULL);		// no name
+			nullptr);		// no name
 
 		if (!(m_hSocketEvents[i]))
 			return UnknownError;
@@ -97,7 +97,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit Created m_hSocketEvents[%d], handle=%d"), i, m_hSocketEvents[i];
 		// LogWarning(MsgText);
 
-		m_iListenSockets[i] = WSASocket(AI->ai_family, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+		m_iListenSockets[i] = WSASocket(AI->ai_family, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
 		if (m_iListenSockets[i] == INVALID_SOCKET)
 			return SocketUnusable;
 
@@ -150,7 +150,7 @@ void CListener::EndListening()
 	{
 		WaitForSingleObject(m_ListenerThread->m_hThread, INFINITE); // Will auto delete
 	}
-	m_ListenerThread = NULL;
+	m_ListenerThread = nullptr;
 }
 
 // Log a warning
@@ -208,7 +208,7 @@ void CListener::Listen()
 		// LogWarning(MsgText);
 
 		WSAResetEvent(m_hSocketEvents[iMyIndex]);
-		iReadSocket = accept(m_iListenSockets[iMyIndex], 0, 0);
+		iReadSocket = accept(m_iListenSockets[iMyIndex], nullptr, nullptr);
 		if (iReadSocket == INVALID_SOCKET)
 		{
 			LogWarning("iReadSocket == INVALID_SOCKET");
