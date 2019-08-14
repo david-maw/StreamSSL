@@ -67,9 +67,6 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="StreamServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="SSLServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
