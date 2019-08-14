@@ -219,7 +219,7 @@ void CListener::Listen()
 		DebugMsg("Starting worker");
 
 		auto SSLServer = CSSLServer::Create(iReadSocket, this);
-		if (SSLServer->IsConnected)
+		if (SSLServer && SSLServer->IsConnected)
 			AfxBeginThread(Worker, SSLServer);
 		else
 			delete SSLServer;
