@@ -38,10 +38,10 @@ private:
 	// Note, private constructor
 	explicit CSSLServer(ISocketStream*);
 	HRESULT ShutDownSSL();
-	CListener* m_Listener;
+	CListener* m_Listener{ nullptr };
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
-	ISocketStream* m_SocketStream;
+  ISocketStream* m_SocketStream{ nullptr };
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message);
@@ -53,7 +53,7 @@ private:
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes{ 0 };
 	void* readPtr{};
-	SecurityContextHandle m_hContext;
+  SecurityContextHandle m_hContext{};
 	SecPkgContext_StreamSizes Sizes{};
 	bool m_encrypting = false; // Is channel currently encypting
 };
