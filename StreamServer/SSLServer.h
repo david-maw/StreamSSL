@@ -14,16 +14,16 @@ public:
 	static CSSLServer* Create(SOCKET s, CListener* Listener);
 	~CSSLServer();
 	// ISocketStream functions
-	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	int Send(LPCVOID lpBuf, const size_t Len);
+	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) override;
+	int Send(LPCVOID lpBuf, const size_t Len) override;
 	DWORD GetLastError() const override;
 	HRESULT Disconnect(bool CloseUnderlyingConnection) override;
-	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true);
-	int GetRecvTimeoutSeconds() const;
-	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true);
-	int GetSendTimeoutSeconds() const;
-	void StartRecvTimer();
-	void StartSendTimer();
+	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true) override;
+	int GetRecvTimeoutSeconds() const override;
+	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true) override;
+	int GetSendTimeoutSeconds() const override;
+	void StartRecvTimer() override;
+	void StartSendTimer() override;
 
 	ISocketStream* GetSocketStream();
 	static PSecurityFunctionTable SSPI();

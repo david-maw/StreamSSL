@@ -38,4 +38,3 @@ public:
 	void BeginListening(std::function<void(ISocketStream * StreamSock)> actualwork);
 	void IncrementWorkerCount(int i = 1);
 };
-
