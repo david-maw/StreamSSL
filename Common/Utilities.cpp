@@ -72,12 +72,13 @@ std::wstring WinErrorMsg(int nErrorCode)
 	// First get the message length;
 	try
 	{
-		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+		auto len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
 			nullptr, nErrorCode,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 			&theMsg[0],
 			100,
 			nullptr);
+		theMsg.resize(len);
 		if (theMsg.empty())
 			theMsg = string_format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
 	}
