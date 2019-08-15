@@ -26,13 +26,13 @@ SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CON
 	TimeStamp       tsExpiry;
 	// Get a handle to the SSPI credential
 	Status = CSSLServer::SSPI()->AcquireCredentialsHandle(
-		NULL,                   // Name of principal
+		nullptr,                   // Name of principal
 		UNISP_NAME,           // Name of package
 		SECPKG_CRED_INBOUND,    // Flags indicating use
-		NULL,                   // Pointer to logon ID
+		nullptr,                   // Pointer to logon ID
 		&SchannelCred,          // Package specific data
-		NULL,                   // Pointer to GetKey() func
-		NULL,                   // Value to pass to GetKey()
+		nullptr,                   // Pointer to GetKey() func
+		nullptr,                   // Value to pass to GetKey()
 		phCreds,                // (out) Cred Handle
 		&tsExpiry);             // (out) Lifetime (optional)
 
@@ -68,7 +68,7 @@ SECURITY_STATUS GetCredHandleFor(std::wstring serverName, SelectServerCertType S
 	if (got == credMap.end())
 	{
 		// There were no credentials stored for that host, create some and add them
-		PCCERT_CONTEXT pCertContext = NULL;
+		PCCERT_CONTEXT pCertContext = nullptr;
 		SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
 		if (SelectServerCert)
 		{

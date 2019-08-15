@@ -52,7 +52,7 @@ bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 	si.cb = sizeof si;
 	ZeroMemory(&pi, sizeof(pi));
 #pragma warning(suppress:6335)
-	if (CreateProcess(nullptr, &app[0], 0, FALSE, 0, CREATE_NEW_CONSOLE, 0, 0, &si, &pi))
+	if (CreateProcess(nullptr, &app[0], nullptr, FALSE, 0, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi))
 		return true;
 	else
 	{
@@ -65,7 +65,7 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = nullptr)
 {
 	cout << "Initiating a client instance for testing.\n" << endl;
 	WCHAR acPathName[MAX_PATH + 1];
-	GetModuleFileName(NULL, acPathName, _countof(acPathName));
+	GetModuleFileName(nullptr, acPathName, _countof(acPathName));
 	std::wstring appName(acPathName);
 	const auto len = appName.find_last_of(L'\\');
 	appName = appName.substr(0, len + 1) + L"StreamClient.exe " + toHost;

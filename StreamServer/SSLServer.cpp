@@ -232,7 +232,7 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 		DebugMsg("Looks like a concatenated shutdown message and something else");
 		PrintHexDump(readBufferBytes, readPtr, true);
 		Message.pBuffers[0].cbBuffer = shutdownLen + headerLen;
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 		if (scRet == SEC_I_CONTEXT_EXPIRED)
 		{
 			//  Put a reference to the unprocessed data in Message.pBuffers[1]
@@ -242,19 +242,13 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 		}
 	}
 	else
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, NULL);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 	return scRet;
 }
 
 // Receive an encrypted message, decrypt it, and return the resulting plaintext
 int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 {
-	INT err;
-	INT i;
-	SecBufferDesc   Message;
-	SecBuffer       Buffers[4];
-	SECURITY_STATUS scRet;
-
 	//
 	// Initialize security buffer structs, basically, these point to places to put encrypted data,
 	// for SSL there's a header, some encrypted data, then a trailer. All three get put in the same buffer
@@ -262,16 +256,19 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	//
 
-	Message.ulVersion = SECBUFFER_VERSION;
+  SecBuffer Buffers[4];
+  Buffers[0].BufferType = SECBUFFER_EMPTY;
+  Buffers[1].BufferType = SECBUFFER_EMPTY;
+  Buffers[2].BufferType = SECBUFFER_EMPTY;
+  Buffers[3].BufferType = SECBUFFER_EMPTY;
+
+  SecBufferDesc Message;
+  Message.ulVersion = SECBUFFER_VERSION;
 	Message.cBuffers = 4;
 	Message.pBuffers = Buffers;
 
-	Buffers[0].BufferType = SECBUFFER_EMPTY;
-	Buffers[1].BufferType = SECBUFFER_EMPTY;
-	Buffers[2].BufferType = SECBUFFER_EMPTY;
-	Buffers[3].BufferType = SECBUFFER_EMPTY;
-
-	if (readBufferBytes == 0)
+  SECURITY_STATUS scRet;
+  if (readBufferBytes == 0)
 		scRet = SEC_E_INCOMPLETE_MESSAGE;
 	else
 	{	// There is already data in the buffer, so process it first
@@ -287,7 +284,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-		err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+    const INT err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -328,7 +325,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		// Locate the data buffer because the decrypted data is placed there. It's almost certainly
 		// the second buffer (index 1) and we start there, but search all but the first just in case...
 
-		for (i = 1; i < 4; i++)
+		for (INT i = 1; i < 4; i++)
 		{
 			if (Buffers[i].BufferType == SECBUFFER_DATA)
 			{
@@ -378,7 +375,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	// the decryption just fails with a "cannot decrypt" error, which is why it has special handling above.
 	PSecBuffer pExtraDataBuffer(nullptr);
 
-	for (i = 1; i < 4; i++)
+	for (INT i = 1; i < 4; i++)
 	{
 		if (Buffers[i].BufferType == SECBUFFER_EXTRA)
 		{
@@ -504,7 +501,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	SecBuffer            InBuffers[2];
 	SecBuffer            OutBuffers[1];
 	DWORD                dwSSPIOutFlags = 0;
-	bool				 ContextHandleValid = (bool)m_hContext;
+	auto				 ContextHandleValid = (bool)m_hContext;
 
 	if (m_encrypting)
 	{
@@ -614,7 +611,7 @@ bool CSSLServer::SSPINegotiateLoop()
 
 		scRet = g_pSSPI->AcceptSecurityContext(
 			&hServerCreds,									// Which certificate to use, already established
-			ContextHandleValid ? m_hContext.getunsaferef() : NULL, // The context handle if we have one, ask to make one if this is first call
+			ContextHandleValid ? m_hContext.getunsaferef() : nullptr, // The context handle if we have one, ask to make one if this is first call
 			&InBuffer,										// Input buffer list
 			dwSSPIFlags,									// What we require of the connection
 			0,													// Data representation, not used 
@@ -822,10 +819,10 @@ HRESULT CSSLServer::ShutDownSSL()
 	Status = g_pSSPI->AcceptSecurityContext(
 		&hServerCreds,				// Which certificate to use, already established
 		m_hContext.getunsaferef(),				  	// The context handle
-		NULL,						// Input buffer list
+		nullptr,						// Input buffer list
 		dwSSPIFlags,				// What we require of the connection
 		0,								// Data representation, not used 
-		NULL,							// Returned context handle, not used, because we already have one
+		nullptr,							// Returned context handle, not used, because we already have one
 		&OutBuffer,					// [out] The output buffer, for messages to be sent to the other end
 		&dwSSPIOutFlags,			// [out] The flags associated with the negotiated connection
 		&tsExpiry);					// [out] Receives context expiration time

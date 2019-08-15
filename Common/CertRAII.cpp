@@ -111,4 +111,3 @@ HCERTSTORE CertStore::get() const
 {
 	return hStore;
 }
-

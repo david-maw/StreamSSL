@@ -14,16 +14,16 @@ public:
 	static CSSLServer* Create(SOCKET s, CListener* Listener);
 	~CSSLServer();
 	// ISocketStream functions
-	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	int Send(LPCVOID lpBuf, const size_t Len);
+	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) override;
+	int Send(LPCVOID lpBuf, const size_t Len) override;
 	DWORD GetLastError() const override;
 	HRESULT Disconnect(bool CloseUnderlyingConnection) override;
-	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true);
-	int GetRecvTimeoutSeconds() const;
-	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true);
-	int GetSendTimeoutSeconds() const;
-	void StartRecvTimer();
-	void StartSendTimer();
+	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true) override;
+	int GetRecvTimeoutSeconds() const override;
+	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true) override;
+	int GetSendTimeoutSeconds() const override;
+	void StartRecvTimer() override;
+	void StartSendTimer() override;
 
 	ISocketStream* GetSocketStream();
 	static PSecurityFunctionTable SSPI();
@@ -38,10 +38,10 @@ private:
 	// Note, private constructor
 	explicit CSSLServer(ISocketStream*);
 	HRESULT ShutDownSSL();
-	CListener* m_Listener;
+	CListener* m_Listener{ nullptr };
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
-	ISocketStream* m_SocketStream;
+  ISocketStream* m_SocketStream{ nullptr };
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message);
@@ -53,7 +53,7 @@ private:
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes{ 0 };
 	void* readPtr{};
-	SecurityContextHandle m_hContext;
+  SecurityContextHandle m_hContext{};
 	SecPkgContext_StreamSizes Sizes{};
 	bool m_encrypting = false; // Is channel currently encypting
 };

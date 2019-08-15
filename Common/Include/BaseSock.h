@@ -47,4 +47,3 @@ private:
 	bool SendTimerAutomatic = true;
 	int SendTimeoutSeconds{ 1 }, RecvTimeoutSeconds{ 1 }; // Default timeout is 1 seconds, encourages callers to set it
 };
-

@@ -145,7 +145,6 @@ void CSSLHelper::TraceHandshake()
 			DebugMsg("** Error ** Extensions did not fill the header");
 	}
 	PrintHexDump(MaxBufBytes, OriginalBufPtr);
-	return;
 }
 
 // Is this packet a complete client initialize packet
