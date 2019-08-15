@@ -159,7 +159,7 @@ int CSSLClient::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 // Because SSL is message oriented these calls send (or receive) a whole message
 int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 {
-	INT i;
+	int i;
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];
 	SECURITY_STATUS scRet;
@@ -212,7 +212,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 				return SOCKET_ERROR;
 			}
 		}
-		const INT err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
+		const int err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, freeBytesAtEnd);
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -349,7 +349,7 @@ int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	INT err;
+	int err;
 
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];

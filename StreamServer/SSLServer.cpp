@@ -284,7 +284,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-    const INT err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+    const int err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -325,7 +325,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		// Locate the data buffer because the decrypted data is placed there. It's almost certainly
 		// the second buffer (index 1) and we start there, but search all but the first just in case...
 
-		for (INT i = 1; i < 4; i++)
+		for (int i = 1; i < 4; i++)
 		{
 			if (Buffers[i].BufferType == SECBUFFER_DATA)
 			{
@@ -375,7 +375,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	// the decryption just fails with a "cannot decrypt" error, which is why it has special handling above.
 	PSecBuffer pExtraDataBuffer(nullptr);
 
-	for (INT i = 1; i < 4; i++)
+	for (int i = 1; i < 4; i++)
 	{
 		if (Buffers[i].BufferType == SECBUFFER_EXTRA)
 		{
@@ -418,7 +418,7 @@ int CSSLServer::Send(LPCVOID lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	INT err;
+	int err;
 
 	SecBufferDesc   Message;
 	SecBuffer       Buffers[4];
