@@ -1,19 +1,19 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.757
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29209.62
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamClient", "StreamClient\StreamClient.vcxproj", "{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SSLClient", "StreamClient\StreamClient.vcxproj", "{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamServer", "StreamServer\StreamServer.vcxproj", "{287B68D2-7381-4E78-AC72-79A49738228D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SSLServer", "StreamServer\StreamServer.vcxproj", "{287B68D2-7381-4E78-AC72-79A49738228D}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demo", "Demo", "{1CB7EA77-6290-4FCE-A1F9-FA162C4562F8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{1CB7EA77-6290-4FCE-A1F9-FA162C4562F8}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamClient", "Demo\StreamClient\StreamClient.vcxproj", "{144CCC0E-0CE9-42D2-887B-4210DEAA2BC6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamClient", "Samples\StreamClient\StreamClient.vcxproj", "{144CCC0E-0CE9-42D2-887B-4210DEAA2BC6}"
 	ProjectSection(ProjectDependencies) = postProject
 		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3} = {71D079B7-91C6-4CA2-8BFE-E369835DA8F3}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamServer", "Demo\StreamServer\StreamServer.vcxproj", "{6FC978B9-9CC8-4C8A-A5E3-D575B59ED415}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamServer", "Samples\StreamServer\StreamServer.vcxproj", "{6FC978B9-9CC8-4C8A-A5E3-D575B59ED415}"
 	ProjectSection(ProjectDependencies) = postProject
 		{287B68D2-7381-4E78-AC72-79A49738228D} = {287B68D2-7381-4E78-AC72-79A49738228D}
 	EndProjectSection
