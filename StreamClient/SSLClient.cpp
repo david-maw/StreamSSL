@@ -1035,6 +1035,25 @@ SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds
 
 	return SEC_E_OK;
 }
+void CSSLClient::SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic)
+{
+	m_SocketStream->SetRecvTimeoutSeconds(NewRecvTimeoutSeconds, NewTimerAutomatic);
+}
+
+int CSSLClient::GetRecvTimeoutSeconds() const
+{
+	return m_SocketStream->GetRecvTimeoutSeconds();
+}
+
+void CSSLClient::SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic)
+{
+	m_SocketStream->SetSendTimeoutSeconds(NewSendTimeoutSeconds, NewTimerAutomatic);
+}
+
+int CSSLClient::GetSendTimeoutSeconds() const
+{
+	return m_SocketStream->GetSendTimeoutSeconds();
+}
 
 void CSSLClient::StartRecvTimer()
 {

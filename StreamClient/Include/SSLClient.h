@@ -10,6 +10,27 @@ class CSSLClient
 public:
 	explicit CSSLClient(CActiveSock *);
 	~CSSLClient() = default;
+	// ISocketStream Methods
+	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
+	int Send(LPCVOID lpBuf, const size_t Len);
+	DWORD GetLastError() const;
+	HRESULT Disconnect(bool closeUnderlyingSocket = true);
+	void SetRecvTimeoutSeconds(int NewRecvTimeoutSeconds, bool NewTimerAutomatic = true);
+	int GetRecvTimeoutSeconds() const;
+	void SetSendTimeoutSeconds(int NewSendTimeoutSeconds, bool NewTimerAutomatic = true);
+	int GetSendTimeoutSeconds() const;
+	void StartRecvTimer();
+	void StartSendTimer();
+	// Regular class interface
+	static PSecurityFunctionTable SSPI();
+	// Set up state for this connection
+	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
+	// Attributes
+	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
+	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
+	bool getServerCertNameMatches() const;
+	bool getServerCertTrusted() const;
+
 private:
 	static PSecurityFunctionTable g_pSSPI;
 	CredentialHandle m_ClientCreds;
@@ -35,22 +56,4 @@ private:
 	bool ServerCertNameMatches{ false };
 	bool ServerCertTrusted{ false };
 	HRESULT DisconnectSSL();
-
-public:
-	// ISocketStream
-	DWORD GetLastError() const;
-	HRESULT Disconnect(bool closeUnderlyingSocket = true);
-	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1);
-	int Send(LPCVOID lpBuf, const size_t Len);
-	void StartRecvTimer();
-	void StartSendTimer();
-	// Regular class interface
-	static PSecurityFunctionTable SSPI();
-	// Set up state for this connection
-	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
-	// Attributes
-	std::function<bool(PCCERT_CONTEXT pCertContext, const bool trusted, const bool matchingName)> ServerCertAcceptable;
-	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx * pIssuerListInfo, bool Required)> SelectClientCertificate;
-	bool getServerCertNameMatches() const;
-	bool getServerCertTrusted() const;
 };
