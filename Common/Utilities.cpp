@@ -41,7 +41,7 @@ std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName)
 	{
 		std::wstring ComputerName;
 		ComputerName.resize(NameLength);
-		if (1 == ::GetComputerNameEx(WhichName, &ComputerName[0], &NameLength))
+		if (::GetComputerNameEx(WhichName, &ComputerName[0], &NameLength))
 		{
 			return ComputerName;
 		}
@@ -57,7 +57,7 @@ std::wstring GetUserName()
 	{
 		std::wstring UserName;
 		UserName.resize(NameLength);
-		if (1 == ::GetUserName(&UserName[0], &NameLength))
+		if (::GetUserName(&UserName[0], &NameLength))
 		{
 			return UserName;
 		}
@@ -68,24 +68,25 @@ std::wstring GetUserName()
 std::wstring WinErrorMsg(int nErrorCode)
 {
 	std::wstring theMsg;
-	theMsg.resize(100);
-	// First get the message length;
+	constexpr int MaxMsgLen = 100;
+	theMsg.resize(MaxMsgLen); // Reserve enough space to allow the message to fit inside the string
 	try
 	{
 		auto len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
 			nullptr, nErrorCode,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 			&theMsg[0],
-			100,
+			MaxMsgLen,
 			nullptr);
 		theMsg.resize(len);
+		rtrim(theMsg);
 		if (theMsg.empty())
 			theMsg = string_format(L"Error code %u (0x%.8x)", nErrorCode, nErrorCode);
 	}
 	catch (...)
 	{
 	}
-	return rtrim(theMsg);
+	return theMsg;
 }
 
 //
