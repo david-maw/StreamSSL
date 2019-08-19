@@ -9,7 +9,7 @@ public:
 	CBaseSock(CBaseSock&&) = delete;
 	explicit CBaseSock(HANDLE StopEvent);
 	explicit CBaseSock(SOCKET s, HANDLE StopEvent);
-	~CBaseSock();
+	virtual ~CBaseSock();
 	bool Connect(LPCTSTR HostName, USHORT PortNumber);
 
 	// Methods used for ISocketStream
