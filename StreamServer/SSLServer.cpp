@@ -9,6 +9,8 @@
 #include "ServerCert.h"
 #include "Utilities.h"
 
+#include <string>
+
 // Global value to optimize access since it is set only once
 PSecurityFunctionTable CSSLServer::g_pSSPI = nullptr;
 
@@ -26,7 +28,7 @@ void SecurityContextTraits::Close(Type value)
 
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means (anything with an ISocketStream interface) to exchange messages with a client.
-CSSLServer::CSSLServer(ISocketStream* SocketStream)
+CSSLServer::CSSLServer(CPassiveSock* SocketStream)
 	: m_SocketStream(SocketStream)
 	, readPtr(readBuffer)
 {
@@ -49,7 +51,7 @@ CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 	auto PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
 	PassiveSock->SetSendTimeoutSeconds(10);
 	PassiveSock->SetRecvTimeoutSeconds(60);
-	auto SSLServer = new CSSLServer(PassiveSock.release());
+	std::unique_ptr<CSSLServer> SSLServer (new CSSLServer(PassiveSock.release())); // std::make_unique<CSSLServer>(PassiveSock.release());
 	SSLServer->m_Listener = Listener;
 	SSLServer->SelectServerCert = Listener->SelectServerCert;
 	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
@@ -57,12 +59,10 @@ CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 	if SUCCEEDED(hr)
 	{
 		SSLServer->IsConnected = true;
+		return SSLServer.release();
 	}
 	else
 	{
-		int err = SSLServer->GetLastError();
-		delete SSLServer;
-		SSLServer = nullptr;
 		if (hr == SEC_E_INVALID_TOKEN)
 			Listener->LogWarning(L"SSL token invalid, perhaps the client rejected our certificate");
 		else if (hr == CRYPT_E_NOT_FOUND)
@@ -75,11 +75,11 @@ CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 			Listener->LogWarning(L"The returned client certificate was unacceptable");
 		else
 		{
-			std::wstring m = string_format(L"SSL could not be used, hr =0x%lx, lasterror=0x%lx", hr, err);
+			std::wstring m = L"SSL could not be used: " + WinErrorMsg(hr);
 			Listener->LogWarning(m.c_str());
 		}
+		return nullptr;
 	}
-	return SSLServer;
 }
 
 // Return the CListener instance this connection came from
@@ -114,11 +114,14 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 		DebugMsg("Couldn't connect");
 		if (hr == SEC_E_UNKNOWN_CREDENTIALS)
 			std::cout << "SSL handshake failed with 'Unknown Credentials' be sure server has rights to cert private key" << std::endl;
-		else if (IsUserAdmin())
-			std::cout << "SSL handshake failed, error 0x" << std::hex << std::setw(8) << std::setfill('0') << hr << std::endl;
 		else
-			std::cout << "SSL handshake failed, perhaps because the server is not running as administrator., Error 0x" << std::hex << std::setw(8) << std::setfill('0') << hr << std::endl;
-		return hr == S_OK ? E_FAIL : hr; // Always return an error, because the handshake failed even if we don't know the details
+		{
+			std::wstring s(L"SSL handshake failed");
+			if (!IsUserAdmin())
+				s+=L", perhaps because the server is not running as administrator";
+			std::wcout << s << L". " << std::endl << WinErrorMsg(hr) << std::endl;
+		}
+	return hr == S_OK ? E_FAIL : hr; // Always return an error, because the handshake failed even if we don't know the details
 	}
 
 	// Find out how big the header and trailer will be:

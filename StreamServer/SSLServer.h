@@ -24,7 +24,7 @@ public:
 	int GetSendTimeoutSeconds() const override;
 	void StartRecvTimer() override;
 	void StartSendTimer() override;
-
+	
 	ISocketStream* GetSocketStream();
 	static PSecurityFunctionTable SSPI();
 	// Set up state for this connection
@@ -36,12 +36,12 @@ public:
 
 private:
 	// Note, private constructor
-	explicit CSSLServer(ISocketStream*);
+	explicit CSSLServer(CPassiveSock *);
 	HRESULT ShutDownSSL();
 	CListener* m_Listener{ nullptr };
 	CredHandle hServerCreds{};
 	static PSecurityFunctionTable g_pSSPI;
-  ISocketStream* m_SocketStream{ nullptr };
+	std::unique_ptr<CPassiveSock> m_SocketStream;
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
 	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message);
@@ -53,7 +53,7 @@ private:
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize) * 2]{}; // Enough for two whole messages so we don't need to move data around in buffers
 	DWORD readBufferBytes{ 0 };
 	void* readPtr{};
-  SecurityContextHandle m_hContext{};
+	SecurityContextHandle m_hContext{};
 	SecPkgContext_StreamSizes Sizes{};
 	bool m_encrypting = false; // Is channel currently encypting
 };
