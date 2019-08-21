@@ -96,7 +96,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -112,7 +112,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,7 +130,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,7 +150,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLServer\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -163,7 +163,7 @@
     <ClInclude Include="..\..\Common\Include\CertHelper.h" />
     <ClInclude Include="..\..\Common\Include\ISocketStream.h" />
     <ClInclude Include="..\..\Common\Include\Utilities.h" />
-    <ClInclude Include="..\..\StreamServer\Include\Listener.h" />
+    <ClInclude Include="..\..\SSLServer\Include\Listener.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="targetver.h" />
@@ -178,7 +178,7 @@
     <ClCompile Include="StreamServer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\StreamServer\StreamServer.vcxproj">
+    <ProjectReference Include="..\..\SSLServer\SSLServer.vcxproj">
       <Project>{287b68d2-7381-4e78-ac72-79a49738228d}</Project>
     </ProjectReference>
   </ItemGroup>

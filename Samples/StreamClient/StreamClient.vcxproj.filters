@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -13,11 +13,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Header Files\StreamCommon Headers">
-      <UniqueIdentifier>{c9750aa6-47e2-4238-af94-71cca0a7e29a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\StreamClientLib Headers">
+    <Filter Include="Header Files\SSLClientLib Headers">
       <UniqueIdentifier>{4a64686f-1901-49f4-a7b6-e10b372debd5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\SSLCommon Headers">
+      <UniqueIdentifier>{c9750aa6-47e2-4238-af94-71cca0a7e29a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -31,19 +31,19 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\Include\CertHelper.h">
-      <Filter>Header Files\StreamCommon Headers</Filter>
+      <Filter>Header Files\SSLCommon Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\Include\Utilities.h">
-      <Filter>Header Files\StreamCommon Headers</Filter>
+      <Filter>Header Files\SSLCommon Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\StreamClient\Include\ActiveSock.h">
-      <Filter>Header Files\StreamClientLib Headers</Filter>
+    <ClInclude Include="..\..\SSLClient\Include\ActiveSock.h">
+      <Filter>Header Files\SSLClientLib Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\StreamClient\Include\EventWrapper.h">
-      <Filter>Header Files\StreamClientLib Headers</Filter>
+    <ClInclude Include="..\..\SSLClient\Include\EventWrapper.h">
+      <Filter>Header Files\SSLClientLib Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\StreamClient\Include\SSLClient.h">
-      <Filter>Header Files\StreamClientLib Headers</Filter>
+    <ClInclude Include="..\..\SSLClient\Include\SSLClient.h">
+      <Filter>Header Files\SSLClientLib Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

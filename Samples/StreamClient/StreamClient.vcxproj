@@ -96,7 +96,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -112,7 +112,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,7 +130,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,7 +150,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\StreamClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\SSLClient\Include;..\..\Common\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,9 +162,9 @@
   <ItemGroup>
     <ClInclude Include="..\..\Common\Include\CertHelper.h" />
     <ClInclude Include="..\..\Common\Include\Utilities.h" />
-    <ClInclude Include="..\..\StreamClient\Include\ActiveSock.h" />
-    <ClInclude Include="..\..\StreamClient\Include\EventWrapper.h" />
-    <ClInclude Include="..\..\StreamClient\Include\SSLClient.h" />
+    <ClInclude Include="..\..\SSLClient\Include\ActiveSock.h" />
+    <ClInclude Include="..\..\SSLClient\Include\EventWrapper.h" />
+    <ClInclude Include="..\..\SSLClient\Include\SSLClient.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="targetver.h" />
@@ -179,7 +179,7 @@
     <ClCompile Include="StreamClient.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\StreamClient\StreamClient.vcxproj">
+    <ProjectReference Include="..\..\SSLClient\SSLClient.vcxproj">
       <Project>{71d079b7-91c6-4ca2-8bfe-e369835da8f3}</Project>
     </ProjectReference>
   </ItemGroup>
