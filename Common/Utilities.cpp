@@ -104,16 +104,16 @@ typedef struct tagTHREADNAME_INFO
 } THREADNAME_INFO;
 #pragma pack(pop)
 
-void SetThreadName(char* threadName)
+void SetThreadName(std::string const &threadName)
 {
 	SetThreadName(threadName, MAXDWORD);
 }
 
-void SetThreadName(char* threadName, DWORD dwThreadID)
+void SetThreadName(std::string const &threadName, DWORD dwThreadID)
 {
 	THREADNAME_INFO info;
 	info.dwType = 0x1000;
-	info.szName = threadName;
+	info.szName = threadName.c_str();
 	info.dwThreadID = dwThreadID;
 	info.dwFlags = 0;
 

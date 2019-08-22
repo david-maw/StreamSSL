@@ -93,12 +93,12 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 	}
 
 	/* No SubjectAltName extension -- check CommonName */
-	auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, 0, 0);
+	auto dwCommonNameLength = CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, const_cast<char*>(szOID_COMMON_NAME), 0, 0);
 	if (!dwCommonNameLength) // No CN found
 		return false;
 	std::wstring CommonName;
 	CommonName.resize(dwCommonNameLength);
-	CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, szOID_COMMON_NAME, &CommonName[0], dwCommonNameLength);
+	CertGetNameString(pCertContext, CERT_NAME_ATTR_TYPE, 0, const_cast<char*>(szOID_COMMON_NAME), &CommonName[0], dwCommonNameLength);
 	return DnsNameMatches(RequiredName, CommonName.c_str());
 }
 
@@ -122,7 +122,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 
 	CertContextHandle hCertContext(pCertContext), hCertContextSaved;
 
-	char * serverauth = szOID_PKIX_KP_SERVER_AUTH;
+	char * serverauth = const_cast<char*>(szOID_PKIX_KP_SERVER_AUTH);
 	CERT_ENHKEY_USAGE eku;
 	eku.cUsageIdentifier = 1;
 	eku.rgpszUsageIdentifier = &serverauth;
@@ -223,7 +223,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 		CertFreeCertificateContext(pCertContext);
 	pCertContext = nullptr;
 
-	char * requiredUsage = szOID_PKIX_KP_CLIENT_AUTH;
+	char * requiredUsage = const_cast<char*>(szOID_PKIX_KP_CLIENT_AUTH);
 	CERT_ENHKEY_USAGE eku;
 	PCCERT_CONTEXT pCertContextCurrent = nullptr;
 	eku.cUsageIdentifier = 1;
@@ -632,9 +632,9 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 	CERT_CHAIN_PARA          ChainPara{ 0 };
 	PCCERT_CHAIN_CONTEXT     pChainContext = nullptr;
 	HRESULT                  Status;
-	LPSTR rgszUsages[] = { isClientCert ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH,
-	   szOID_SERVER_GATED_CRYPTO,
-	   szOID_SGC_NETSCAPE };
+	LPSTR rgszUsages[] = { const_cast<char*>(isClientCert ? szOID_PKIX_KP_CLIENT_AUTH : szOID_PKIX_KP_SERVER_AUTH),
+	   const_cast<char*>(szOID_SERVER_GATED_CRYPTO),
+	   const_cast<char*>(szOID_SGC_NETSCAPE) };
 	DWORD cUsages = _countof(rgszUsages);
 
 	// Build certificate chain.
@@ -1044,7 +1044,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 
 	// Prepare algorithm structure for certificate
 	CRYPT_ALGORITHM_IDENTIFIER SignatureAlgorithm{ nullptr };
-	SignatureAlgorithm.pszObjId = szOID_RSA_SHA1RSA;
+	SignatureAlgorithm.pszObjId = const_cast<char*>(szOID_RSA_SHA1RSA);
 
 	// Prepare Expiration date for certificate
 	SYSTEMTIME EndTime;

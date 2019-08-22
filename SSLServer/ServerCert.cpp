@@ -27,7 +27,7 @@ SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CON
 	// Get a handle to the SSPI credential
 	Status = CSSLServer::SSPI()->AcquireCredentialsHandle(
 		nullptr,                   // Name of principal
-		UNISP_NAME,           // Name of package
+		const_cast<WCHAR*>(UNISP_NAME), // Name of package
 		SECPKG_CRED_INBOUND,    // Flags indicating use
 		nullptr,                   // Pointer to logon ID
 		&SchannelCred,          // Package specific data
