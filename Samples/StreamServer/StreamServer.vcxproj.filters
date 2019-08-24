@@ -27,9 +27,6 @@
     <ClInclude Include="framework.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\SSLServer\Include\Listener.h">
       <Filter>Header Files\SSLServerLib Headers</Filter>
     </ClInclude>
@@ -40,6 +37,12 @@
       <Filter>Header Files\SSLCommon Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\Include\Utilities.h">
+      <Filter>Header Files\SSLCommon Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\Include\AppVersion.h">
       <Filter>Header Files\SSLCommon Headers</Filter>
     </ClInclude>
   </ItemGroup>

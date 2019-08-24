@@ -45,6 +45,9 @@
     <ClInclude Include="..\..\SSLClient\Include\SSLClient.h">
       <Filter>Header Files\SSLClientLib Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Common\Include\AppVersion.h">
+      <Filter>Header Files\SSLCommon Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

@@ -2,6 +2,7 @@
 #include "framework.h"
 
 #include "Utilities.h"
+#include "AppVersion.h"
 
 #include <atlconv.h>
 #include <stdarg.h>  // For va_start, etc.
@@ -241,4 +242,11 @@ bool IsUserAdmin()
 	}
 
 	return (b == TRUE);
+}
+
+#define STRINGIZE(n) Stringize(n)
+
+const char* const GetVersionText()
+{
+	return STRINGIZE(VERSION_MAJOR) "." STRINGIZE(VERSION_MINOR) "." STRINGIZE(VERSION_PATCH) "\0";
 }

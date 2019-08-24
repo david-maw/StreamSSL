@@ -144,7 +144,7 @@ int wmain(int argc, WCHAR * argv[])
 	auto pActiveSock = make_unique<CActiveSock>(ShutDownEvent);
 	pActiveSock->SetRecvTimeoutSeconds(30);
 	pActiveSock->SetSendTimeoutSeconds(60);
-	wcout << "Connecting to " << HostName.c_str() << ":" << Port << endl;
+	wcout << "StreamClient version " << GetVersionText() << " connecting to " << HostName.c_str() << ":" << Port << endl;
 	bool b = pActiveSock->Connect(HostName.c_str(), static_cast<USHORT>(Port));
 	if (b)
 	{

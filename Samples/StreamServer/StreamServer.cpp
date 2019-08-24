@@ -117,7 +117,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 	Listener->SelectServerCert = SelectServerCert;
 	Listener->ClientCertAcceptable = ClientCertAcceptable;
 	Listener->Initialize(Port);
-	cout << "Starting to listen on port " << Port << ", will find certificate for first connection." << endl;
+	cout << "StreamServer version " << GetVersionText() << " starting to listen on port " << Port << ", will find certificate for first connection." << endl;
 	Listener->BeginListening([](ISocketStream * const StreamSock) {
 		// This is the code to be executed each time a socket is opened, basically
 		// the client drives, this server code listens and responds
