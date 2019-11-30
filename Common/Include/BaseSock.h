@@ -10,7 +10,7 @@ public:
 	explicit CBaseSock(HANDLE StopEvent);
 	explicit CBaseSock(SOCKET s, HANDLE StopEvent);
 	virtual ~CBaseSock();
-	bool Connect(LPCTSTR HostName, USHORT PortNumber);
+	bool Connect(LPCWSTR HostName, USHORT PortNumber);
 
 	// Methods used for ISocketStream
 	int Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen = 1) override;

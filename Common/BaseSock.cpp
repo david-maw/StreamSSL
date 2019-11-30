@@ -357,7 +357,7 @@ int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	return SOCKET_ERROR;
 }
 
-bool CBaseSock::Connect(LPCTSTR HostName, USHORT PortNumber)
+bool CBaseSock::Connect(LPCWSTR HostName, USHORT PortNumber)
 {
 	int iResult;
 	BOOL bSuccess;
