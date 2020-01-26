@@ -370,7 +370,7 @@ bool CBaseSock::Connect(LPCWSTR HostName, USHORT PortNumber)
 
 	Timeout.tv_sec = GetSendTimeoutSeconds();
 
-	_itot_s(PortNumber, PortName, _countof(PortName), 10);
+	_itow_s(PortNumber, PortName, _countof(PortName), 10);
 
 	ActualSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if (ActualSocket == INVALID_SOCKET) {

@@ -10,6 +10,7 @@
 #include <vector>
 #include <cryptuiapi.h>
 #include <string>
+#include <WinDNS.h>
 
 #pragma comment(lib, "Cryptui.lib")
 #pragma comment(lib, "Dnsapi.lib")
@@ -104,13 +105,13 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName) 
 
 // Select, and return a handle to a server certificate located by name
 // Usually used for a best guess at a certificate to be used as the SSL certificate for a server 
-SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, bool fUserStore)
+SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubjectName, bool fUserStore)
 {
 	HCERTSTORE hCertStore{};
 	WCHAR pszFriendlyNameString[128];
 	WCHAR	pszNameString[128];
 
-	if (pszSubjectName == nullptr || _tcslen(pszSubjectName) == 0)
+	if (pszSubjectName == nullptr || wcsnlen(pszSubjectName, 1) == 0)
 	{
 		DebugMsg("**** No subject name specified!");
 		return E_POINTER;
@@ -208,7 +209,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 
 // Select, and return a handle to a client certificate
 // We take a best guess at a certificate to be used as the SSL certificate for this client 
-SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCTSTR pszSubjectName, bool fUserStore)
+SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCWSTR pszSubjectName, bool fUserStore)
 {
 	HCERTSTORE hCertStore;
 	WCHAR pszFriendlyNameString[128];
@@ -271,7 +272,7 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 		if (pCertContext)	// We have a saved certificate context we no longer need, so free it
 			CertFreeCertificateContext(pCertContext);
 		pCertContext = CertDuplicateCertificateContext(pCertContextCurrent);
-		if (pszSubjectName && _tcscmp(pszNameString, pszSubjectName))
+		if (pszSubjectName && wcsncmp(pszNameString, pszSubjectName, _countof(pszNameString)))
 			DebugMsg("   Subject name does not match.");
 		else
 		{
@@ -519,7 +520,7 @@ BOOL WINAPI ValidServerCert(
 
 CryptUIDlgSelectCertificate SelectCertificate = nullptr;
 
-SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName, bool fUserStore)
+SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubjectName, bool fUserStore)
 {
 	//   Open a certificate store.
 	HCERTSTORE hCertStore;
@@ -610,7 +611,7 @@ SECURITY_STATUS CertFindCertificateBySignature(PCCERT_CONTEXT & pCertContext, ch
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			return HRESULT_FROM_WIN32(GetLastError());
 		}
-		DebugMsg("CertFindCertificateBySignature found certificate '%S' is allowed to be used for server authentication.", (LPWSTR)ATL::CT2W(pszFriendlyNameString));
+		DebugMsg("CertFindCertificateBySignature found certificate '%S' is allowed to be used for server authentication.", (LPWSTR)pszFriendlyNameString);
 		if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
 			DebugMsg("A self-signed certificate was found.");
 	}

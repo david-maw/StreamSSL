@@ -50,8 +50,8 @@ std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName)
 	return std::wstring();
 }
 
-// Utility function to return the user name I'm runing under
-std::wstring GetUserName()
+// Utility function to return the user name I'm running under
+std::wstring GetCurrentUserName()
 {
 	DWORD NameLength = 0;
 	if (ERROR_SUCCESS == ::GetUserName(nullptr, &NameLength))

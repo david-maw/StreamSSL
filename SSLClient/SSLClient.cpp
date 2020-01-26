@@ -32,7 +32,7 @@ CSSLClient::CSSLClient(CActiveSock * SocketStream)
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
-PSecurityFunctionTable CSSLClient::SSPI() { return g_pSSPI; }
+PSecurityFunctionTableW CSSLClient::SSPI() { return g_pSSPI; }
 
 // Set up the connection, including SSL handshake, certificate selection/validation
 // lpBuf and Len let you provide any data that's already been read
@@ -69,7 +69,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 	else
 		readBufferBytes = 0;
 	// Perform SSL handshake
-	hr = SSPINegotiateLoop(ATL::CW2T(ServerName));
+	hr = SSPINegotiateLoop(ServerName);
 	if (FAILED(hr))
 	{
 		DebugMsg("Couldn't connect");
@@ -418,7 +418,7 @@ int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 
 // Negotiate a connection with the server, sending and receiving messages until the
 // negotiation succeeds or fails
-SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
+SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 {
 	int cbData;
 	TimeStamp            tsExpiry;
@@ -453,7 +453,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 #pragma warning (suppress: 4238)
 		&m_ClientCreds.get(),
 		nullptr,
-		ServerName,
+		const_cast<SEC_WCHAR *>(ServerName),
 		dwSSPIFlags,
 		0,
 		SECURITY_NATIVE_DREP,
@@ -632,7 +632,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(WCHAR* ServerName)
 			else
 			{
 				DebugMsg("Server Certificate returned");
-				ServerCertNameMatches = MatchCertificateName(hServerCertContext.get(), ATL::CW2T(ServerName));
+				ServerCertNameMatches = MatchCertificateName(hServerCertContext.get(), ServerName);
 				hr = CertTrusted(hServerCertContext.get(), false);
 				ServerCertTrusted = hr == S_OK;
 				bool IsServerCertAcceptable = ServerCertAcceptable == nullptr;

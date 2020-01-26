@@ -31,14 +31,16 @@ const bool debug = false;
 #define VC_EXTRALEAN            // Exclude rarely-used stuff from Windows headers
 #endif
 
-#include <afx.h>
-#include <afxwin.h>         // MFC core and standard components
-#include <afxmt.h>
+#include <atltime.h>
+#include <Windows.h>
 
 #include <WS2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+
 #define SECURITY_WIN32
 #include <security.h>
 #include <strsafe.h>
 
 // Standard C++
 #include <iostream>
+typedef unsigned char byte;
