@@ -29,24 +29,22 @@ CListener::~CListener()
 
 // This is the individual worker process, all it does is start, change its name to something useful,
 // then call the Lambda function passed in via the BeginListening method
-UINT __cdecl CListener::Worker(void * v)
+void __cdecl CListener::Worker(LPVOID v)
 {
 	std::unique_ptr<CSSLServer> SSLServer(reinterpret_cast<CSSLServer*>(v));
 	SetThreadName("Connection Worker");
 	// Invoke the caller provided function defining the work to do, passing an interface which
 	// allows the user code to send and receive messages and so on.  
 	(SSLServer->GetListener()->m_actualwork)(SSLServer->GetSocketStream());
-	return 0;
 }
 
 // Worker process for connection listening
-UINT __cdecl CListener::ListenerWorker(LPVOID v)
+void __cdecl CListener::ListenerWorker(LPVOID v)
 {
 	auto * Listener = static_cast<CListener*>(v); // See _beginthread call for parameter definition
 
 	SetThreadName("Listener");
 	Listener->Listen();
-	return 0;
 }
 
 // Initialize the listener, set up the socket to listen on, or return an error
@@ -56,7 +54,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 
 	WSADATA wsadata;
 	if (WSAStartup(MAKEWORD(1, 1), &wsadata))
-		return UnknownError;
+		return CListener::ErrorType::UnknownError;
 
 	// Get list of addresses to listen on
 	ADDRINFOT Hints, *AddrInfo, *AI;
@@ -69,7 +67,7 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		WCHAR MsgText[100];
 		StringCchPrintf(MsgText, _countof(MsgText), L"getaddressinfo error: %i", GetLastError());
 		LogWarning(MsgText);
-		return UnknownError;
+		return CListener::ErrorType::UnknownError;
 	}
 
 	// Create one or more passive sockets to listen on
@@ -92,14 +90,14 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 			nullptr);		// no name
 
 		if (!(m_hSocketEvents[i]))
-			return UnknownError;
+			return CListener::ErrorType::UnknownError;
 
 		// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit Created m_hSocketEvents[%d], handle=%d"), i, m_hSocketEvents[i];
 		// LogWarning(MsgText);
 
 		m_iListenSockets[i] = WSASocket(AI->ai_family, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
 		if (m_iListenSockets[i] == INVALID_SOCKET)
-			return SocketUnusable;
+			return CListener::ErrorType::SocketUnusable;
 
 		// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit binding m_iListenSockets[%d] to sa_family=%u sa_data=%s len=%d"), i, AI->ai_addr->sa_family, AI->ai_addr->sa_data, AI->ai_addrlen;
 		// LogWarning(MsgText);
@@ -108,15 +106,15 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 		if (rc)
 		{
 			if (WSAGetLastError() == WSAEADDRINUSE)
-				return SocketInuse;
+				return CListener::ErrorType::SocketInuse;
 			else
-				return SocketUnusable;
+				return CListener::ErrorType::SocketUnusable;
 		}
 
 		if (listen(m_iListenSockets[i], 10))
-			return SocketUnusable;
+			return CListener::ErrorType::SocketUnusable;
 		if (WSAEventSelect(m_iListenSockets[i], m_hSocketEvents[i], FD_ACCEPT))
-			return SocketUnusable;
+			return CListener::ErrorType::SocketUnusable;
 		i++;
 	}
 
@@ -125,32 +123,32 @@ CListener::ErrorType CListener::Initialize(int TCPSocket)
 	// StringCchPrintf(MsgText, _countof(MsgText), L"::OnInit no errors, m_iNumListenSockets = %d"), m_iNumListenSockets;
 	// LogWarning(MsgText);
 
-	return NoError;
+	return CListener::ErrorType::NoError;
 }
 
 // Start listening for connections, if a timeout is specified keep listening until then
 void CListener::BeginListening(std::function<void(ISocketStream * StreamSock)> actualwork)
 {
 	m_actualwork = actualwork;
-	m_ListenerThread = AfxBeginThread(ListenerWorker, this);
+	m_ListenerThread = _beginthread(ListenerWorker, 0, this);
 }
 
 void CListener::IncrementWorkerCount(int i)
 {
-	m_WorkerCountLock.Lock();
+	m_WorkerCountLock.Enter();
 	m_WorkerCount += i;
-	m_WorkerCountLock.Unlock();
+	m_WorkerCountLock.Leave();
 }
 
 // Stop listening, tells the listener thread it can stop, then waits for it to terminate
 void CListener::EndListening()
 {
-	m_StopEvent.SetEvent();
+	m_StopEvent.Set();
 	if (m_ListenerThread)
 	{
-		WaitForSingleObject(m_ListenerThread->m_hThread, INFINITE); // Will auto delete
+		WaitForSingleObject((HANDLE)m_ListenerThread, INFINITE); // Will auto delete
 	}
-	m_ListenerThread = nullptr;
+	m_ListenerThread = 0;
 }
 
 // Log a warning
@@ -220,22 +218,22 @@ void CListener::Listen()
 
 		auto SSLServer = CSSLServer::Create(iReadSocket, this);
 		if (SSLServer && SSLServer->IsConnected)
-			AfxBeginThread(Worker, SSLServer);
+			_beginthread(Worker, 0, SSLServer);
 		else
 			delete SSLServer;
 		iReadSocket = INVALID_SOCKET;
 	}
 	// Either we're done, or there has been a problem, wait for all the worker threads to terminate
 	Sleep(500);
-	m_WorkerCountLock.Lock();
+	m_WorkerCountLock.Enter();
 	while (m_WorkerCount)
 	{
-		m_WorkerCountLock.Unlock();
+		m_WorkerCountLock.Leave();
 		Sleep(1000);
 		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", m_WorkerCount);
-		m_WorkerCountLock.Lock();
+		m_WorkerCountLock.Enter();
 	};
-	m_WorkerCountLock.Unlock();
+	m_WorkerCountLock.Leave();
 	if ((iReadSocket != NULL) && (iReadSocket != INVALID_SOCKET))
 		closesocket(iReadSocket);
 	DebugMsg("End Listen method");

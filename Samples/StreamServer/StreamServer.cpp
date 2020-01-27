@@ -14,7 +14,7 @@ using namespace std;
 // This method is called when the first client tries to connect in order to allow a certificate to be selected to send to the client
 // It has to wait for the client connect request because the client tells the server what identity it expects it to present
 // This is called SNI (Server Name Indication) and it is a relatively new (it began to become available about 2005) SSL/TLS feature
-SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)
+SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubjectName)
 {
 	SECURITY_STATUS status = SEC_E_INVALID_HANDLE;
 
@@ -48,11 +48,11 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 // This function simply runs arbitrary code and returns process information to the caller, it's just a handy utility function
 bool RunApp(std::wstring app, PROCESS_INFORMATION& pi)
 { // Not strictly needed but it makes testing easier
-	STARTUPINFO si = {};
+	STARTUPINFOW si = {};
 	si.cb = sizeof si;
 	ZeroMemory(&pi, sizeof(pi));
 #pragma warning(suppress:6335)
-	if (CreateProcess(nullptr, &app[0], nullptr, FALSE, 0, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi))
+	if (CreateProcessW(nullptr, &app[0], nullptr, FALSE, 0, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi))
 		return true;
 	else
 	{
@@ -65,7 +65,7 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = nullptr)
 {
 	cout << "Initiating a client instance for testing.\n" << endl;
 	WCHAR acPathName[MAX_PATH + 1];
-	GetModuleFileName(nullptr, acPathName, _countof(acPathName));
+	GetModuleFileNameW(nullptr, acPathName, _countof(acPathName));
 	std::wstring appName(acPathName);
 	const auto len = appName.find_last_of(L'\\');
 	appName = appName.substr(0, len + 1) + L"StreamClient.exe " + toHost;
