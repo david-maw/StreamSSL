@@ -18,5 +18,5 @@ void DebugMsg(const WCHAR* pszFormat, ...);
 void DebugMsg(const CHAR* pszFormat, ...);
 bool IsUserAdmin();
 std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName = ComputerNameDnsHostname);
-std::wstring GetUserName();
+std::wstring GetCurrentUserName();
 const char* const GetVersionText();

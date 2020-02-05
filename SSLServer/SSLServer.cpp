@@ -42,7 +42,7 @@ CSSLServer::~CSSLServer()
 
 // Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
 // to change implementation later
-PSecurityFunctionTable CSSLServer::SSPI() { return g_pSSPI; }
+PSecurityFunctionTableW CSSLServer::SSPI() { return g_pSSPI; }
 
 // Creates an SSLServer in response to an incoming connection (a socket) detected by a CListener 
 CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)

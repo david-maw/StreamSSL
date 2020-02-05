@@ -22,7 +22,7 @@ public:
 	void StartRecvTimer();
 	void StartSendTimer();
 	// Regular class interface
-	static PSecurityFunctionTable SSPI();
+	static PSecurityFunctionTableW SSPI();
 	// Set up state for this connection
 	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
 	// Attributes
@@ -32,13 +32,13 @@ public:
 	bool getServerCertTrusted() const;
 
 private:
-	static PSecurityFunctionTable g_pSSPI;
+	static PSecurityFunctionTableW g_pSSPI;
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError{ 0 };
 	bool m_encrypting = false;
 	static HRESULT InitializeClass();
-	SECURITY_STATUS SSPINegotiateLoop(WCHAR* ServerName);
+	SECURITY_STATUS SSPINegotiateLoop(LPCWCHAR ServerName);
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
