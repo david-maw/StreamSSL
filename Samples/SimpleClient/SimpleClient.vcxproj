@@ -222,10 +222,6 @@
     <ClCompile Include="SimpleClient.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\SSLClient\Include\EventWrapper.h" />
-    <ClInclude Include="..\SSLClient\Include\SSLClient.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\SSLClient\SSLClient.vcxproj">
       <Project>{71d079b7-91c6-4ca2-8bfe-e369835da8f3}</Project>
     </ProjectReference>
