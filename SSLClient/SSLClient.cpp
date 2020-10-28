@@ -450,8 +450,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
 	scRet = g_pSSPI->InitializeSecurityContext(
-#pragma warning (suppress: 4238)
-		&m_ClientCreds.get(),
+		m_ClientCreds.getunsaferef(), // the parameter is not const correct so we just have to trust it
 		nullptr,
 		const_cast<SEC_WCHAR *>(ServerName),
 		dwSSPIFlags,

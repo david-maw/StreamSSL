@@ -22,12 +22,4 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\SSLClient\Include\EventWrapper.h">
-      <Filter>Header Files\SSLClientLib Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\SSLClient\Include\SSLClient.h">
-      <Filter>Header Files\SSLClientLib Headers</Filter>
-    </ClInclude>
-  </ItemGroup>
 </Project>
