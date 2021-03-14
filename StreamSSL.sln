@@ -20,6 +20,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamServer", "Samples\Str
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleClient", "Samples\SimpleClient\SimpleClient.vcxproj", "{A96158C0-9879-4D2C-BBE6-ED2B86A1E93E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7A125773-1807-469D-A2AD-2145250CDB4F}"
+	ProjectSection(SolutionItems) = preProject
+		Developer.md = Developer.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug Ansi|Win32 = Debug Ansi|Win32
