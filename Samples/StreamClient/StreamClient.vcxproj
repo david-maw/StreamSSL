@@ -286,6 +286,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\Common\Include\AppVersion.h" />
     <ClInclude Include="..\..\Common\Include\CertHelper.h" />
+    <ClInclude Include="..\..\Common\Include\Common.h" />
     <ClInclude Include="..\..\Common\Include\Utilities.h" />
     <ClInclude Include="..\..\SSLClient\Include\ActiveSock.h" />
     <ClInclude Include="..\..\SSLClient\Include\EventWrapper.h" />

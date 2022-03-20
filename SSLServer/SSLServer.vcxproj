@@ -183,6 +183,7 @@
     <ClInclude Include="..\Common\Include\BaseSock.h" />
     <ClInclude Include="..\Common\Include\CertHelper.h" />
     <ClInclude Include="..\Common\Include\CertRAII.h" />
+    <ClInclude Include="..\Common\Include\Common.h" />
     <ClInclude Include="..\Common\Include\Handle.h" />
     <ClInclude Include="..\Common\Include\ISocketStream.h" />
     <ClInclude Include="Include\Listener.h" />
@@ -200,6 +201,7 @@
     <ClCompile Include="..\Common\BaseSock.cpp" />
     <ClCompile Include="..\Common\CertHelper.cpp" />
     <ClCompile Include="..\Common\CertRAII.cpp" />
+    <ClCompile Include="..\Common\Common.cpp" />
     <ClCompile Include="Listener.cpp" />
     <ClCompile Include="PassiveSock.cpp" />
     <ClCompile Include="ServerCert.cpp" />

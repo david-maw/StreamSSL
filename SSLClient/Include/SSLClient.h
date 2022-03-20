@@ -1,11 +1,12 @@
 #pragma once
 
 #include "SecurityHandle.h"
+#include "Common.h"
 #include <functional>
 
 class CActiveSock; // forward declaration
 
-class CSSLClient
+class CSSLClient : public CSSLCommon
 {
 public:
 	explicit CSSLClient(CActiveSock *);
@@ -22,7 +23,6 @@ public:
 	void StartRecvTimer();
 	void StartSendTimer();
 	// Regular class interface
-	static PSecurityFunctionTableW SSPI();
 	// Set up state for this connection
 	HRESULT Initialize(LPCWSTR ServerName, const void * const lpBuf = nullptr, const int Len = 0);
 	// Attributes
@@ -32,7 +32,6 @@ public:
 	bool getServerCertTrusted() const;
 
 private:
-	static PSecurityFunctionTableW g_pSSPI;
 	CredentialHandle m_ClientCreds;
 	CActiveSock * m_SocketStream;
 	int m_LastError{ 0 };

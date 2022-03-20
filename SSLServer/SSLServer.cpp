@@ -11,21 +11,6 @@
 
 #include <string>
 
-// Global value to optimize access since it is set only once
-PSecurityFunctionTable CSSLServer::g_pSSPI = nullptr;
-
-// Declare the Close functions for the handle classes using the global SSPI function table pointer
-
-void CredentialTraits::Close(Type value)
-{
-	CSSLServer::SSPI()->FreeCredentialsHandle(&value);
-}
-
-void SecurityContextTraits::Close(Type value)
-{
-	CSSLServer::SSPI()->DeleteSecurityContext(&value);
-}
-
 // The CSSLServer class, this declares an SSL server side implementation that requires
 // some means (anything with an ISocketStream interface) to exchange messages with a client.
 CSSLServer::CSSLServer(CPassiveSock* SocketStream)
@@ -39,10 +24,6 @@ CSSLServer::~CSSLServer()
 	if (m_Listener)
 		m_Listener->IncrementWorkerCount(-1);
 }
-
-// Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
-// to change implementation later
-PSecurityFunctionTableW CSSLServer::SSPI() { return g_pSSPI; }
 
 // Creates an SSLServer in response to an incoming connection (a socket) detected by a CListener 
 CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)

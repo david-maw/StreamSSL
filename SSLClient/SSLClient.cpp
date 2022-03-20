@@ -7,21 +7,6 @@
 #include "SecurityHandle.h"
 #include "CertHelper.h"
 
-// Global value to optimize access since it is set only once
-PSecurityFunctionTable CSSLClient::g_pSSPI = nullptr;
-
-// Declare the Close functions for the handle classes using the global SSPI function table pointer
-
-void CredentialTraits::Close(Type value)
-{
-	CSSLClient::SSPI()->FreeCredentialsHandle(&value);
-}
-
-void SecurityContextTraits::Close(Type value)
-{
-	CSSLClient::SSPI()->DeleteSecurityContext(&value);
-}
-
 // The CSSLClient class, this declares an SSL client side implementation that requires
 // some means to send messages to a server (a CActiveSock).
 CSSLClient::CSSLClient(CActiveSock * SocketStream)
@@ -29,10 +14,6 @@ CSSLClient::CSSLClient(CActiveSock * SocketStream)
 	, readPtr(readBuffer)
 {
 }
-
-// Avoid using (or exporting) g_pSSPI directly to give us some flexibility in case we want
-// to change implementation later
-PSecurityFunctionTableW CSSLClient::SSPI() { return g_pSSPI; }
 
 // Set up the connection, including SSL handshake, certificate selection/validation
 // lpBuf and Len let you provide any data that's already been read

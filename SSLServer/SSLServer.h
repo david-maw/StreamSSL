@@ -1,12 +1,13 @@
 #pragma once
 #include "PassiveSock.h"
 #include "SecurityHandle.h"
+#include "Common.h"
 
 #include <functional>
 
 class CListener;
 
-class CSSLServer : public ISocketStream
+class CSSLServer : public ISocketStream, public CSSLCommon
 {
 public:
 	// The constructor is private, the only way to get hold of a CSSLServer is by calling Create.
@@ -26,7 +27,6 @@ public:
 	void StartSendTimer() override;
 	
 	ISocketStream* GetSocketStream();
-	static PSecurityFunctionTableW SSPI();
 	// Set up state for this connection
 	HRESULT Initialize(const void * const lpBuf = nullptr, const size_t Len = 0);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCTSTR pszSubjectName)> SelectServerCert;
@@ -40,7 +40,6 @@ private:
 	HRESULT ShutDownSSL();
 	CListener* m_Listener{ nullptr };
 	CredHandle hServerCreds{};
-	static PSecurityFunctionTableW g_pSSPI;
 	std::unique_ptr<CPassiveSock> m_SocketStream;
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
