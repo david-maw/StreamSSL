@@ -93,12 +93,12 @@ bool CBaseSock::CloseAndInvalidateSocket()
 
 void CBaseSock::StartRecvTimerInternal()
 {
-	RecvEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, RecvTimeoutSeconds);
+	RecvEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(RecvTimeoutSeconds);
 }
 
 void CBaseSock::StartSendTimerInternal()
 {
-	SendEndTime = CTime::GetCurrentTime() + CTimeSpan(0, 0, 0, SendTimeoutSeconds);
+	SendEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(SendTimeoutSeconds);
 }
 
 void CBaseSock::StartRecvTimer()
@@ -176,8 +176,8 @@ int CBaseSock::RecvPartial(LPVOID lpBuf, const size_t Len)
 	// Setup up the events to wait on
 	WSAEVENT hEvents[2] = { m_hStopEvent, read_event };
 
-	const CTimeSpan TimeLeft = RecvEndTime - CTime::GetCurrentTime();
-	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
+	const auto TimeLeft = RecvEndTime - std::chrono::steady_clock::now();
+	const auto SecondsLeft = std::chrono::duration_cast<std::chrono::seconds>(TimeLeft).count();
 	if (SecondsLeft <= 0)
 	{
 		LastError = ERROR_TIMEOUT;
@@ -303,8 +303,8 @@ int CBaseSock::SendPartial(LPCVOID lpBuf, const size_t Len)
 	const int rc = WSASend(ActualSocket, &buffer, 1, &bytes_sent, 0, &os, nullptr);
 	LastError = WSAGetLastError();
 
-	const CTimeSpan TimeLeft = SendEndTime - CTime::GetCurrentTime();
-	const auto SecondsLeft = TimeLeft.GetTotalSeconds();
+	const auto TimeLeft = SendEndTime - std::chrono::steady_clock::now();
+	const auto SecondsLeft = std::chrono::duration_cast<std::chrono::seconds>(TimeLeft).count();
 	if (SecondsLeft <= 0)
 	{
 		LastError = ERROR_TIMEOUT;

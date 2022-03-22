@@ -26,6 +26,21 @@ public:
 		return m_Event;
 	}
 
+	void SetEvent()
+	{
+		::SetEvent(m_Event);
+	}
+	
+	void ResetEvent()
+	{
+		::ResetEvent(m_Event);
+	}
+	
+	void PulseEvent()
+	{
+		::PulseEvent(m_Event);
+	}
+
 	~CEventWrapper()
 	{
 		if (m_Event)

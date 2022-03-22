@@ -25,7 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Developer.md = Developer.md
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SChanSSL", "SChanSSL\SChanSSL.vcxproj", "{8526BED2-CB4E-4058-AFEB-357367F3C773}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamSSL", "StreamSSL\StreamSSL.vcxproj", "{8526BED2-CB4E-4058-AFEB-357367F3C773}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

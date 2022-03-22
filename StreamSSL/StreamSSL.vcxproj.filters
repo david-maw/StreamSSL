@@ -66,9 +66,6 @@
     <ClInclude Include="..\SSLClient\Include\ActiveSock.h">
       <Filter>Header Files\Client Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\SSLClient\Include\EventWrapper.h">
-      <Filter>Header Files\Client Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\SSLClient\Include\SSLClient.h">
       <Filter>Header Files\Client Headers</Filter>
     </ClInclude>
@@ -91,6 +88,9 @@
       <Filter>Header Files\Server Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Include\Common.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\EventWrapper.h">
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
   </ItemGroup>

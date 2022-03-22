@@ -83,8 +83,8 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 	{
 		cout << "Optional client certificate requested (without issuer list)";
 		// Enable the next line to preemptively guess at an appropriate certificate 
-		if (false && FAILED(Status))
-			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
+// 		if (FAILED(Status))
+// 			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
 	}
 	if (pCertContext)
 		wcout << ", selected name: " << GetCertName(pCertContext).c_str() << endl; // wcout for WCHAR* handling
@@ -159,22 +159,22 @@ int wmain(int argc, WCHAR * argv[])
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
 			cout << "Sending greeting" << endl;
-			CStringA sentMsg("Hello from client");
-			if (pSSLClient->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+			std::string sentMsg("Hello from client");
+			if (pSSLClient->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Sending second greeting" << endl;
 			sentMsg ="Hello again from client";
-			if (pSSLClient->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+			if (pSSLClient->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
 			int len = 0;
 			char Msg[100];
 			if (0 < (len = pSSLClient->Recv(Msg, sizeof(Msg))))
 			{
-				cout << "Received '" << CStringA(Msg, len) << "'" << endl;
+				cout << "Received '" << string(Msg, len) << "'" << endl;
 				// Receive a second message, ignore errors
 				if (0 < (len = pSSLClient->Recv(Msg, sizeof(Msg))))
-					cout << "Received '" << CStringA(Msg, len) << "'" << endl;
+					cout << "Received '" << string(Msg, len) << "'" << endl;
 				cout << "Shutting down SSL" << endl;
 				::Sleep(1000); // Give the next message a chance to arrive at the server separately
 				pSSLClient->Disconnect(false);
@@ -182,7 +182,7 @@ int wmain(int argc, WCHAR * argv[])
 				// this is rarely done, here's an example of doing it
 				cout << "Sending first unencrypted data message" << endl;
 				sentMsg = "First block of unencrypted data from client";
-				if (pActiveSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+				if (pActiveSock->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 					cout << "Wrong number of characters sent" << endl;
 				else
 				{
@@ -190,7 +190,7 @@ int wmain(int argc, WCHAR * argv[])
 					::Sleep(6000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
 					cout << "Sending second unencrypted data message" << endl;
 					sentMsg = "Second block of unencrypted data from client";
-					if (pActiveSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength()) != sentMsg.GetLength())
+					if (pActiveSock->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 						cout << "Wrong number of characters sent" << endl;
 					else
 					{

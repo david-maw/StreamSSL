@@ -1,6 +1,9 @@
 #pragma once
 #include <wincrypt.h>
 #include <functional>
+#include <atomic>
+
+#include "EventWrapper.h"
 
 class ISocketStream;
 
@@ -19,7 +22,6 @@ private:
 	SOCKET m_iListenSockets[FD_SETSIZE]{};
 	HANDLE m_hSocketEvents[FD_SETSIZE]{};
 	int m_iNumListenSockets{ 0 };
-	CCriticalSection m_WorkerCountLock;
 	uintptr_t m_ListenerThread { 0 };
 	static void __cdecl Worker(LPVOID);
 	static void __cdecl ListenerWorker(LPVOID);
@@ -28,8 +30,8 @@ private:
 public:
 	static void LogWarning(const WCHAR* const);
 	static void LogWarning(const CHAR* const);
-	int m_WorkerCount{ 0 };
-	CEvent m_StopEvent{ TRUE, FALSE };
+	std::atomic_int volatile m_WorkerCount{ 0 };
+	CEventWrapper m_StopEvent;
 	// Initialize the listener
 	ErrorType Initialize(int TCPSocket);
 	std::function<SECURITY_STATUS(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubjectName)> SelectServerCert;
