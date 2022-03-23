@@ -120,15 +120,9 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 // Establish SSPI pointer
 HRESULT CSSLServer::InitializeClass()
 {
-	g_pSSPI = InitSecurityInterface();
-
 	if (g_pSSPI == nullptr)
 	{
-		int err = ::GetLastError();
-		if (err == 0)
-			return E_FAIL;
-		else
-			return HRESULT_FROM_WIN32(err);
+		return E_FAIL;
 	}
 	return S_OK;
 }

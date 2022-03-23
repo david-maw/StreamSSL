@@ -73,15 +73,9 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 // Establish SSPI pointer and correct credentials (meaning pick a certificate) for the SSL server
 HRESULT CSSLClient::InitializeClass()
 {
-	g_pSSPI = InitSecurityInterface();
-
 	if (g_pSSPI == nullptr)
 	{
-		int err = ::GetLastError();
-		if (err == 0)
-			return E_FAIL;
-		else
-			return HRESULT_FROM_WIN32(err);
+		return E_FAIL;
 	}
 	return S_OK;
 }
