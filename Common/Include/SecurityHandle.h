@@ -46,10 +46,10 @@ class CertContextHandle : public Handle<CertContextTraits>
 
 struct CredentialTraits : public HandleTraits<CredHandle>
 {
-  static void Close(Type value)
-  {
-    CSSLCommon::SSPI()->DeleteSecurityContext(&value);
-  }
+	static void Close(Type value)
+	{
+		CSSLCommon::SSPI()->DeleteSecurityContext(&value);
+	}
 
 	constexpr static Type Invalid() noexcept
 	{
@@ -76,10 +76,10 @@ class CredentialHandle : public Handle<CredentialTraits>
 
 struct SecurityContextTraits : public HandleTraits<CtxtHandle>
 {
-  static void Close(Type value)
-  {
-    CSSLCommon::SSPI()->DeleteSecurityContext(&value);
-  }
+	static void Close(Type value)
+	{
+		CSSLCommon::SSPI()->DeleteSecurityContext(&value);
+	}
 
 	constexpr static Type Invalid() noexcept
 	{
