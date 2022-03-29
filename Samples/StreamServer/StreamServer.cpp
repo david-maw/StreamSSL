@@ -34,7 +34,7 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubje
 }
 
 
-// This methood is called when a client connection is offered, it returns an indication of whether the certificate (or lack of one) is acceptable 
+// This method is called when a client connection is offered, it returns an indication of whether the certificate (or lack of one) is acceptable 
 bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 {
 	if (trusted)
@@ -81,18 +81,19 @@ void RunClient(std::wstring toHost = L"", PROCESS_INFORMATION * ppi = nullptr)
 	}
 }
 
-CTime DelayStarted = 0;
-
 // If the elapsed time since the time specified by the parameter is a second or more, display it, otherwise do nothing
 void ShowDelay()
 {
+  static DWORD DelayStarted = 0;
+
+  DWORD CurTime = GetTickCount();
 	if (DelayStarted != 0)
 	{
-		CTimeSpan Waited = CTime::GetCurrentTime() - DelayStarted;
-		if (Waited.GetTotalSeconds() > 0)
-			cout << "Waited " << Waited.GetTotalSeconds() << " seconds" << endl;
+		DWORD Waited = CurTime - DelayStarted;
+		if (Waited > 1000)
+			cout << "Waited " << Waited/1000 << " seconds" << endl;
 	}
-	DelayStarted = CTime::GetCurrentTime(); // Restart the timer
+	DelayStarted = CurTime; // Restart the timer
 }
 
 void ShowResult(int len, DWORD LastError)
@@ -105,11 +106,10 @@ void ShowResult(int len, DWORD LastError)
 }
 
 // The function called first by the operating system when the codefile is run
-int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
+int _tmain(int argc, TCHAR* argv[])
 {
 	UNREFERENCED_PARAMETER(argc);
 	UNREFERENCED_PARAMETER(argv);
-	UNREFERENCED_PARAMETER(envp);
 	if (!IsUserAdmin())
 		cout << "WARNING: The server is not running as an administrator." << endl;
 	const int Port = 41000;
@@ -125,9 +125,9 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 		char MsgText[100]; // Because the simple text messages we exchange are char not wchar
 		int len = 0;
 
-		CStringA sentMsg("Hello from server");
+		string sentMsg("Hello from server");
 		cout << "A connection has been made, worker started, sending '" << sentMsg <<"'" << endl;
-		if ((len = StreamSock->Send(sentMsg.GetBuffer(), sentMsg.GetLength())) != sentMsg.GetLength())
+		if ((len = StreamSock->Send(sentMsg.c_str(), sentMsg.length())) != (int)sentMsg.length())
 			cout << "Wrong number of characters sent" << endl;
 		if (len < 0)
 		{
@@ -162,7 +162,7 @@ int _tmain(int argc, WCHAR* argv[], WCHAR* envp[])
 				{
 					if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
 					{
-						if (len == INVALID_SOCKET && StreamSock->GetLastError() == ERROR_TIMEOUT)
+						if (len == SOCKET_ERROR && StreamSock->GetLastError() == ERROR_TIMEOUT)
 						{
 							// Just a timeout, it's ok to retry that, so just do so
 							ShowDelay();

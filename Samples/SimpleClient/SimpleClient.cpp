@@ -51,7 +51,7 @@ int main()
 			char Msg[22];
 			if (0 < (len = pSSLClient->Recv(Msg, sizeof(Msg))))
 			{
-				cout << "Received '" << string(Msg, len);
+				cout << "Received '" << string(Msg, len).c_str();
 				if (len == sizeof(Msg)) // probably truncated
 					cout << "...";
 				cout << "'" << endl << "Shutting down" << endl;

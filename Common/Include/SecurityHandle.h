@@ -9,6 +9,8 @@
 #include <security.h>
 #pragma comment(lib, "secur32.lib")
 
+#include "Common.h"
+
 /*
 This is one of 2 different approaches to handling old Windows handle classes.
 
@@ -44,7 +46,10 @@ class CertContextHandle : public Handle<CertContextTraits>
 
 struct CredentialTraits : public HandleTraits<CredHandle>
 {
-	static void Close(Type value); // Declared in StreamServer.cpp
+	static void Close(Type value)
+	{
+		CSSLCommon::SSPI()->DeleteSecurityContext(&value);
+	}
 
 	constexpr static Type Invalid() noexcept
 	{
@@ -71,7 +76,10 @@ class CredentialHandle : public Handle<CredentialTraits>
 
 struct SecurityContextTraits : public HandleTraits<CtxtHandle>
 {
-	static void Close(Type value); // Declared in StreamServer.cpp
+	static void Close(Type value)
+	{
+		CSSLCommon::SSPI()->DeleteSecurityContext(&value);
+	}
 
 	constexpr static Type Invalid() noexcept
 	{

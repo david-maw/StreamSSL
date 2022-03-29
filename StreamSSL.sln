@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29209.62
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.1800
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SSLClient", "SSLClient\SSLClient.vcxproj", "{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}"
 EndProject
@@ -24,6 +24,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		Developer.md = Developer.md
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamSSL", "StreamSSL\StreamSSL.vcxproj", "{8526BED2-CB4E-4058-AFEB-357367F3C773}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -95,6 +97,18 @@ Global
 		{A96158C0-9879-4D2C-BBE6-ED2B86A1E93E}.Release|Win32.Build.0 = Release|Win32
 		{A96158C0-9879-4D2C-BBE6-ED2B86A1E93E}.Release|x64.ActiveCfg = Release|x64
 		{A96158C0-9879-4D2C-BBE6-ED2B86A1E93E}.Release|x64.Build.0 = Release|x64
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug Ansi|Win32.ActiveCfg = Debug|Win32
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug Ansi|Win32.Build.0 = Debug|Win32
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug Ansi|x64.ActiveCfg = Debug|x64
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug Ansi|x64.Build.0 = Debug|x64
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug|Win32.Build.0 = Debug|Win32
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug|x64.ActiveCfg = Debug|x64
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Debug|x64.Build.0 = Debug|x64
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Release|Win32.ActiveCfg = Release|Win32
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Release|Win32.Build.0 = Release|Win32
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Release|x64.ActiveCfg = Release|x64
+		{8526BED2-CB4E-4058-AFEB-357367F3C773}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

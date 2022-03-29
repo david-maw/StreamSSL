@@ -135,15 +135,13 @@ void CListener::BeginListening(std::function<void(ISocketStream * StreamSock)> a
 
 void CListener::IncrementWorkerCount(int i)
 {
-	m_WorkerCountLock.Enter();
 	m_WorkerCount += i;
-	m_WorkerCountLock.Leave();
 }
 
 // Stop listening, tells the listener thread it can stop, then waits for it to terminate
 void CListener::EndListening()
 {
-	m_StopEvent.Set();
+	m_StopEvent.SetEvent();
 	if (m_ListenerThread)
 	{
 		WaitForSingleObject((HANDLE)m_ListenerThread, INFINITE); // Will auto delete
@@ -225,15 +223,11 @@ void CListener::Listen()
 	}
 	// Either we're done, or there has been a problem, wait for all the worker threads to terminate
 	Sleep(500);
-	m_WorkerCountLock.Enter();
 	while (m_WorkerCount)
 	{
-		m_WorkerCountLock.Leave();
 		Sleep(1000);
-		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", m_WorkerCount);
-		m_WorkerCountLock.Enter();
+		DebugMsg("Waiting for all workers to terminate: worker thread count = %i", (int)m_WorkerCount);
 	};
-	m_WorkerCountLock.Leave();
 	if ((iReadSocket != NULL) && (iReadSocket != INVALID_SOCKET))
 		closesocket(iReadSocket);
 	DebugMsg("End Listen method");
