@@ -18,6 +18,7 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubje
 {
 	SECURITY_STATUS status = SEC_E_INVALID_HANDLE;
 
+	wcout << "Server certificate requested for " << pszSubjectName << endl;
 	// The next line invokes a UI to let the user select a certificate manually
 	//status = CertFindServerCertificateUI(pCertContext, pszSubjectName, false);
 	if (!pCertContext) // If we don't already have a certificate, try and select a specific one
@@ -26,7 +27,9 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubje
 	if (!pCertContext) // If we don't already have a certificate, try and select a likely looking one
 		status = CertFindServerCertificateByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
 	if (pCertContext)
-		wcout << "Server certificate requested for " << pszSubjectName << ", found \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
+		wcout << "Server certificate found \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
+	else
+	    wcout << "Server certificate could not be found or created" << endl;
 	// Uncomment the next 2 lines if you want to see details of the selected certificate
 	//if (pCertContext)
 	//   ShowCertInfo(pCertContext, "Server Certificate In Use");
