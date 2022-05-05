@@ -188,6 +188,7 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 		if (LastError == CRYPT_E_NOT_FOUND)
 		{
 			DebugMsg("**** CertFindCertificateInStore did not find a certificate, creating one");
+			std::cout << "Could not find a suitable certificate, attempting to create one" << std::endl;
 			pCertContext = CreateCertificate(!fUserStore, pszSubjectName); // No need to specify, makes server cert by default
 			if (!pCertContext)
 			{
@@ -1113,7 +1114,7 @@ PCCERT_CONTEXT CreateCertificate(bool useMachineStore, LPCWSTR Subject, LPCWSTR 
 	}
 
 	// Open Personal certificate store for whole machine or individual user
-	DebugMsg(("Opening  root store for writingusing CertOpenStore"));
+	DebugMsg(("Opening  root store for writing using CertOpenStore"));
 	CertStore store;
 	if (store.CertOpenStore(useMachineStore ? CERT_SYSTEM_STORE_LOCAL_MACHINE : CERT_SYSTEM_STORE_CURRENT_USER))
 		DebugMsg("CertOpenStore succeeded");
