@@ -522,13 +522,15 @@ bool CSSLServer::SSPINegotiateLoop()
 			m_LastError = 0;
 			if (err == SOCKET_ERROR || err == 0)
 			{
-				if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
+				if (err == 0)
+					DebugMsg("Recv failed, returned 0");
+				else if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
 				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
 					DebugMsg("Recv Overlapped operations will complete later");
 				else if (WSAECONNRESET == m_SocketStream->GetLastError())
 					DebugMsg("Recv failed, the socket was closed by the other host");
-				else
+				else 
 					DebugMsg("Recv failed: %d", m_SocketStream->GetLastError());
 				return false;
 			}
