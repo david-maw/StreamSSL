@@ -685,7 +685,10 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 	{
 		Status = S_FALSE;
 		//DisplayWinVerifyTrustError(PolicyStatus.dwError);
-		DebugMsg("PolicyStatus error %#x returned by CertVerifyCertificateChainPolicy!", PolicyStatus.dwError);
+		if (PolicyStatus.dwError == CERT_E_UNTRUSTEDROOT)
+			DebugMsg("CertVerifyCertificateChainPolicy reported an untrusted root certificate");
+		else
+			DebugMsg("PolicyStatus error %#x returned by CertVerifyCertificateChainPolicy!", PolicyStatus.dwError);
 		goto cleanup;
 	}
 

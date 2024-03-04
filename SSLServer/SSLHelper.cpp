@@ -56,8 +56,8 @@ void CSSLHelper::TraceHandshake()
 		const byte * BufPtr = DataPtr;
 		if (length + 5 == MaxBufBytes)
 			DebugMsg("Exactly one buffer is present");
-		else if (length + 5 <= MaxBufBytes)
-			DebugMsg("Whole buffer is present");
+		else if (length + 5 < MaxBufBytes)
+			DebugMsg("Whole buffer + %d extra bytes are present", MaxBufBytes -5 -length);
 		else
 			DebugMsg("Only part of the buffer is present");
 		if (major == 3)
@@ -83,66 +83,89 @@ void CSSLHelper::TraceHandshake()
 		// This is a version we recognize
 		if (contentType != 22)
 		{
-			DebugMsg("This content type (%d) is not recognized", contentType);
-			PrintHexDump(MaxBufBytes, OriginalBufPtr);
-			return;
-		}
-		// This is a handshake message (content type 22)
-		if (handshakeType != 1)
-		{
-			DebugMsg("This handshake type (%d) is not recognized", handshakeType);
-			PrintHexDump(MaxBufBytes, OriginalBufPtr);
-			return;
-		}
-		// This is a client hello message (handshake type 1)
-		DebugMsg("client_hello");
-		BufPtr += 2; // Skip ClientVersion
-		BufPtr += 32; // Skip Random
-		UINT8 sessionidLength = *BufPtr;
-		BufPtr += 1 + sessionidLength; // Skip SessionID
-		UINT16 cipherSuitesLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-		BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
-		UINT8 compressionMethodsLength = *BufPtr;
-		BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
-		//bool extensionsPresent = BufPtr < BufEnd;
-		UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-		BufPtr += 2;
-		if (extensionsLength == BufEnd - BufPtr)
-			DebugMsg("There are %d bytes of extension data", extensionsLength);
-		while (BufPtr < BufEnd)
-		{
-			UINT16 extensionType = (*(BufPtr) << 8) + *(BufPtr + 1);
-			BufPtr += 2;
-			UINT16 extensionDataLength = (*(BufPtr) << 8) + *(BufPtr + 1);
-			BufPtr += 2;
-			if (extensionType == 0) // server name list, in practice there's only ever one name in it (see RFC 6066)
+			switch (contentType)
 			{
-				UINT16 serverNameListLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+			case 20: DebugMsg("Change Cipher Spec"); break;
+			case 21: DebugMsg("Alert"); break;
+			case 22: DebugMsg("Handshake"); break;
+			case 23: DebugMsg("Application Data"); break;
+			default: DebugMsg("This content type (%d) is not recognized", contentType); break;
+			}
+			PrintHexDump(MaxBufBytes, OriginalBufPtr);
+			return;
+		}
+		// From here on down this must be a handshake message (content type 22)
+		if (handshakeType == 1)
+		{
+			// This is a client hello message (handshake type 1)
+			DebugMsg("client_hello");
+			BufPtr += 4; // Skip Time
+			BufPtr += 28; // Skip Random bytes
+			UINT8 sessionidLength = *BufPtr;
+			BufPtr += 1 + sessionidLength; // Skip SessionID
+			UINT16 cipherSuitesLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+			BufPtr += 2 + cipherSuitesLength; // Skip CipherSuites
+			UINT8 compressionMethodsLength = *BufPtr;
+			BufPtr += 1 + compressionMethodsLength; // Skip Compression methods
+			//bool extensionsPresent = BufPtr < BufEnd;
+			UINT16 extensionsLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+			BufPtr += 2;
+			if (extensionsLength == BufEnd - BufPtr)
+				DebugMsg("There are %d bytes of extension data", extensionsLength);
+			while (BufPtr < BufEnd)
+			{
+				UINT16 extensionType = (*(BufPtr) << 8) + *(BufPtr + 1);
 				BufPtr += 2;
-				DebugMsg("Server name list extension, length %d", serverNameListLength);
-				const byte * serverNameListEnd = BufPtr + serverNameListLength;
-				while (BufPtr < serverNameListEnd)
+				UINT16 extensionDataLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+				BufPtr += 2;
+				if (extensionType == 0) // server name list, in practice there's only ever one name in it (see RFC 6066)
 				{
-					UINT8 serverNameType = *(BufPtr++);
-					UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+					UINT16 serverNameListLength = (*(BufPtr) << 8) + *(BufPtr + 1);
 					BufPtr += 2;
-					if (serverNameType == 0)
-						DebugMsg("   Requested name \"%*s\"", serverNameLength, BufPtr);
-					else
-						DebugMsg("   Server name Type %d, length %d, data \"%*s\"", serverNameType, serverNameLength, serverNameLength, BufPtr);
-					BufPtr += serverNameLength;
+					DebugMsg("Server name list extension, length %d", serverNameListLength);
+				const byte * serverNameListEnd = BufPtr + serverNameListLength;
+					while (BufPtr < serverNameListEnd)
+					{
+						UINT8 serverNameType = *(BufPtr++);
+						UINT16 serverNameLength = (*(BufPtr) << 8) + *(BufPtr + 1);
+						BufPtr += 2;
+						if (serverNameType == 0)
+							DebugMsg("   Requested name \"%*s\"", serverNameLength, BufPtr);
+						else
+							DebugMsg("   Server name Type %d, length %d, data \"%*s\"", serverNameType, serverNameLength, serverNameLength, BufPtr);
+						BufPtr += serverNameLength;
+					}
+				}
+				else
+				{
+					DebugMsg("Extension Type %d, length %d", extensionType, extensionDataLength);
+					BufPtr += extensionDataLength;
 				}
 			}
+			if (BufPtr == BufEnd)
+				DebugMsg("Extensions exactly filled the header, as expected");
 			else
-			{
-				DebugMsg("Extension Type %d, length %d", extensionType, extensionDataLength);
-				BufPtr += extensionDataLength;
-			}
+				DebugMsg("** Error ** Extensions did not fill the header");
 		}
-		if (BufPtr == BufEnd)
-			DebugMsg("Extensions exactly filled the header, as expected");
 		else
-			DebugMsg("** Error ** Extensions did not fill the header");
+		{
+			switch (handshakeType)
+			{
+			case 00: DebugMsg("Hello Request"); break;
+			case 01: DebugMsg("Client Hello"); break;
+			case 02: DebugMsg("Server hello"); break;
+			case 11: DebugMsg("Certificate"); break;
+			case 12: DebugMsg("Server key Exchange"); break;
+			case 13: DebugMsg("Certificate request"); break;
+			case 14: DebugMsg("Server Hello Done"); break;
+			case 15: DebugMsg("Certificate Verify"); break;
+			case 16: DebugMsg("Client key Exchange"); break;
+			case 20: DebugMsg("Finished"); break;
+			default: DebugMsg("This handshake type (%d) is not recognized", handshakeType); break;
+			}
+			PrintHexDump(MaxBufBytes, OriginalBufPtr);
+			return;
+		}
 	}
 	PrintHexDump(MaxBufBytes, OriginalBufPtr);
 }

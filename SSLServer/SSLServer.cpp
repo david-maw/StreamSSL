@@ -620,7 +620,8 @@ bool CSSLServer::SSPINegotiateLoop()
 				{
 					DebugMsg(" ");
 					DebugMsg("Send %d handshake bytes to client", OutBuffers[0].cbBuffer);
-					PrintHexDump(OutBuffers[0].cbBuffer, OutBuffers[0].pvBuffer);
+					CSSLHelper SSLHelper((const byte*)OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+					SSLHelper.TraceHandshake();
 				}
 
 				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
