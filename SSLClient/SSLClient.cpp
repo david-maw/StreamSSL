@@ -229,7 +229,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 	}
 	else
 	{
-		DebugMsg("Couldn't decrypt data from server, error %lx", scRet);
+		DebugMsg("Couldn't decrypt data from server, error %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}

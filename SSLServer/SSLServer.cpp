@@ -340,7 +340,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	}
 	else
 	{
-		DebugMsg("Couldn't decrypt, error %lx", scRet);
+		DebugMsg("Couldn't decrypt, error %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
 		
 		readBufferBytes = 0; // Assume they have all been consumed
 		return SOCKET_ERROR;
@@ -550,7 +550,7 @@ bool CSSLServer::SSPINegotiateLoop()
 					scRet = GetCredHandleFor(serverName, SelectServerCert, &hServerCreds);
 					if (FAILED(scRet))
 					{
-						DebugMsg("GetCredHandleFor Failed with error code %lx", scRet);
+						DebugMsg("GetCredHandleFor Failed with error code %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
 						m_LastError = scRet;
 						return false;
 					}
@@ -691,7 +691,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (scRet == SEC_E_INVALID_TOKEN)
 				DebugMsg("AcceptSecurityContext detected an invalid token, maybe the client rejected our certificate");
 			else
-				DebugMsg("AcceptSecurityContext Failed with error code %lx", scRet);
+				DebugMsg("AcceptSecurityContext Failed with error code %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
 			m_LastError = scRet;
 			return false;
 		}
@@ -715,7 +715,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	} // while loop
 
 	// Something is wrong, we exited the loop abnormally
-	DebugMsg("Unexpected scRet value %lx", scRet);
+	DebugMsg("Unexpected scRet value %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
 	m_LastError = scRet;
 	return false;
 }
