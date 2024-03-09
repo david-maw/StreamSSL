@@ -177,13 +177,13 @@
     <ClInclude Include="..\Common\Include\Handle.h" />
     <ClInclude Include="..\Common\Include\ISocketStream.h" />
     <ClInclude Include="..\Common\Include\SecurityHandle.h" />
+    <ClInclude Include="..\Common\Include\SSLHelper.h" />
     <ClInclude Include="..\Common\Include\Utilities.h" />
     <ClInclude Include="..\SSLClient\Include\ActiveSock.h" />
     <ClInclude Include="..\SSLClient\Include\SSLClient.h" />
     <ClInclude Include="..\SSLServer\Include\Listener.h" />
     <ClInclude Include="..\SSLServer\PassiveSock.h" />
     <ClInclude Include="..\SSLServer\ServerCert.h" />
-    <ClInclude Include="..\SSLServer\SSLHelper.h" />
     <ClInclude Include="..\SSLServer\SSLServer.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
@@ -194,13 +194,13 @@
     <ClCompile Include="..\Common\CertHelper.cpp" />
     <ClCompile Include="..\Common\CertRAII.cpp" />
     <ClCompile Include="..\Common\Common.cpp" />
+    <ClCompile Include="..\Common\SSLHelper.cpp" />
     <ClCompile Include="..\Common\Utilities.cpp" />
     <ClCompile Include="..\SSLClient\ActiveSock.cpp" />
     <ClCompile Include="..\SSLClient\SSLClient.cpp" />
     <ClCompile Include="..\SSLServer\Listener.cpp" />
     <ClCompile Include="..\SSLServer\PassiveSock.cpp" />
     <ClCompile Include="..\SSLServer\ServerCert.cpp" />
-    <ClCompile Include="..\SSLServer\SSLHelper.cpp" />
     <ClCompile Include="..\SSLServer\SSLServer.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

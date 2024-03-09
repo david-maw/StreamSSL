@@ -49,10 +49,30 @@ bool CSSLHelper::CanDecode()
 // Trace handshake buffer
 void CSSLHelper::TraceHandshake()
 {
+	TracePacket(OriginalBufPtr, MaxBufBytes);
+}
+
+// Trace an SSL buffer (static method)
+void CSSLHelper::TracePacket(const void * const Ptr, const int MaxBufBytes)
+{
+	const byte * DataPtr = (const byte*)Ptr;
+	const byte * const OriginalBufPtr = DataPtr;
+	const byte* BufEnd = nullptr;
+	UINT8 contentType = 0, major = 0, minor = 0;
+	UINT16 length = 0;
+	UINT8 handshakeType = 0;
+	UINT16 handshakeLength = 0;
+
 	if (MaxBufBytes < 5)
 		DebugMsg("Buffer space too small");
 	else
 	{
+		contentType = *(DataPtr++);
+		major = *(DataPtr++);
+		minor = *(DataPtr++);
+		length = (*(DataPtr) << 8) + *(DataPtr + 1);
+		DataPtr += 2;
+		BufEnd = OriginalBufPtr + 5 + 4 + handshakeLength;
 		const byte * BufPtr = DataPtr;
 		if (length + 5 == MaxBufBytes)
 			DebugMsg("Exactly one buffer is present");
@@ -95,6 +115,9 @@ void CSSLHelper::TraceHandshake()
 			return;
 		}
 		// From here on down this must be a handshake message (content type 22)
+		handshakeType = *(DataPtr++);
+		handshakeLength = (*DataPtr << 16) + (*(DataPtr + 1) << 8) + *(DataPtr + 2);
+		DataPtr += 3;
 		if (handshakeType == 1)
 		{
 			// This is a client hello message (handshake type 1)

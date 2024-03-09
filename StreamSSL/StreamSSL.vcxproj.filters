@@ -81,9 +81,6 @@
     <ClInclude Include="..\SSLServer\ServerCert.h">
       <Filter>Header Files\Server Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\SSLServer\SSLHelper.h">
-      <Filter>Header Files\Server Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\SSLServer\SSLServer.h">
       <Filter>Header Files\Server Headers</Filter>
     </ClInclude>
@@ -91,6 +88,9 @@
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Include\EventWrapper.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Include\SSLHelper.h">
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -125,13 +125,13 @@
     <ClCompile Include="..\SSLServer\ServerCert.cpp">
       <Filter>Source Files\Server Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\SSLServer\SSLHelper.cpp">
-      <Filter>Source Files\Server Sources</Filter>
-    </ClCompile>
     <ClCompile Include="..\SSLServer\SSLServer.cpp">
       <Filter>Source Files\Server Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\Common.cpp">
+      <Filter>Source Files\Common Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\SSLHelper.cpp">
       <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
   </ItemGroup>
