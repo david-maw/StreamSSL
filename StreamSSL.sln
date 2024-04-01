@@ -1,30 +1,18 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.1800
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34607.79
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SSLClient", "SSLClient\SSLClient.vcxproj", "{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SSLServer", "SSLServer\SSLServer.vcxproj", "{287B68D2-7381-4E78-AC72-79A49738228D}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{1CB7EA77-6290-4FCE-A1F9-FA162C4562F8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamClient", "Samples\StreamClient\StreamClient.vcxproj", "{144CCC0E-0CE9-42D2-887B-4210DEAA2BC6}"
-	ProjectSection(ProjectDependencies) = postProject
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3} = {71D079B7-91C6-4CA2-8BFE-E369835DA8F3}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamServer", "Samples\StreamServer\StreamServer.vcxproj", "{6FC978B9-9CC8-4C8A-A5E3-D575B59ED415}"
-	ProjectSection(ProjectDependencies) = postProject
-		{287B68D2-7381-4E78-AC72-79A49738228D} = {287B68D2-7381-4E78-AC72-79A49738228D}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleClient", "Samples\SimpleClient\SimpleClient.vcxproj", "{A96158C0-9879-4D2C-BBE6-ED2B86A1E93E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7A125773-1807-469D-A2AD-2145250CDB4F}"
 	ProjectSection(SolutionItems) = preProject
 		Developer.md = Developer.md
-		.github\workflows\msbuild.yml = .github\workflows\msbuild.yml
-		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamSSL", "StreamSSL\StreamSSL.vcxproj", "{8526BED2-CB4E-4058-AFEB-357367F3C773}"
@@ -39,30 +27,6 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug Ansi|Win32.ActiveCfg = Debug|Win32
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug Ansi|Win32.Build.0 = Debug|Win32
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug Ansi|x64.ActiveCfg = Debug|x64
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug Ansi|x64.Build.0 = Debug|x64
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug|Win32.ActiveCfg = Debug|Win32
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug|Win32.Build.0 = Debug|Win32
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug|x64.ActiveCfg = Debug|x64
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Debug|x64.Build.0 = Debug|x64
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Release|Win32.ActiveCfg = Release|Win32
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Release|Win32.Build.0 = Release|Win32
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Release|x64.ActiveCfg = Release|x64
-		{71D079B7-91C6-4CA2-8BFE-E369835DA8F3}.Release|x64.Build.0 = Release|x64
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug Ansi|Win32.ActiveCfg = Debug|Win32
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug Ansi|Win32.Build.0 = Debug|Win32
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug Ansi|x64.ActiveCfg = Debug|x64
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug Ansi|x64.Build.0 = Debug|x64
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug|Win32.ActiveCfg = Debug|Win32
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug|Win32.Build.0 = Debug|Win32
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug|x64.ActiveCfg = Debug|x64
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Debug|x64.Build.0 = Debug|x64
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Release|Win32.ActiveCfg = Release|Win32
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Release|Win32.Build.0 = Release|Win32
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Release|x64.ActiveCfg = Release|x64
-		{287B68D2-7381-4E78-AC72-79A49738228D}.Release|x64.Build.0 = Release|x64
 		{144CCC0E-0CE9-42D2-887B-4210DEAA2BC6}.Debug Ansi|Win32.ActiveCfg = Debug Ansi|Win32
 		{144CCC0E-0CE9-42D2-887B-4210DEAA2BC6}.Debug Ansi|Win32.Build.0 = Debug Ansi|Win32
 		{144CCC0E-0CE9-42D2-887B-4210DEAA2BC6}.Debug Ansi|x64.ActiveCfg = Debug Ansi|x64

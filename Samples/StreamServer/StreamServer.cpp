@@ -27,7 +27,7 @@ SECURITY_STATUS SelectServerCert(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubje
 	if (!pCertContext) // If we don't already have a certificate, try and select a likely looking one
 		status = CertFindServerCertificateByName(pCertContext, pszSubjectName); // Add "true" to look in user store, "false", or nothing looks in machine store
 	if (pCertContext)
-		wcout << "Server certificate found \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
+		wcout << "Server certificate found: " << GetCertName(pCertContext).c_str() << endl;
 	else
 	    wcout << "Server certificate could not be found or created" << endl;
 	// Uncomment the next 2 lines if you want to see details of the selected certificate
@@ -44,7 +44,7 @@ bool ClientCertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted)
 		cout << "A trusted";
 	else
 		cout << "An untrusted";
-	wcout << " client certificate was returned for \"" << GetCertName(pCertContext).c_str() << "\"" << endl;
+	wcout << " client certificate was returned:" << GetCertName(pCertContext).c_str() << endl;
 	return nullptr != pCertContext; // Meaning any certificate is fine, trusted or not, but there must be one
 }
 

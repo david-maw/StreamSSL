@@ -5,6 +5,8 @@ bool MatchCertificateName(PCCERT_CONTEXT pCertContext, LPCWSTR pszRequiredName);
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title);
 HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert);
 std::wstring GetCertName(PCCERT_CONTEXT pCertContext);
+std::wstring GetCertFriendlyName(PCCERT_CONTEXT pCertContext);
+std::wstring GetCertSubject(PCCERT_CONTEXT pCertContext);
 SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const LPCWSTR pszSubjectName = nullptr, bool fUserStore = true);
 SECURITY_STATUS CertFindFromIssuerList(PCCERT_CONTEXT & pCertContext, SecPkgContext_IssuerListInfoEx & IssuerListInfo, bool fUserStore = false);
 SECURITY_STATUS CertFindServerCertificateUI(PCCERT_CONTEXT & pCertContext, LPCWSTR pszSubjectName, bool fUserStore = false);

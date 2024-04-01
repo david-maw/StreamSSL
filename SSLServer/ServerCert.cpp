@@ -20,7 +20,7 @@ typedef struct _UNICODE_STRING {
 // Create credentials (a handle to a credential context) from a certificate
 SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
 {
-	DebugMsg("CreateCredentialsFromCertificate 0x%.8x '%S'.", pCertContext, GetCertName(pCertContext).c_str());
+	DebugMsg("In CreateCredentialsFromCertificate, certificate %S", GetCertName(pCertContext).c_str());
 	// Build Schannel credential structure.
 
 	TLS_PARAMETERS Tlsp = { 0 };

@@ -145,16 +145,16 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
- 		DebugMsg("Certificate %p '%S' is allowed to be used for server authentication.", pCertContext, pszFriendlyNameString);
+ 		DebugMsg("Certificate context 0x%p, %S is allowed to be used for server authentication.", pCertContext, GetCertName(pCertContext).c_str());
 		if (!CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, pszNameString, _countof(pszNameString)))
 			DebugMsg("CertGetNameString failed getting subject name.");
 		else if (!MatchCertificateName(pCertContext, pszSubjectName))  //  (_tcscmp(pszNameString, pszSubjectName))
-			DebugMsg("Certificate %p has wrong subject name.", pCertContext);
+			DebugMsg("Certificate 0x%p has wrong subject name.", pCertContext);
 		else if (CertCompareCertificateName(X509_ASN_ENCODING, &pCertContext->pCertInfo->Subject, &pCertContext->pCertInfo->Issuer))
 		{
 			if (!hCertContextSaved)
 			{
-				DebugMsg("Self-signed certificate %p was found and saved in case it is needed.", pCertContext);
+				DebugMsg("Self-signed certificate 0x%p was found and saved in case it is needed.", pCertContext);
 				hCertContextSaved.attach(CertDuplicateCertificateContext(pCertContext));
 			}
 		}
@@ -167,20 +167,20 @@ SECURITY_STATUS CertFindServerCertificateByName(PCCERT_CONTEXT & pCertContext, L
 
 	if (pCertContext) // This means we exited after finding a perfect certificate
 	{
-		DebugMsg("Attaching context %p", pCertContext);
+		DebugMsg("Attaching context 0x%p", pCertContext);
 		hCertContext.attach(pCertContext);
 	}
 
 	if (hCertContextSaved && !hCertContext)
 	{	// We have a saved self-signed certificate and nothing better 
-		DebugMsg("Self-signed certificate %p was the best we had.", hCertContextSaved.get());
+		DebugMsg("Self-signed certificate 0x%p was the best we had.", hCertContextSaved.get());
 		hCertContext = std::move(hCertContextSaved);
 	}
 
 	if (hCertContext)
 	{
 		pCertContext = hCertContext.detach();
-		DebugMsg("CertFindServerCertificateByName returning context %p", pCertContext);
+		DebugMsg("CertFindServerCertificateByName returning context 0x%p", pCertContext);
 	}
 	else
 	{
@@ -248,13 +248,12 @@ SECURITY_STATUS CertFindClientCertificate(PCCERT_CONTEXT & pCertContext, const L
 			DebugMsg("CertGetNameString failed getting friendly name.");
 			continue;
 		}
-		DebugMsg("Certificate '%S' is allowed to be used for client authentication.", pszFriendlyNameString);
 		if (!CertGetNameString(pCertContextCurrent, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, pszNameString, _countof(pszNameString)))
 		{
 			DebugMsg("CertGetNameString failed getting subject name.");
 			continue;
 		}
-		DebugMsg("   Subject name = %S.", pszNameString);
+		DebugMsg("Certificate %S is allowed to be used for client authentication.", GetCertName(pCertContextCurrent).c_str());
 		// We must be able to access cert's private key
 		HCRYPTPROV_OR_NCRYPT_KEY_HANDLE hCryptProvOrNCryptKey = NULL;
 		BOOL fCallerFreeProvOrNCryptKey = FALSE;
@@ -654,8 +653,8 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 		nullptr,
 		&pChainContext))
 	{
-		Status = GetLastError();
-		DebugMsg("Error %#x returned by CertGetCertificateChain!", Status);
+		Status = HRESULT_FROM_WIN32(GetLastError());
+		DebugHresult("Error returned by CertGetCertificateChain,", Status);
 		goto cleanup;
 	}
 
@@ -677,7 +676,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 		&PolicyStatus))
 	{
 		Status = HRESULT_FROM_WIN32(GetLastError());
-		DebugMsg("Error %#x returned by CertVerifyCertificateChainPolicy!", Status);
+		DebugHresult("Error returned by CertVerifyCertificateChainPolicy,", Status);
 		goto cleanup;
 	}
 
@@ -688,7 +687,7 @@ HRESULT CertTrusted(PCCERT_CONTEXT pCertContext, const bool isClientCert)
 		if (PolicyStatus.dwError == CERT_E_UNTRUSTEDROOT)
 			DebugMsg("CertVerifyCertificateChainPolicy reported an untrusted root certificate");
 		else
-			DebugMsg("PolicyStatus error %#x returned by CertVerifyCertificateChainPolicy!", PolicyStatus.dwError);
+			DebugHresult("PolicyStatus error returned by CertVerifyCertificateChainPolicy", PolicyStatus.dwError);
 		goto cleanup;
 	}
 
@@ -704,6 +703,20 @@ cleanup:
 // Helper function to return the friendly name of a certificate so it can be showed to a human 
 std::wstring GetCertName(PCCERT_CONTEXT pCertContext)
 {
+	if (pCertContext == nullptr)
+		return L"<null>";
+	std::wstring certSubject(GetCertSubject(pCertContext));
+	std::wstring certFriendlyName(GetCertFriendlyName(pCertContext));
+	std::wstring certName;
+	if (certFriendlyName != certSubject)
+		certName = std::wstring(L"Name=\"") + certFriendlyName + L"\", ";
+	certName.append(std::wstring(L"SN=\"") + certSubject + L"\"");
+	return certName;
+}
+
+// Helper function to return the friendly name of a certificate so it can be showed to a human 
+std::wstring GetCertFriendlyName(PCCERT_CONTEXT pCertContext)
+{
 	std::wstring certName;
 	certName.resize(128);
   auto good = CertGetNameString(pCertContext, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, nullptr, &certName[0], static_cast<DWORD>(certName.capacity()));
@@ -716,6 +729,20 @@ std::wstring GetCertName(PCCERT_CONTEXT pCertContext)
 		return L"<unknown>";
 }
 
+// Helper function to return the subject name of a certificate so it can be showed to a human 
+std::wstring GetCertSubject(PCCERT_CONTEXT pCertContext)
+{
+	std::wstring certName;
+	certName.resize(128);
+	auto good = CertGetNameString(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, &certName[0], static_cast<DWORD>(certName.capacity()));
+	if (good)
+	{
+		certName.resize(certName.find(L'\0')); // throw away characters after null
+		return certName;
+	}
+	else
+		return L"<unknown>";
+}
 // Display a UI with the certificate info and also write it to the debug output
 HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 {

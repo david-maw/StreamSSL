@@ -1,12 +1,11 @@
 #include "pch.h"
-#include "framework.h"
 
 #include "Utilities.h"
 #include "AppVersion.h"
 
-#include <atlconv.h>
-#include <stdarg.h>  // For va_start, etc.
+#include <algorithm>
 #include <memory>    // For std::unique_ptr
+#include <string>
 
 // General purpose functions
 
@@ -69,7 +68,7 @@ std::wstring GetCurrentUserName()
 std::wstring WinErrorMsg(int nErrorCode)
 {
 	std::wstring theMsg;
-	constexpr int MaxMsgLen = 100;
+	constexpr int MaxMsgLen = 200;
 	theMsg.resize(MaxMsgLen); // Reserve enough space to allow the message to fit inside the string
 	try
 	{
@@ -127,18 +126,72 @@ void SetThreadName(std::string const &threadName, DWORD dwThreadID)
 	}
 }
 
-void DebugMsg(const CHAR* pszFormat, ...)
+void DebugEndMsg()
+{
+	OutputDebugStringA("\n");
+}
+
+void DebugEndMsg(const CHAR* pszFormat, ...)
+{
+	va_list arglist;
+	va_start(arglist, pszFormat);
+	CHAR buf[1024];
+	StringCchVPrintfA(buf, _countof(buf), pszFormat, arglist);
+	va_end(arglist);
+	OutputDebugStringA(buf);
+	DebugEndMsg();
+}
+
+void DebugContinueMsg(const CHAR* pszFormat, ...)
 {
 	if (debug)
 	{
 		CHAR buf[1024];
-		StringCchPrintfA(buf, sizeof(buf) / sizeof(CHAR), "(%lu): ", GetCurrentThreadId());
 		va_list arglist;
 		va_start(arglist, pszFormat);
-		StringCchVPrintfA(&buf[strlen(buf)], sizeof(buf) / sizeof(CHAR), pszFormat, arglist);
+		StringCchVPrintfA(buf, _countof(buf), pszFormat, arglist);
 		va_end(arglist);
-		StringCchCatA(buf, sizeof(buf) / sizeof(CHAR), "\n");
 		OutputDebugStringA(buf);
+	}
+}
+void DebugBeginMsg()
+{
+	if (debug)
+	{
+		CHAR buf[20];
+		StringCchPrintfA(buf, _countof(buf), "(%lu): ", GetCurrentThreadId());
+		OutputDebugStringA(buf);
+	}
+}
+
+void DebugBeginMsg(const CHAR* pszFormat, ...)
+{
+	if (debug)
+	{
+		DebugBeginMsg();
+
+		va_list arglist;
+		va_start(arglist, pszFormat);
+		CHAR buf[1024];
+		StringCchVPrintfA(buf, _countof(buf), pszFormat, arglist);
+		va_end(arglist);
+		OutputDebugStringA(buf);
+	}
+}
+
+void DebugMsg(const CHAR* pszFormat, ...)
+{
+	if (debug)
+	{
+		DebugBeginMsg();
+		va_list arglist;
+		va_start(arglist, pszFormat);
+		CHAR buf[1024];
+		StringCchVPrintfA(buf, _countof(buf), pszFormat, arglist);
+		//DebugContinueMsg(pszFormat, arglist);
+		va_end(arglist);
+		OutputDebugStringA(buf);
+		DebugEndMsg();
 	}
 }
 
@@ -157,7 +210,65 @@ void DebugMsg(const WCHAR* pszFormat, ...)
 	}
 }
 
+void DebugHresult(const char* msg, HRESULT hr)
+{
+	if (debug)
+	{
+		char buf[1024];
+		StringCchPrintfA(buf, _countof(buf), "(%lu): %s returned % #x (% S)\n", GetCurrentThreadId(), msg, hr, WinErrorMsg(hr).c_str());
+		OutputDebugStringA(buf);
+	}
+}
 
+void DebugHresult(const WCHAR* msg, HRESULT hr)
+{
+	if (debug)
+	{
+		WCHAR buf[1024];
+		StringCchPrintfW(buf, _countof(buf), L"(%lu): %s returned % #x (% s)\n", GetCurrentThreadId(), msg, hr, WinErrorMsg(hr).c_str());
+		OutputDebugStringW(buf);
+	}
+}
+
+std::string HexDigits(const void* const buf, size_t len)
+{
+	CHAR rgbDigits[] = "0123456789abcdef";
+	char formattedText[100];
+	const auto* buffer = static_cast<const byte*>(buf);
+	char formattedTextIndex = 0;
+
+	int length = std::clamp((int)len, 0, 16);
+
+	formattedText[formattedTextIndex++] = ' ';
+	formattedText[formattedTextIndex++] = ':';
+	formattedText[formattedTextIndex++] = ' ';
+
+	for (int i = 0; i < length; i++) // step through each hexade
+	{
+		formattedText[formattedTextIndex++] = rgbDigits[buffer[i] >> 4];
+		formattedText[formattedTextIndex++] = rgbDigits[buffer[i] & 0x0f];
+		formattedText[formattedTextIndex++] = ' ';
+		if (i == 7 && length > 8)
+		{
+			formattedText[formattedTextIndex++] = ':';
+			formattedText[formattedTextIndex++] = ' ';
+		}
+	}
+	if (false)
+	{
+		// Representation as ASCII characters
+		formattedText[formattedTextIndex++] = ' ';
+		formattedText[formattedTextIndex++] = '\"';
+		for (int i = 0; i < length; i++)
+		{
+			formattedText[formattedTextIndex++] = (buffer[i] < 32 || buffer[i] > 126) ? '.' : buffer[i];
+		}
+		formattedText[formattedTextIndex++] = '\"';
+	}	
+	formattedText[formattedTextIndex++] = 0;
+	std::string  res(formattedText);
+	return res;
+}
 
 static void PrintHexDumpActual(size_t length, const void * const buf, const bool verbose)
 {
@@ -173,7 +284,7 @@ static void PrintHexDumpActual(size_t length, const void * const buf, const bool
 	{
 		count = (length > 16) ? 16 : length;
 
-		sprintf_s(rgbLine, sizeof(rgbLine), "%4Ix  ", index);
+		sprintf_s(rgbLine, sizeof(rgbLine), "%4Ix: ", index);
 		char cbLine = 6;
 
 		for (i = 0; i < count; i++)

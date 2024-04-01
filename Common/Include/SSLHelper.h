@@ -1,5 +1,4 @@
 #pragma once
-
 class CSSLHelper
 {
 private:
@@ -18,7 +17,7 @@ public:
 	~CSSLHelper() = default;
 	// Max length of handshake data buffer
 	void TraceHandshake();
-	static void TracePacket(const void * const Ptr, const int MaxBufBytes);
+	static int TracePacket(const void * const Ptr, const int MaxBufBytes);
 	// Is this packet a complete client initialize packet
 	bool IsClientInitialize() const;
 	// Get SNI provided hostname

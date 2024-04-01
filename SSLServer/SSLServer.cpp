@@ -221,6 +221,7 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 	}
 	else
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
+	DebugHresult("Exit DecryptAndHandleConcatenatedShutdownMessage", scRet);
 	return scRet;
 }
 
@@ -278,7 +279,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 		}
 		DebugMsg(" ");
 		DebugMsg("Received %d encrypted bytes from client", err);
-		PrintHexDump(err, (CHAR*)readPtr + readBufferBytes);
+		CSSLHelper::TracePacket((CHAR*)readPtr + readBufferBytes, err);
 		readBufferBytes += err;
 
 		Buffers[0].pvBuffer = readPtr;
@@ -340,7 +341,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	}
 	else
 	{
-		DebugMsg("Couldn't decrypt, error %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
+		DebugHresult("Could not decrypt message from client",scRet);
 		
 		readBufferBytes = 0; // Assume they have all been consumed
 		return SOCKET_ERROR;
@@ -445,7 +446,7 @@ int CSSLServer::Send(LPCVOID lpBuf, const size_t Len)
 
 	if (FAILED(scRet))
 	{
-		DebugMsg("EncryptMessage failed with %#x", scRet);
+		DebugHresult("EncryptMessage failed", scRet);
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}
@@ -523,7 +524,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			if (err == SOCKET_ERROR || err == 0)
 			{
 				if (err == 0)
-					DebugMsg("Recv failed, returned 0");
+					DebugMsg("Recv failed, returned a length of 0");
 				else if (ERROR_TIMEOUT == m_SocketStream->GetLastError())
 					DebugMsg("Recv timed out");
 				else if (WSA_IO_PENDING == m_SocketStream->GetLastError())
@@ -550,7 +551,7 @@ bool CSSLServer::SSPINegotiateLoop()
 					scRet = GetCredHandleFor(serverName, SelectServerCert, &hServerCreds);
 					if (FAILED(scRet))
 					{
-						DebugMsg("GetCredHandleFor Failed with error code %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
+						DebugHresult("GetCredHandleFor Failed,", scRet);
 						m_LastError = scRet;
 						return false;
 					}
@@ -620,8 +621,7 @@ bool CSSLServer::SSPINegotiateLoop()
 				{
 					DebugMsg(" ");
 					DebugMsg("Send %d handshake bytes to client", OutBuffers[0].cbBuffer);
-					CSSLHelper SSLHelper((const byte*)OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
-					SSLHelper.TraceHandshake();
+					CSSLHelper::TracePacket(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 				}
 
 				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -642,7 +642,7 @@ bool CSSLServer::SSPINegotiateLoop()
 				HRESULT hr = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext);
 
 				if (FAILED(hr))
-					DebugMsg("Couldn't get client certificate, hr=%#x", hr);
+					DebugHresult("Couldn't get client certificate", hr);
 				else
 				{
 					DebugMsg("Client Certificate returned");
@@ -715,7 +715,7 @@ bool CSSLServer::SSPINegotiateLoop()
 	} // while loop
 
 	// Something is wrong, we exited the loop abnormally
-	DebugMsg("Unexpected scRet value %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
+	DebugMsg("Unexpected scRet value from AcceptSecurityContext caused loop exit", scRet);
 	m_LastError = scRet;
 	return false;
 }

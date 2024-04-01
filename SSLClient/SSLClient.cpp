@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "framework.h"
 
 typedef struct _UNICODE_STRING {
 	USHORT Length;
@@ -10,6 +9,7 @@ typedef struct _UNICODE_STRING {
 #include <schannel.h>
 #include "SSLClient.h"
 #include "Utilities.h"
+#include "SSLHelper.h"
 #include "ActiveSock.h"
 #include "SecurityHandle.h"
 #include "CertHelper.h"
@@ -60,7 +60,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 	hr = SSPINegotiateLoop(ServerName);
 	if (FAILED(hr))
 	{
-		DebugMsg("Couldn't connect");
+		DebugHresult("Couldn't connect", hr);
 		return hr;
 	}
 
@@ -70,7 +70,7 @@ HRESULT CSSLClient::Initialize(LPCWSTR ServerName, const void * const lpBuf, con
 
 	if (FAILED(hr))
 	{
-		DebugMsg("Couldn't get Sizes, hr=%#x", hr);
+		DebugHresult("Couldn't get Sizes,", hr);
 		return hr;
 	}
 
@@ -208,9 +208,8 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 				DebugMsg("Recv failed: %ld", m_SocketStream->GetLastError());
 			return SOCKET_ERROR;
 		}
-		DebugMsg(" ");
-		DebugMsg("Received %d bytes of ciphertext from server", err);
-		if (false) PrintHexDump(err, (CHAR*)readPtr + readBufferBytes);
+		DebugMsg("In RecvPartialEncrypted, received %d bytes of ciphertext from server", err);
+		CSSLHelper::TracePacket((byte*)readPtr + readBufferBytes, err);
 		readBufferBytes += err;
 
 		Buffers[0].pvBuffer = readPtr;
@@ -229,14 +228,14 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 		DebugMsg("Decrypted message from server.");
 	else if (scRet == SEC_I_CONTEXT_EXPIRED)
 	{
-		DebugMsg("Server signalled end of session");
+		DebugMsg("Server signaled end of session");
 		m_encrypting = false;
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}
 	else
 	{
-		DebugMsg("Couldn't decrypt data from server, error %lx (%S)", scRet, WinErrorMsg(scRet).c_str());
+		DebugHresult("Couldn't decrypt data from server,", scRet);
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}
@@ -374,27 +373,27 @@ int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 
 	scRet = g_pSSPI->EncryptMessage(m_hContext.getunsaferef(), 0, &Message, 0);
 
-	DebugMsg(" ");
-	DebugMsg("Plaintext message has %d bytes", Len);
+	DebugMsg("In Send, plaintext message has %d bytes", Len);
 	if (false) PrintHexDump(Len, lpBuf);
 
 	if (FAILED(scRet))
 	{
-		DebugMsg("EncryptMessage failed with %#x", scRet);
+		DebugHresult("EncryptMessage failed,", scRet);
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}
 
+	DebugMsg("CSSLClient::Send %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+
 	err = m_SocketStream->Send(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	m_LastError = 0;
-
-	DebugMsg("CSSLClient::Send %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
-	if (false) PrintHexDump(static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer, writeBuffer);
 	if (err == SOCKET_ERROR)
 	{
-		DebugMsg("CSSLClient::Send failed: %ld", m_SocketStream->GetLastError());
+		DebugHresult("CSSLClient::Send failed: %ld", HRESULT_FROM_WIN32(m_SocketStream->GetLastError()));
 		return SOCKET_ERROR;
 	}
+	else
+		CSSLHelper::TracePacket(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
 	return static_cast<int>(Len);
 }
 
@@ -431,7 +430,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 	OutBuffer.pBuffers = OutBuffers;
 	OutBuffer.ulVersion = SECBUFFER_VERSION;
 
-	scRet = g_pSSPI->InitializeSecurityContext(
+		scRet = g_pSSPI->InitializeSecurityContext(
 		m_ClientCreds.getunsaferef(), // the parameter is not const correct so we just have to trust it
 		nullptr,
 		const_cast<SEC_WCHAR *>(ServerName),
@@ -445,15 +444,15 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 		&dwSSPIFlags,
 		&tsExpiry);
 
-	if (scRet != SEC_I_CONTINUE_NEEDED)
-	{
-		DebugMsg("**** Error %#x returned by InitializeSecurityContext (1)", scRet);
-		return scRet;
-	}
+	DebugHresult("InitializeSecurityContext initial call", scRet);
+
+		if (scRet != SEC_I_CONTINUE_NEEDED)
+			return scRet;
 
 	// Send response to server if there is one.
 	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
 	{
+		DebugMsg("Sending %d bytes of handshake data", OutBuffers[0].cbBuffer);
 		cbData = m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 		if ((cbData == SOCKET_ERROR) || (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer))
 		{
@@ -466,14 +465,9 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 				return SEC_E_INTERNAL_ERROR;
 		}
 
+		DebugMsg(""); // Blank line to delimit new message
 		DebugMsg("%d bytes of handshake data sent", cbData);
-
-		if (false)
-		{
-			PrintHexDump(cbData, OutBuffers[0].pvBuffer);
-			DebugMsg("\n");
-		}
-
+		CSSLHelper::TracePacket(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
 		// Free output buffer.
 		g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
 		OutBuffers[0].pvBuffer = nullptr;
@@ -483,7 +477,6 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 	DWORD           dwSSPIOutFlags;
 	DWORD           cbIoBuffer;
 	BOOL            fDoRead;
-
 
 	cbIoBuffer = 0;
 
@@ -502,14 +495,58 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 		// Read data from server.
 		//
 
+		DWORD remainingPacketLength = 0;
+
 		if (0 == cbIoBuffer || scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{
 			if (fDoRead)
 			{
-				cbData = m_SocketStream->Recv(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
+				if (false) // Set true to read one packet at a time for ease of debugging
+				{
+					if (0 == cbIoBuffer) // try and read a single message to make debugging a little easier
+					{
+						cbData = m_SocketStream->Recv(readBuffer, 5, 5); // Read the packet Header
+						if (cbData == 5)
+						{
+							remainingPacketLength = ((UINT8)readBuffer[3] << 8) + (UINT8)readBuffer[4];
+							cbData = m_SocketStream->Recv(readBuffer + 5, remainingPacketLength); // concatenate the variable part of the message
+							if (cbData > 0)
+							{
+								remainingPacketLength -= cbData;
+								cbData += 5; // add the packet header bytes in
+								if (remainingPacketLength != 0)
+									DebugMsg("Partial packet read, cbIoBuffer = %d, remainingPacketLength = %d", cbIoBuffer, remainingPacketLength);
+							}
+						}
+						else
+						{
+							DebugHresult("**** Error reading packet header from server ", HRESULT_FROM_WIN32(WSAGetLastError()));
+							scRet = SEC_E_INTERNAL_ERROR;
+							break;
+						}
+					}
+					else if (remainingPacketLength > 0) // read the remainder of a partial message
+					{
+						if (remainingPacketLength > sizeof(readBuffer) - cbIoBuffer)
+							cbData = m_SocketStream->Recv(readBuffer + cbIoBuffer, remainingPacketLength);
+						if (cbData > 0)
+						{
+							remainingPacketLength -= cbData;
+						}
+					}
+					else
+					{
+						DebugMsg("**** Error reading single packet");
+						scRet = SEC_E_INTERNAL_ERROR;
+						break;
+					}
+				}
+				else
+					cbData = m_SocketStream->Recv(readBuffer + cbIoBuffer, sizeof(readBuffer) - cbIoBuffer);
+
 				if (cbData == SOCKET_ERROR)
 				{
-					DebugMsg("**** Error %d reading data from server", WSAGetLastError());
+					DebugHresult("**** Error reading data from server ", HRESULT_FROM_WIN32(WSAGetLastError()));
 					scRet = SEC_E_INTERNAL_ERROR;
 					break;
 				}
@@ -520,14 +557,16 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 					break;
 				}
 
+				DebugMsg(""); // Blank line to delimit new message
 				DebugMsg("%d bytes of handshake data received", cbData);
 
-				if (debug)
+				if (cbIoBuffer > 0)
 				{
-					PrintHexDump(cbData, readBuffer + cbIoBuffer);
-					DebugMsg("\n");
+					DebugMsg("Retracing Previous Packet - additional data received");
+					CSSLHelper::TracePacket(readBuffer, cbIoBuffer + cbData);
 				}
-
+				else
+					CSSLHelper::TracePacket(readBuffer, cbData);
 				cbIoBuffer += cbData;
 			}
 			else
@@ -587,6 +626,8 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 			&dwSSPIOutFlags,
 			&tsExpiry);
 
+		DebugHresult("InitializeSecurityContext in loop", scRet);
+
 		//
 		// If InitializeSecurityContext was successful (or if the error was 
 		// one of the special extended ones), send the contends of the output
@@ -606,19 +647,23 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 			if (FAILED(hr))
 			{
 				if (hr == SEC_E_INVALID_HANDLE)
-					DebugMsg("QueryContextAttributes for cert returned SEC_E_INVALID_HANDLE, which is normal");
+					;//DebugMsg("QueryContextAttributes for cert returned SEC_E_INVALID_HANDLE, which usually means we don't have a server certificate yet");
 				else
-					DebugMsg("Couldn't get server certificate, hr=%#x", hr);
+					DebugHresult("Couldn't get server certificate,", hr);
 			}
 			else
 			{
-				DebugMsg("Server Certificate returned");
 				ServerCertNameMatches = MatchCertificateName(hServerCertContext.get(), ServerName);
 				hr = CertTrusted(hServerCertContext.get(), false);
 				ServerCertTrusted = hr == S_OK;
-				bool IsServerCertAcceptable = ServerCertAcceptable == nullptr;
-				if (!IsServerCertAcceptable)
-					IsServerCertAcceptable = ServerCertAcceptable(hServerCertContext.get(), ServerCertTrusted, ServerCertNameMatches);
+				bool IsServerCertAcceptable = ServerCertAcceptable == nullptr // by not providing a routine the user says any certificate is acceptable 
+					|| ServerCertAcceptable(hServerCertContext.get(), ServerCertTrusted, ServerCertNameMatches); // call the user provided function to validate the certificate
+				DebugBeginMsg();
+				if (IsServerCertAcceptable) DebugContinueMsg("Acceptable"); else DebugContinueMsg("Unacceptable");
+				DebugContinueMsg(" server certificate returned, %S", GetCertName(hServerCertContext.get()).c_str());
+				if (ServerCertTrusted) DebugContinueMsg(", trusted"); else DebugContinueMsg(", untrusted");
+				if (ServerCertNameMatches) DebugContinueMsg(", name matches"); else DebugContinueMsg(", name does not match");
+				DebugEndMsg();
 				if (!IsServerCertAcceptable)
 					return SEC_E_UNKNOWN_CREDENTIALS;
 			}
@@ -638,13 +683,9 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 					return SEC_E_INTERNAL_ERROR;
 				}
 
+				DebugMsg(""); // Blank line to delimit new message
 				DebugMsg("%d bytes of handshake data sent", cbData);
-
-				if (true)
-				{
-					PrintHexDump(cbData, OutBuffers[0].pvBuffer);
-					DebugMsg("\n");
-				}
+				CSSLHelper::TracePacket(OutBuffers[0].pvBuffer, cbData);
 
 				// Free output buffer.
 				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -688,6 +729,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 				readBufferBytes = InBuffers[1].cbBuffer;
 
 				DebugMsg("%d bytes of app data was bundled with handshake data", readBufferBytes);
+				CSSLHelper::TracePacket(readBuffer, readBufferBytes);
 			}
 			else
 			{
@@ -708,7 +750,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 
 		if (FAILED(scRet))
 		{
-			DebugMsg("**** Error %#x returned by InitializeSecurityContext (2)", scRet);
+			DebugHresult("**** Error returned by InitializeSecurityContext (2)", scRet);
 			break;
 		}
 
@@ -723,8 +765,10 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 			//
 			// The server has requested client authentication and
 			// the credential we supplied didn't contain an acceptable 
-			   // client certificate.
+			// client certificate.
 			//
+
+			DebugMsg("Server requires a client certificate, finding one");
 
 			// 
 			// This function will read the list of trusted certificate
@@ -747,13 +791,14 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 			// Go around again.
 			if (scRet == SEC_E_OK)
 			{
+				DebugMsg("Client credentials obtained successfully");
 				fDoRead = FALSE;
 				scRet = SEC_I_CONTINUE_NEEDED;
 				continue;
 			}
 			else
 			{
-				DebugMsg("**** Error %08x returned by GetNewClientCredentials", scRet);
+				DebugHresult("**** Error returned by GetNewClientCredentials", scRet);
 				break;
 			}
 		}
@@ -784,6 +829,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName)
 	else
 		m_encrypting = true;
 
+	DebugHresult("Exit SSPINegotiateLoop", scRet);
 	return scRet;
 }
 
@@ -863,15 +909,14 @@ HRESULT CSSLClient::DisconnectSSL()
 		& dwSSPIFlags,
 		& tsExpiry);
 
+	DebugHresult("InitializeSecurityContext initial call", Status);
+
 	// We expect SEC_E_OK here, though in theory it could return SEC_I_CONTEXTEXPIRED or even
 	// SEC_I_CONTINUE_NEEDED to indicate that additional shutdown messages are needed. However
 	// we know SSL shuts down with a single message so it is ok just to expect SEC_E_OK.
 
 	if (FAILED(Status))
-	{
-		DebugMsg("**** Error 0x%x returned by AcceptSecurityContext", Status);
 		return Status;
-	}
 
 	pbMessage = (PBYTE)OutBuffers[0].pvBuffer;
 	cbMessage = OutBuffers[0].cbBuffer;
@@ -948,12 +993,14 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 		Status = SelectClientCertificate(pCertContext, &IssuerListInfo, true);
 	if (FAILED(Status))
 	{
-		DebugMsg("Error 0x%08x selecting client certificate", Status);
+		DebugHresult("Error selecting client certificate", Status);
 		return Status;
 	}
 	hCertContext.attach(pCertContext);
 	if (!hCertContext)
 		DebugMsg("No suitable client certificate is available to return to the server");
+	else
+		DebugMsg("Returning client certificate to the server, %S", GetCertName(pCertContext).c_str());
 
 	Status = CreateCredentialsFromCertificate(hCreds.set(), hCertContext.get());
 
@@ -982,6 +1029,7 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 
 SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
 {
+	DebugMsg("In CreateCredentialsFromCertificate, certificate %S", GetCertName(pCertContext).c_str());
 	// Build Schannel credential structure.
 
 	TLS_PARAMETERS Tlsp = { 0 };
@@ -1013,13 +1061,13 @@ SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds
 		phCreds,                // (out) Cred Handle
 		&tsExpiry);             // (out) Lifetime (optional)
 
+	DebugHresult("In CreateCredentialsFromCertificate, AcquireCredentialsHandle call", Status);
+
 	if (Status != SEC_E_OK)
 	{
 		DWORD dw = ::GetLastError();
 		if (Status == SEC_E_UNKNOWN_CREDENTIALS)
 			DebugMsg("**** Error: 'Unknown Credentials' returned by AcquireCredentialsHandle. LastError=%d", dw);
-		else
-			DebugMsg("**** Error 0x%x returned by AcquireCredentialsHandle. LastError=%d.", Status, dw);
 		return Status;
 	}
 

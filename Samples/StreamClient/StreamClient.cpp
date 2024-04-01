@@ -24,7 +24,7 @@ bool CertAcceptable(PCCERT_CONTEXT pCertContext, const bool trusted, const bool 
 		cout << "A trusted";
 	else
 		cout << "An untrusted";
-	wcout << " server certificate called \"" << GetCertName(pCertContext).c_str() << "\" was returned with a name "; // wcout for WCHAR* handling
+	wcout << " server certificate SN=\"" << GetCertSubject(pCertContext).c_str() << "\" was returned with a name "; // wcout for WCHAR* handling
 	if (matchingName)
 		cout << "match" << endl;
 	else
@@ -87,7 +87,7 @@ SECURITY_STATUS SelectClientCertificate(PCCERT_CONTEXT & pCertContext, SecPkgCon
 // 			Status = CertFindClientCertificate(pCertContext); // Select any valid certificate
 	}
 	if (pCertContext)
-		wcout << ", selected name: " << GetCertName(pCertContext).c_str() << endl; // wcout for WCHAR* handling
+		wcout << ", selected cert: " << GetCertName(pCertContext).c_str() << endl; // wcout for WCHAR* handling
 	else
 		cout << ", no certificate found." << endl;
 	if (g_ShowCertInfo && debug && pCertContext)
