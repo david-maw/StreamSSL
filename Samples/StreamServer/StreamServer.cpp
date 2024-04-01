@@ -206,8 +206,8 @@ int _tmain(int argc, TCHAR* argv[])
 		CloseHandle(pi.hThread);
 	}
 	// Run additional copies, do not wait, and let the hostname default
-	PROCESS_INFORMATION pi1 = {};
-	RunClient(L"", &pi1); 
+	//PROCESS_INFORMATION pi1 = {};
+	//RunClient(L"", &pi1); 
 	//PROCESS_INFORMATION pi2 = {};
 	//RunClient(L"", &pi2);
 	//PROCESS_INFORMATION pi3 = {};

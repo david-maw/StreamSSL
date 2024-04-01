@@ -24,7 +24,7 @@ SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CON
 	// Build Schannel credential structure.
 
 	TLS_PARAMETERS Tlsp = { 0 };
-	Tlsp.grbitDisabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_3PLUS;
+	Tlsp.grbitDisabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_1 | SP_PROT_TLS1_3PLUS;
 
 	SCH_CREDENTIALS Schc = { 0 };
 	Schc.dwVersion = SCH_CREDENTIALS_VERSION;

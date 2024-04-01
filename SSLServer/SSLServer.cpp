@@ -32,7 +32,7 @@ CSSLServer* CSSLServer::Create(SOCKET s, CListener* Listener)
 	auto PassiveSock = std::make_unique<CPassiveSock>(s, Listener->m_StopEvent);
 	PassiveSock->SetSendTimeoutSeconds(10);
 	PassiveSock->SetRecvTimeoutSeconds(60);
-	std::unique_ptr<CSSLServer> SSLServer (new CSSLServer(PassiveSock.release())); // std::make_unique<CSSLServer>(PassiveSock.release());
+	std::unique_ptr<CSSLServer> SSLServer(new CSSLServer(PassiveSock.release())); // std::make_unique<CSSLServer>(PassiveSock.release());
 	SSLServer->m_Listener = Listener;
 	SSLServer->SelectServerCert = Listener->SelectServerCert;
 	SSLServer->ClientCertAcceptable = Listener->ClientCertAcceptable;
@@ -99,10 +99,10 @@ HRESULT CSSLServer::Initialize(const void * const lpBuf, const size_t Len)
 		{
 			std::wstring s(L"SSL handshake failed");
 			if (!IsUserAdmin())
-				s+=L", perhaps because the server is not running as administrator";
+				s += L", perhaps because the server is not running as administrator";
 			std::wcout << s << L". " << std::endl << WinErrorMsg(hr) << std::endl;
 		}
-	return hr == S_OK ? E_FAIL : hr; // Always return an error, because the handshake failed even if we don't know the details
+		return hr == S_OK ? E_FAIL : hr; // Always return an error, because the handshake failed even if we don't know the details
 	}
 
 	// Find out how big the header and trailer will be:
@@ -235,19 +235,19 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	//
 
-  SecBuffer Buffers[4];
-  Buffers[0].BufferType = SECBUFFER_EMPTY;
-  Buffers[1].BufferType = SECBUFFER_EMPTY;
-  Buffers[2].BufferType = SECBUFFER_EMPTY;
-  Buffers[3].BufferType = SECBUFFER_EMPTY;
+	SecBuffer Buffers[4];
+	Buffers[0].BufferType = SECBUFFER_EMPTY;
+	Buffers[1].BufferType = SECBUFFER_EMPTY;
+	Buffers[2].BufferType = SECBUFFER_EMPTY;
+	Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-  SecBufferDesc Message;
-  Message.ulVersion = SECBUFFER_VERSION;
+	SecBufferDesc Message;
+	Message.ulVersion = SECBUFFER_VERSION;
 	Message.cBuffers = 4;
 	Message.pBuffers = Buffers;
 
-  SECURITY_STATUS scRet;
-  if (readBufferBytes == 0)
+	SECURITY_STATUS scRet;
+	if (readBufferBytes == 0)
 		scRet = SEC_E_INCOMPLETE_MESSAGE;
 	else
 	{	// There is already data in the buffer, so process it first
@@ -263,7 +263,7 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
 	{
-    const int err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
+		const int err = m_SocketStream->Recv((CHAR*)readPtr + readBufferBytes, static_cast<int>(sizeof(readBuffer) - readBufferBytes - ((CHAR*)readPtr - &readBuffer[0])));
 		m_LastError = 0; // Means use the one from m_SocketStream
 		if ((err == SOCKET_ERROR) || (err == 0))
 		{
@@ -341,8 +341,8 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	}
 	else
 	{
-		DebugHresult("Could not decrypt message from client",scRet);
-		
+		DebugHresult("Could not decrypt message from client", scRet);
+
 		readBufferBytes = 0; // Assume they have all been consumed
 		return SOCKET_ERROR;
 	}
@@ -531,7 +531,7 @@ bool CSSLServer::SSPINegotiateLoop()
 					DebugMsg("Recv Overlapped operations will complete later");
 				else if (WSAECONNRESET == m_SocketStream->GetLastError())
 					DebugMsg("Recv failed, the socket was closed by the other host");
-				else 
+				else
 					DebugMsg("Recv failed: %d", m_SocketStream->GetLastError());
 				return false;
 			}
@@ -661,6 +661,19 @@ bool CSSLServer::SSPINegotiateLoop()
 				}
 			}
 
+			// For TLS 1.2 and earlier this is the end of the handshake. For TLS 1.3 it continues because the server will have sent a renegotiation request
+			SecPkgContext_ConnectionInfo ConnectionInfo{};
+			const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
+
+			if (qcaRet != SEC_E_OK)
+			{
+				DebugHresult("Couldn't get connection info", scRet);
+				return true;
+			}
+
+			bool Tls13 = (ConnectionInfo.dwProtocol & SP_PROT_TLS1_3_SERVER) == SP_PROT_TLS1_3_SERVER;
+			if (Tls13)
+				DebugMsg("TLS 1.3, expect to emit a renegotiate request disguised as encrypted user data");
 			// Now deal with the possibility that there were some data bytes tacked on to the end of the handshake
 			if (InBuffers[1].BufferType == SECBUFFER_EXTRA)
 			{
@@ -676,7 +689,7 @@ bool CSSLServer::SSPINegotiateLoop()
 			}
 			m_LastError = 0;
 			m_encrypting = true;
-			return true; // The normal exit
+			return true; // The normal exit 
 		}
 		else if (scRet == SEC_E_INCOMPLETE_MESSAGE)
 		{
