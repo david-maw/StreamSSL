@@ -1,6 +1,13 @@
 #include "pch.h"
 #include "framework.h"
 
+typedef struct _UNICODE_STRING {
+	USHORT Length;
+	USHORT MaximumLength;
+	PWSTR Buffer;
+} UNICODE_STRING, * PUNICODE_STRING;
+#define SCHANNEL_USE_BLACKLISTS
+#include <schannel.h>
 #include "SSLClient.h"
 #include "Utilities.h"
 #include "ActiveSock.h"
@@ -976,15 +983,21 @@ SECURITY_STATUS CSSLClient::GetNewClientCredentials()
 SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CONTEXT pCertContext)
 {
 	// Build Schannel credential structure.
-	SCHANNEL_CRED   SchannelCred = { 0 };
-	SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
+
+	TLS_PARAMETERS Tlsp = { 0 };
+	Tlsp.grbitDisabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_3PLUS;
+	
+	SCH_CREDENTIALS Schc = { 0 };
+	Schc.dwVersion = SCH_CREDENTIALS_VERSION;
 	if (pCertContext)
 	{
-		SchannelCred.cCreds = 1;
-		SchannelCred.paCred = &pCertContext;
+		Schc.cCreds = 1;
+		Schc.paCred = &pCertContext;
 	}
-	SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT;
-	SchannelCred.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
+	Schc.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
+	Schc.cTlsParameters = 1;
+	Schc.pTlsParameters = &Tlsp;
+
 
 	SECURITY_STATUS Status;
 	TimeStamp       tsExpiry;
@@ -994,7 +1007,7 @@ SECURITY_STATUS CSSLClient::CreateCredentialsFromCertificate(PCredHandle phCreds
 		const_cast<WCHAR*>(UNISP_NAME), // Name of package
 		SECPKG_CRED_OUTBOUND,   // Flags indicating use
 		nullptr,                   // Pointer to logon ID
-		&SchannelCred,          // Package specific data
+		&Schc,                  // Package specific data
 		nullptr,                   // Pointer to GetKey() func
 		nullptr,                   // Value to pass to GetKey()
 		phCreds,                // (out) Cred Handle
