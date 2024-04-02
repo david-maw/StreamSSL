@@ -22,8 +22,8 @@ using namespace std;
 // SSLClient (in the SSLClient.lib file) 
 int main()
 {
-	wstring HostName(L"www.google.com");  //(L"localhost"); 
-	int Port = 443;
+	wstring HostName(L"localhost"); 
+	int Port = 41000;
 
 	CEventWrapper ShutDownEvent;
 
