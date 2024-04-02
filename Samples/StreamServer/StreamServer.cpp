@@ -127,67 +127,101 @@ int _tmain(int argc, TCHAR* argv[])
 		std::wstring s;
 		char MsgText[100]; // Because the simple text messages we exchange are char not wchar
 		int len = 0;
-
-		string sentMsg("Hello from server");
-		cout << "A connection has been made, worker started, sending '" << sentMsg <<"'" << endl;
-		if ((len = StreamSock->Send(sentMsg.c_str(), sentMsg.length())) != (int)sentMsg.length())
-			cout << "Wrong number of characters sent" << endl;
-		if (len < 0)
+		
+		ShowDelay();
+		cout << "A connection has been made, worker started, awaiting a message from the client" << endl;
+		
+		try
 		{
-			if (StreamSock->GetLastError() == ERROR_FILE_NOT_ENCRYPTED)
-				cout << "Send cannot be used unless encrypting" << endl;
-			else
-				cout << "Send returned an error" << endl;
-		}
-		len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1);
-		if (len > 0)
-		{
+			len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1);
 			ShowDelay();
-			MsgText[len] = '\0'; // Terminate the string, for convenience
-			cout << "Received " << MsgText << endl;
-			// At this point the client is just waiting for a message or for the connection to close
-			cout << "Sending 'Goodbye from server' and listening for client messages" << endl;
-			StreamSock->Send("Goodbye from server", 19);
-			::Sleep(1000); // Give incoming messages chance to pile up
-			// Now loop receiving and decrypting messages until an error (probably SSL shutdown) is received
-			while ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) > 0)
+			if (len > 0)
 			{
 				MsgText[len] = '\0'; // Terminate the string, for convenience
-				ShowDelay();
-				cout << "Received '" << MsgText << "'" << endl;
-			}
-			if (StreamSock->GetLastError() == SEC_I_CONTEXT_EXPIRED)
-			{
-				cout << "Recv returned notification that SSL shut down" << endl;
-				// Now loop receiving any unencrypted messages until an error (probably socket shutdown) is received
-				StreamSock->SetRecvTimeoutSeconds(4);
-				while (true)
+				std::string expectedMsg("Hello from client");
+				std::string actualMsg(MsgText);
+				const auto strEnd = actualMsg.find_last_not_of("\n");
+				actualMsg.erase(strEnd+1);
+				if (expectedMsg == actualMsg)
+					cout << "Received '" << MsgText << "' as expected" << endl;
+				else
 				{
-					if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
-					{
-						if (len == SOCKET_ERROR && StreamSock->GetLastError() == ERROR_TIMEOUT)
-						{
-							// Just a timeout, it's ok to retry that, so just do so
-							ShowDelay();
-							cout << "Initial receive timed out, retrying" << endl;
-							if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
-								break;
-						}
-						else
-							break;
-					}
-					MsgText[len] = '\0'; // Terminate the string, for convenience
-					ShowDelay();
-					cout << "Received plaintext '" << MsgText << "'" << endl;
+					std::string errorReport("Received unexpected message '");
+					errorReport += actualMsg + "'";
+					StreamSock->Send(errorReport.c_str(), errorReport.size());
+					throw std::exception(errorReport.c_str());
 				}
-				ShowDelay();
-				ShowResult(len, StreamSock->GetLastError());
 			}
 			else
-				ShowResult(len, StreamSock->GetLastError());
+			{
+				cout << "Message receive error" << endl;
+			}
+
+			string sentMsg("Hello from server");
+			cout << "Sending '" << sentMsg << "'" << endl;
+			if ((len = StreamSock->Send(sentMsg.c_str(), sentMsg.length())) != (int)sentMsg.length())
+				cout << "Wrong number of characters sent" << endl;
+			if (len < 0)
+			{
+				if (StreamSock->GetLastError() == ERROR_FILE_NOT_ENCRYPTED)
+					cout << "Send cannot be used unless encrypting" << endl;
+				else
+					cout << "Send returned an error" << endl;
+			}
+			len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1);
+			if (len > 0)
+			{
+				ShowDelay();
+				MsgText[len] = '\0'; // Terminate the string, for convenience
+				cout << "Received '" << MsgText << "'" << endl;
+				// At this point the client is just waiting for a message or for the connection to close
+				cout << "Sending 'Goodbye from server' and listening for client messages" << endl;
+				StreamSock->Send("Goodbye from server", 19);
+				::Sleep(1000); // Give incoming messages chance to pile up
+				// Now loop receiving and decrypting messages until an error (probably SSL shutdown) is received
+				while ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) > 0)
+				{
+					MsgText[len] = '\0'; // Terminate the string, for convenience
+					ShowDelay();
+					cout << "Received '" << MsgText << "'" << endl;
+				}
+				if (StreamSock->GetLastError() == SEC_I_CONTEXT_EXPIRED)
+				{
+					cout << "Recv returned notification that SSL shut down" << endl;
+					// Now loop receiving any unencrypted messages until an error (probably socket shutdown) is received
+					StreamSock->SetRecvTimeoutSeconds(4);
+					while (true)
+					{
+						if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
+						{
+							if (len == SOCKET_ERROR && StreamSock->GetLastError() == ERROR_TIMEOUT)
+							{
+								// Just a timeout, it's ok to retry that, so just do so
+								ShowDelay();
+								cout << "Initial receive timed out, retrying" << endl;
+								if ((len = StreamSock->Recv(MsgText, sizeof(MsgText) - 1)) <= 0)
+									break;
+							}
+							else
+								break;
+						}
+						MsgText[len] = '\0'; // Terminate the string, for convenience
+						ShowDelay();
+						cout << "Received plaintext '" << MsgText << "'" << endl;
+					}
+					ShowDelay();
+					ShowResult(len, StreamSock->GetLastError());
+				}
+				else
+					ShowResult(len, StreamSock->GetLastError());
+			}
+			else
+				cout << "No response data received" << endl;
 		}
-		else
-			cout << "No response data received" << endl;
+		catch (const std::exception & ex)
+		{
+			cout << ex.what() << endl;
+		}
 		cout << "Exiting worker" << endl << endl;
 		cout << "Listening for client connections, press enter key to terminate." << endl << endl;
 		});
@@ -201,9 +235,10 @@ int _tmain(int argc, TCHAR* argv[])
 	{
 		cout << "Waiting on StreamClient to localhost" << endl;
 		WaitForSingleObject(pi.hProcess, INFINITE);
-		cout << "Client completed." << endl;
+		cout << "StreamClient to localhost completed." << endl << endl;
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
+		cout << "Still listening for additional client connections, press enter key to terminate." << endl << endl;
 	}
 	// Run additional copies, do not wait, and let the hostname default
 	//PROCESS_INFORMATION pi1 = {};
@@ -213,7 +248,7 @@ int _tmain(int argc, TCHAR* argv[])
 	//PROCESS_INFORMATION pi3 = {};
 	//RunClient(L"", &pi3);
 
-	cout << "Additional test clients initiated, press enter key to terminate server." << endl << endl;
+	//cout << "Additional test clients initiated, press enter key to terminate server." << endl << endl;
 #pragma warning(suppress: 6031) // Do not care about unchecked result
 	getchar();
 	Listener->EndListening();

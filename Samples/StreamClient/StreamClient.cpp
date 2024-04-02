@@ -158,12 +158,12 @@ int wmain(int argc, WCHAR * argv[])
 		{
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
-			cout << "Sending greeting" << endl;
 			std::string sentMsg("Hello from client");
+			cout << "Sending greeting '" << sentMsg << "'" << endl;
 			if (pSSLClient->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 				cout << "Wrong number of characters sent" << endl;
-			cout << "Sending second greeting" << endl;
 			sentMsg ="Hello again from client";
+			cout << "Sending second greeting '" << sentMsg << "'" << endl;
 			if (pSSLClient->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
@@ -180,22 +180,23 @@ int wmain(int argc, WCHAR * argv[])
 				pSSLClient->Disconnect(false);
 				// The TCP connection still exists and can be used to send messages, though
 				// this is rarely done, here's an example of doing it
-				cout << "Sending first unencrypted data message" << endl;
 				sentMsg = "First block of unencrypted data from client";
+				cout << "Sending first unencrypted data message '" << sentMsg << "'" << endl;
 				if (pActiveSock->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 					cout << "Wrong number of characters sent" << endl;
 				else
 				{
 					cout << "Sleeping before sending second unencrypted data message" << endl;
-					::Sleep(6000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
-					cout << "Sending second unencrypted data message" << endl;
+					::Sleep(1000); // Give the previous message time to arrive at the server, for the server socket to receive it and hand to the caller
+					::Sleep(4000); // Allow the next server-side receive to time out
 					sentMsg = "Second block of unencrypted data from client";
+					cout << "Sending second unencrypted data message '" << sentMsg << "'" << endl;
 					if (pActiveSock->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
 						cout << "Wrong number of characters sent" << endl;
 					else
 					{
 						cout << "Sleeping before sending termination to give the last message time to arrive" << endl;
-						::Sleep(3000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to to the caller
+						::Sleep(3000); // Give the previous message time to arrive at the server and for the server socket to receive it and hand to the caller
 					}
 				}
 			}

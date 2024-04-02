@@ -48,7 +48,7 @@ int main()
 				cout << "Wrong number of characters sent" << endl;
 			cout << "Listening for message from server" << endl;
 			int len = 0;
-			char Msg[22];
+			char Msg[100];
 			if (0 < (len = pSSLClient->Recv(Msg, sizeof(Msg))))
 			{
 				cout << "Received '" << string(Msg, len).c_str();
