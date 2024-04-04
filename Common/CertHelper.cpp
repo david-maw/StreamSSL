@@ -960,7 +960,7 @@ HRESULT ShowCertInfo(PCCERT_CONTEXT pCertContext, std::wstring Title)
 			// Show the results.
 
 			DebugMsg("The Property Content is");
-			PrintHexDump(cbData, pvData);
+			PrintFullHexDump(cbData, pvData);
 		}
 		else
 		{

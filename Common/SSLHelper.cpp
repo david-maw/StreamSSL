@@ -280,7 +280,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 								if (firstUnreconizedExtension)
 								{
 									DebugMsg("Some extensions are unrecognized, this is a dump beginning at the first one:");
-									PrintHexDump(BufEnd - BufPtr + 4, BufPtr-4, true);
+									PrintFullHexDump(BufEnd - BufPtr + 4, BufPtr-4);
 									firstUnreconizedExtension = false;
 								}
 								DebugBeginMsg("Extension Type %d has length %d", extensionType, extensionDataLength);
@@ -290,7 +290,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 							else if (extensionDataLength > 16)
 							{
 								DebugEndMsg(", data is:");
-								PrintHexDump(extensionDataLength, BufPtr, true);
+								PrintFullHexDump(extensionDataLength, BufPtr);
 							}
 							else if (extensionDataLength > 0)
 								DebugEndMsg("%s", HexDigits(BufPtr, extensionDataLength).c_str());

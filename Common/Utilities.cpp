@@ -1,3 +1,4 @@
+#include "Utilities.h"
 #include "pch.h"
 
 #include "Utilities.h"
@@ -321,14 +322,19 @@ static void PrintHexDumpActual(size_t length, const void * const buf, const bool
 	}
 }
 
+void PrintHexDump(const void *const buf, size_t length)
+{
+	if (debug) PrintHexDumpActual(length, buf, false);
+}
+
 void PrintHexDump(size_t length, const void * const buf)
 {
 	if (debug) PrintHexDumpActual(length, buf, false);
 }
 
-void PrintHexDump(size_t length, const void * const buf, const bool verbose)
+void PrintFullHexDump(size_t length, const void * const buf)
 {
-	if (debug) PrintHexDumpActual(length, buf, verbose);
+	if (debug) PrintHexDumpActual(length, buf, true);
 }
 
 bool IsUserAdmin()

@@ -10,8 +10,9 @@
 
 std::wstring string_format(const WCHAR* pszFormat, ...);
 std::wstring WinErrorMsg(int nErrorCode);
+void PrintHexDump(const void *const buf, size_t length);
 void PrintHexDump(size_t length, const void * const buf);
-void PrintHexDump(size_t length, const void * const buf, const bool verbose);
+void PrintFullHexDump(size_t length, const void * const buf);
 void SetThreadName(std::string const &threadName);
 void SetThreadName(std::string const &threadName, DWORD dwThreadID);
 void DebugBeginMsg();

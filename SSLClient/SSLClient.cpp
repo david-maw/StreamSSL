@@ -1053,7 +1053,7 @@ HRESULT CSSLClient::DisconnectSSL()
 		DebugMsg("Sending Close Notify. %d bytes of data sent", cbData);
 		if (true)
 		{
-			PrintHexDump(cbData, pbMessage, true);
+			PrintFullHexDump(cbData, pbMessage);
 			DebugMsg("\n");
 		}
 

@@ -208,7 +208,7 @@ SECURITY_STATUS CSSLServer::DecryptAndHandleConcatenatedShutdownMessage(SecBuffe
 		)
 	{
 		DebugMsg("Looks like a concatenated shutdown message and something else");
-		PrintHexDump(readBufferBytes, readPtr, true);
+		PrintFullHexDump(readBufferBytes, readPtr);
 		Message.pBuffers[0].cbBuffer = shutdownLen + headerLen;
 		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
 		if (scRet == SEC_I_CONTEXT_EXPIRED)
