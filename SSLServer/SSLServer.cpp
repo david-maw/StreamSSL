@@ -252,8 +252,8 @@ int CSSLServer::RecvEncrypted(void * const lpBuf, const size_t Len)
 	else
 	{	// There is already data in the buffer, so process it first
 		DebugMsg(" ");
-		DebugMsg("Using the saved %d bytes from client", readBufferBytes);
-		PrintHexDump(readBufferBytes, readPtr);
+		DebugMsg("Using the saved %d bytes from client to call DecryptAndHandleConcatenatedShutdownMessage, looks like:", readBufferBytes);
+		CSSLHelper::TracePacket(readPtr, readBufferBytes);
 		Buffers[0].pvBuffer = readPtr;
 		Buffers[0].cbBuffer = readBufferBytes;
 		Buffers[0].BufferType = SECBUFFER_DATA;
