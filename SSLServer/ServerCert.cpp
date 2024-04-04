@@ -84,14 +84,14 @@ SECURITY_STATUS GetCredHandleFor(std::wstring serverName, SelectServerCertType S
 	{
 		// There were no credentials stored for that host, create some and add them
 		PCCERT_CONTEXT pCertContext = nullptr;
-		SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
+		SECURITY_STATUS status = NTE_INTERNAL_ERROR;
 		if (SelectServerCert)
 		{
 			status = SelectServerCert(pCertContext, serverName.c_str());
 			if (FAILED(status))
 			{
 				DebugMsg("SelectServerCert returned an error = 0x%08x", status);
-				return SEC_E_INTERNAL_ERROR;
+				return NTE_INTERNAL_ERROR;
 			}
 		}
 		else
@@ -110,7 +110,7 @@ SECURITY_STATUS GetCredHandleFor(std::wstring serverName, SelectServerCertType S
 		else
 		{
 			DebugMsg("Failed handling server initialization, error = 0x%08x", status);
-			return SEC_E_INTERNAL_ERROR;
+			return NTE_INTERNAL_ERROR;
 		}
 	}
 	else // We already have credentials for this one

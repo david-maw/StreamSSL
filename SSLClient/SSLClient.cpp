@@ -555,7 +555,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer *pI
 			if (cbData == SOCKET_ERROR)
 				return CRYPT_E_FILE_ERROR;
 			else
-				return SEC_E_INTERNAL_ERROR;
+				return NTE_INTERNAL_ERROR;
 		}
 
 		DebugMsg(""); // Blank line to delimit new message
@@ -613,7 +613,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer *pI
 						else
 						{
 							DebugHresult("**** Error reading packet header from server ", HRESULT_FROM_WIN32(WSAGetLastError()));
-							scRet = SEC_E_INTERNAL_ERROR;
+							scRet = NTE_INTERNAL_ERROR;
 							break;
 						}
 					}
@@ -629,7 +629,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer *pI
 					else
 					{
 						DebugMsg("**** Error reading single packet");
-						scRet = SEC_E_INTERNAL_ERROR;
+						scRet = NTE_INTERNAL_ERROR;
 						break;
 					}
 				}
@@ -639,13 +639,13 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer *pI
 				if (cbData == SOCKET_ERROR)
 				{
 					DebugHresult("**** Error reading data from server ", HRESULT_FROM_WIN32(WSAGetLastError()));
-					scRet = SEC_E_INTERNAL_ERROR;
+					scRet = NTE_INTERNAL_ERROR;
 					break;
 				}
 				else if (cbData == 0)
 				{
 					DebugMsg("**** Server unexpectedly disconnected");
-					scRet = SEC_E_INTERNAL_ERROR;
+					scRet = NTE_INTERNAL_ERROR;
 					break;
 				}
 
@@ -778,7 +778,7 @@ SECURITY_STATUS CSSLClient::SSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer *pI
 						DebugMsg("**** Error %d sending data to server (2)", err);
 					g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
 					m_hContext.Close();
-					return SEC_E_INTERNAL_ERROR;
+					return NTE_INTERNAL_ERROR;
 				}
 
 				DebugMsg(""); // Blank line to delimit new message
