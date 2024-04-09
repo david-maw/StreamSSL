@@ -241,14 +241,14 @@ int _tmain(int argc, TCHAR* argv[])
 		cout << "Still listening for additional client connections, press enter key to terminate." << endl << endl;
 	}
 	// Run additional copies, do not wait, and let the hostname default
-	//PROCESS_INFORMATION pi1 = {};
-	//RunClient(L"", &pi1); 
+	PROCESS_INFORMATION pi1 = {};
+	RunClient(L"", &pi1); 
 	//PROCESS_INFORMATION pi2 = {};
 	//RunClient(L"", &pi2);
 	//PROCESS_INFORMATION pi3 = {};
 	//RunClient(L"", &pi3);
 
-	//cout << "Additional test clients initiated, press enter key to terminate server." << endl << endl;
+	cout << "Additional test clients initiated, press enter key to terminate server." << endl << endl;
 #pragma warning(suppress: 6031) // Do not care about unchecked result
 	getchar();
 	Listener->EndListening();
