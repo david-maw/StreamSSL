@@ -238,7 +238,7 @@ std::string HexDigits(const void* const buf, size_t len)
 	const auto* buffer = static_cast<const byte*>(buf);
 	char formattedTextIndex = 0;
 
-	int length = std::clamp((int)len, 0, 16);
+	int length = min(max(len, 0), 16); // in c++17 this would be std::clamp((int)len, 0, 16);
 
 	formattedText[formattedTextIndex++] = ' ';
 	formattedText[formattedTextIndex++] = ':';
