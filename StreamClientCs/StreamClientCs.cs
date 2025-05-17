@@ -10,7 +10,7 @@ namespace StreamClientCs;
 
 public class SslTcpClient
 {
-    private static Hashtable certificateErrors = new Hashtable();
+    private static Hashtable certificateErrors = new();
 
     // The following method is invoked by the RemoteCertificateValidationDelegate.
     public static bool ValidateServerCertificate(
@@ -95,11 +95,11 @@ public class SslTcpClient
     {
         // Create a TCP/IP client socket.
         // machineName is the host running the server application.
-        TcpClient tcpClient = new TcpClient(serverName, 41000);
+        TcpClient tcpClient = new(serverName, 41000);
         NetworkStream tcpStream = tcpClient.GetStream();
         Console.WriteLine("Client connected.");
         // Create an SSL stream that will close the client's stream.
-        SslStream sslStream = new SslStream(
+        SslStream sslStream = new(
             tcpStream,
             false,
             new RemoteCertificateValidationCallback(ValidateServerCertificate),
@@ -143,10 +143,10 @@ public class SslTcpClient
             Console.WriteLine("Looks like the two server responses were concatenated");
         else
         {
-        Console.WriteLine("Listening for message from server");
-        readBytes = sslStream.Read(readBuffer);
-        serverMessage = Encoding.ASCII.GetString(readBuffer, 0, readBytes);
-        Console.WriteLine("Received'{0}'", serverMessage);
+            Console.WriteLine("Listening for message from server");
+            readBytes = sslStream.Read(readBuffer);
+            serverMessage = Encoding.ASCII.GetString(readBuffer, 0, readBytes);
+            Console.WriteLine("Received'{0}'", serverMessage);
         }
 
         // Shut down SSL without closing the client TCP connection.
@@ -190,7 +190,7 @@ public class SslTcpClient
         SslTcpClient.RunClient(serverName, serverCertificateName);
 
         Console.WriteLine("Press any key to pause, Q to exit immediately");
-        Stopwatch sw = new Stopwatch();
+        Stopwatch sw = new();
         sw.Start();
         while ((!Console.KeyAvailable) && sw.ElapsedMilliseconds < 30_000)
             Task.Delay(250).Wait(); // Loop until input is entered.
