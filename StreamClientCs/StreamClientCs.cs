@@ -38,6 +38,19 @@ public class SslTcpClient
         X509Certificate remoteCertificate,
         string[] acceptableIssuers)
     {
+        // Helper function to check for client authentication EKU
+        static bool HasClientAuthEku(X509Certificate2 cert2)
+        {
+            foreach (var ext in cert2.Extensions.OfType<X509EnhancedKeyUsageExtension>())
+            {
+                foreach (var oid in ext.EnhancedKeyUsages)
+                {
+                    if (oid.Value == "1.3.6.1.5.5.7.3.2") // Client Authentication OID
+                        return true;
+                }
+            }
+            return false;
+        }
         X509Certificate cert = null;
         Console.WriteLine("SelectLocalCertificate called to select a local certificate, remoteCertificate {0}", (remoteCertificate == null) ? "<null>" : remoteCertificate.Subject);
         if (acceptableIssuers?.Length > 0 && localCertificates?.Count > 0)
@@ -58,15 +71,22 @@ public class SslTcpClient
 
         if (remoteCertificate != null) // second call for a local cert 
         {
-            string userName = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
-
-            Console.WriteLine("SelectLocalCertificate could not locate a certificate easily, so try and pick one with a reasonable subject name");
-            string simpleName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last(); ;
-            X509Store myX509Store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
-            myX509Store.Open(OpenFlags.ReadWrite);
-            cert = myX509Store.Certificates.OfType<X509Certificate2>().FirstOrDefault(localCert =>
-                localCert.HasPrivateKey &&
-                localCert.GetNameInfo(X509NameType.SimpleName, false) == simpleName);
+            Console.WriteLine("SelectLocalCertificate could not locate a certificate easily, so try and pick any certificate good for client authentication");
+            using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
+            {
+                store.Open(OpenFlags.ReadOnly);
+                foreach (var cert2 in store.Certificates.OfType<X509Certificate2>())
+                {
+                    if (cert2.HasPrivateKey &&
+                        //DateTime.Now >= cert2.NotBefore &&
+                        //DateTime.Now <= cert2.NotAfter &&
+                        HasClientAuthEku(cert2))
+                    {
+                        cert = cert2;
+                        break;
+                    }
+                }
+            }
         }
         Console.WriteLine("SelectLocalCertificate is returning cert {0}", (cert == null) ? "<null>" : cert.Subject);
         return cert;
@@ -101,7 +121,7 @@ public class SslTcpClient
             tcpClient.Close();
             return 1;
         }
-        Console.WriteLine("Connected to {0}", serverName);
+        Console.WriteLine($"Connected to {serverName}, protocol: {sslStream.SslProtocol}");
 
         string sentMsg = "Hello from client";
         Console.WriteLine("Sending greeting '{0}'", sentMsg);
@@ -119,10 +139,15 @@ public class SslTcpClient
         string serverMessage = Encoding.ASCII.GetString(readBuffer, 0, readBytes);
         Console.WriteLine("Received'{0}'", serverMessage);
 
+        if (serverMessage.Length > 30) // A long message probably means the two responses were concatenated
+            Console.WriteLine("Looks like the two server responses were concatenated");
+        else
+        {
         Console.WriteLine("Listening for message from server");
         readBytes = sslStream.Read(readBuffer);
         serverMessage = Encoding.ASCII.GetString(readBuffer, 0, readBytes);
         Console.WriteLine("Received'{0}'", serverMessage);
+        }
 
         // Shut down SSL without closing the client TCP connection.
         Console.WriteLine("Shutting down SSL");
