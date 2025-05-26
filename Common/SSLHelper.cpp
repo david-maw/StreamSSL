@@ -158,11 +158,15 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 			{
 			case 20: DebugMsg("Content type 20 = Change Cipher Spec, length = %d", length + 5); break;
 			case 21: DebugMsg("Content type 21 = Alert, length = %d", length + 5); break;
-			case 22: DebugMsg("Content type 22 = Handshake, length = %d", length + 5); break;
-			case 23: DebugMsg("Content type 23 = Application Data, length = %d", length + 5); break;
-			default: DebugMsg("This content type (%d) is not recognized, length = %d", contentType, length + 5); break;
+            case 22: DebugMsg("Content type 22 = Handshake, length = %d", length + 5); break; // Not used, see below
+			case 23: 
+				PrintHexDump(MaxBufBytes, OriginalBufPtr);
+				DebugMsg("Content type 23 = Application Data, length = %d", length + 5); break;
+			default: 
+				FormatRecognized = false;
+				PrintHexDump(MaxBufBytes, OriginalBufPtr);
+				DebugMsg("This content type (%d) is not recognized, length = %d", contentType, length + 5); break;
 			}
-			FormatRecognized = false;
 		}
 		// If it is recognized this must be a handshake message (content type 22)
 		if (FormatRecognized && contentType == 22)
@@ -340,8 +344,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 	}
 	if (ExtraBytes > 0) // we recognized at least enough of the format to decode a length and we know there's more data
 	{
-		DebugMsg("");
-		DebugMsg("Analyzing Concatenated Data");
+		DebugMsg("...Analyzing Concatenated Data");
 		TracePacket(OriginalBufPtr + 5 + length, MaxBufBytes - 5 - length);
 	}
 	return TracedBytes;
