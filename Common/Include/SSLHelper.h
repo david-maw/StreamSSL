@@ -17,7 +17,7 @@ public:
 	~CSSLHelper() = default;
 	// Max length of handshake data buffer
 	void TraceHandshake();
-	static int TracePacket(const void * const Ptr, const int MaxBufBytes);
+	static size_t TracePacket(const void * const Ptr, const size_t MaxBufBytes);
 	// Is this packet a complete client initialize packet
 	bool IsClientInitialize() const;
 	// Get SNI provided hostname

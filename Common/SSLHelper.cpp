@@ -69,7 +69,7 @@ void CSSLHelper::TraceHandshake()
 }
 
 // Trace an SSL buffer (static method)
-int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
+size_t CSSLHelper::TracePacket(const void* const Ptr, const size_t MaxBufBytes)
 {
 	const byte *BufPtr = (const byte*)Ptr;
 	const byte *const OriginalBufPtr = BufPtr;
@@ -77,8 +77,8 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 	UINT8 contentType = 0, major = 0, minor = 0;
 	UINT16 length = 0;
 	bool FormatRecognized = true;
-	int ExtraBytes = -1;
-	int TracedBytes = 0;
+	size_t ExtraBytes = 0;
+	size_t TracedBytes = 0;
 
 	auto nextItem = [&](int itemSize, bool skipItem, bool checkLength)
 		{
@@ -145,7 +145,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 			}
 			else // extraBytes < 0
 			{
-				DebugMsg("Only part of the buffer is present, %d more bytes are needed", -ExtraBytes);
+				DebugMsg("Only part of the buffer is present");
 				// Leave TracedBytes at 0;
 			}
 		}
@@ -207,7 +207,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 					}
 					//bool extensionsPresent = BufPtr < BufEnd;
 					UINT16 extensionsTotalLength = getNextItemLength(2); // Number of bytes of extension data
-					int unusedBytes = BufEnd - BufPtr - extensionsTotalLength; // Available space after data
+					size_t unusedBytes = BufEnd - BufPtr - extensionsTotalLength; // Available space after data
 					if (unusedBytes == 0)
 					{
 						if (extensionsTotalLength == 0)
@@ -223,15 +223,15 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 							DebugMsg("There are %d bytes of extension data followed by %d bytes of unused space, see IANA definitions for extension details", extensionsTotalLength, unusedBytes);
 					}
 					else // (extensionsDelta < 0)
-						throw std::exception("There is insufficient space for the extension data, overshot by %d bytes", -unusedBytes);
+						throw std::exception("There is insufficient space for the extension data");
 
 					bool firstUnreconizedExtension = true;
 					
 					while (BufPtr - OriginalBufPtr <= length)
 					{
 						UINT16 extensionType = getNextItemValue(2);
-						UINT16 extensionDataLength = getNextItemLength(2);
-						if (extensionDataLength > BufEnd - BufPtr) // Something's wrong, the extension overflows the buffer just give up
+						size_t extensionDataLength = getNextItemLength(2);
+						if (extensionDataLength > (size_t)(BufEnd - BufPtr)) // Something's wrong, the extension overflows the buffer just give up
 						{
 							DebugMsg("Extension length is %d which overflows the packet, something is wrong, abandoning extension analysis, remaining extension block is", extensionDataLength);
 							BufPtr -= 4;
@@ -306,7 +306,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 				{
 					DebugMsg("*** Faulted analyzing packet contents at offset %d: %s***", BufPtr -OriginalBufPtr, e.what());
 				}
-				int Unused = BufEnd - BufPtr;
+				size_t Unused = BufEnd - BufPtr;
 				if (Unused == 0)
 					; // Extensions exactly filled the header, not worth mentioning
 				else if (Unused > 0)
@@ -315,7 +315,7 @@ int CSSLHelper::TracePacket(const void* const Ptr, const int MaxBufBytes)
 					PrintHexDump(Unused, BufPtr);
 				}
 				else
-					DebugMsg("** Error ** Extensions overflow the packet by %d bytes", -Unused);
+					DebugMsg("** Error ** Extensions overflow the packet");
 			}
 			else
 			{
