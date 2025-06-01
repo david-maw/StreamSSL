@@ -24,7 +24,10 @@ SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CON
 	// Build Schannel credential structure.
 
 	TLS_PARAMETERS Tlsp = { 0 };
-	Tlsp.grbitDisabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_1 | SP_PROT_TLS1_3PLUS;
+    // Always allow TLS1.2, only allow TLS1.3+ in Windows 11 or greater. Made more complex by the fact this is a list of protocols NOT to use
+	Tlsp.grbitDisabledProtocols = SP_PROT_SSL2 | SP_PROT_SSL3 | SP_PROT_TLS1_0 | SP_PROT_TLS1_1; // All protocols prior to TLS 1.2 disabled
+	if (!IsWindows11OrGreater()) // Microsoft say TLS 1.3 is not supported prior to Windows 11 / Server 2022 so do not use it
+		Tlsp.grbitDisabledProtocols |= SP_PROT_TLS1_3PLUS;
 
 	SCH_CREDENTIALS Schc = { 0 };
 	Schc.dwVersion = SCH_CREDENTIALS_VERSION;
@@ -34,8 +37,8 @@ SECURITY_STATUS CreateCredentialsFromCertificate(PCredHandle phCreds, PCCERT_CON
 		Schc.paCred = &pCertContext;
 	}
 	Schc.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
-	//Schc.cTlsParameters = 1;
-	//Schc.pTlsParameters = &Tlsp;
+	Schc.cTlsParameters = 1;
+	Schc.pTlsParameters = &Tlsp;
 
 	SECURITY_STATUS Status;
 	TimeStamp       tsExpiry;

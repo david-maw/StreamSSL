@@ -38,12 +38,14 @@ private:
 	int m_LastError{ 0 };
 	bool m_encrypting = false;
 	static HRESULT InitializeClass();
-	SECURITY_STATUS SSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer *pInitialBuffer = nullptr);
+	SECURITY_STATUS SSPINegotiate(LPCWCHAR ServerName);
+	SECURITY_STATUS ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer* pInitialBuffer = nullptr);
+	int GetDataFromSocket();
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
 	static const int MaxExtraSize = 50; // Also arbitrary, current header is 5 bytes, trailer 36
 	CHAR writeBuffer[MaxMsgSize + MaxExtraSize]{}; // Enough for a whole encrypted message
 	CHAR readBuffer[(MaxMsgSize + MaxExtraSize)  *2]{}; // Enough for two whole messages so we don't need to move data around in buffers
-	size_t readBufferBytes = 0;
+	size_t readBufferBytes = 0; // Bytes read from socket but not yet consumed
 	CHAR plainText[MaxMsgSize  *2]{}; // Extra plaintext data not yet delivered
 	CHAR *plainTextPtr = nullptr;
 	size_t plainTextBytes = 0;

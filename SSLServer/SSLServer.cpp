@@ -661,19 +661,22 @@ bool CSSLServer::SSPINegotiateLoop()
 				}
 			}
 
-			// For TLS 1.2 and earlier this is the end of the handshake. For TLS 1.3 it continues because the server will have sent a renegotiation request
-			SecPkgContext_ConnectionInfo ConnectionInfo{};
-			const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
-
-			if (qcaRet != SEC_E_OK)
+			if (debug)
 			{
-				DebugHresult("Couldn't get connection info", scRet);
-				return true;
-			}
+				// This is the end of the handshake. For TLS 1.3 KeyUpdate and NewSessionTicket may be sent interspersed with encrypted user data
+				SecPkgContext_ConnectionInfo ConnectionInfo{};
+				const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
 
-			bool Tls13 = (ConnectionInfo.dwProtocol & SP_PROT_TLS1_3_SERVER) == SP_PROT_TLS1_3_SERVER;
-			if (Tls13)
-				DebugMsg("TLS 1.3, expect to emit a renegotiate request disguised as encrypted user data");
+				if (qcaRet != SEC_E_OK)
+				{
+					DebugHresult("Couldn't get connection info", scRet);
+					return true;
+				}
+
+				bool Tls13 = (ConnectionInfo.dwProtocol & SP_PROT_TLS1_3_SERVER) == SP_PROT_TLS1_3_SERVER;
+				if (Tls13)
+					DebugMsg("TLS 1.3, may emit KeyUpdate and NewSessionTicket as encrypted user data");
+			}
 			// Now deal with the possibility that there were some data bytes tacked on to the end of the handshake
 			if (InBuffers[1].BufferType == SECBUFFER_EXTRA)
 			{
