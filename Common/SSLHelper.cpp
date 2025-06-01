@@ -257,11 +257,28 @@ size_t CSSLHelper::TracePacket(const void* const Ptr, const size_t MaxBufBytes)
 								BufPtr += serverNameLength;
 							}
 						}
-						else if (extensionType == 43 && extensionDataLength == 2) // TLS Version, length 2 is a simple one
+						else if (extensionType == 43) // TLS Version 
 						{
-							int major = getNextItemValue(1);
-							int minor = getNextItemValue(1);
-							DebugMsg("Extension type 43 = TLS Version, value = %d.%d (%s)", major, minor, getTlsVersionText(major, minor).c_str());
+							if (extensionDataLength == 2) // TLS Version from server, length 2 is a simple one
+							{
+								int major = getNextItemValue(1);
+								int minor = getNextItemValue(1);
+								DebugMsg("Extension type 43 = Negotiated TLS Version, value = %d.%d (%s)", major, minor, getTlsVersionText(major, minor).c_str());
+							}
+							else
+							{
+								// List of versions from client
+								DebugBeginMsg("Extension type 43 = TLS Version list, length = %d, item count = %d, items:", extensionDataLength, (extensionDataLength-1)/2);
+								const byte *EndPtr = BufPtr + extensionDataLength;
+								int itemListLength = getNextItemValue(1);
+								while (BufPtr < EndPtr)
+								{
+									int major = getNextItemValue(1);
+									int minor = getNextItemValue(1);
+									DebugContinueMsg("  %d.%d (%s)", major, minor, getTlsVersionText(major, minor).c_str());
+								}
+								DebugEndMsg();
+							}
 						}
 						else if (extensionType == 65281 && extensionDataLength == 1) // 0xff01 TLS Renegotiation extension, length 1 is a simple one
 							DebugMsg("Extension type 65281 = TLS Renegotiation, value = %d", getNextItemValue(1));
