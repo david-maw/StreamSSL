@@ -34,6 +34,22 @@ std::wstring string_format(const WCHAR* pszFormat, ...) {
 	}
 	return std::wstring(formatted.get());
 }
+// Utility functions to handle Windows Versions
+bool GetWindowsVersion(VersionInfo& info)
+{
+	// Thanks to https://www.codeproject.com/Articles/5336372/Windows-Version-Detection for this method
+	auto sharedUserData = (BYTE*)0x7FFE0000;
+	info.Major = *(ULONG*)(sharedUserData + 0x26c);
+	info.Minor = *(ULONG*)(sharedUserData + 0x270);
+	info.BuildNum = *(ULONG*)(sharedUserData + 0x260);
+	return true;
+}
+
+bool IsWindows11OrGreater()
+{
+	VersionInfo info;
+	return GetWindowsVersion(info) && (info.Major > 10 || (info.Major == 10 && info.BuildNum >= 22000));
+}
 // Utility function to get the hostname of the host I am running on
 std::wstring GetHostName(COMPUTER_NAME_FORMAT WhichName)
 {
@@ -129,18 +145,22 @@ void SetThreadName(std::string const &threadName, DWORD dwThreadID)
 
 void DebugEndMsg()
 {
-	OutputDebugStringA("\n");
+	if (debug)
+		OutputDebugStringA("\n");
 }
 
 void DebugEndMsg(const CHAR* pszFormat, ...)
 {
-	va_list arglist;
-	va_start(arglist, pszFormat);
-	CHAR buf[1024];
-	StringCchVPrintfA(buf, _countof(buf), pszFormat, arglist);
-	va_end(arglist);
-	OutputDebugStringA(buf);
-	DebugEndMsg();
+	if (debug)
+	{
+		va_list arglist;
+		va_start(arglist, pszFormat);
+		CHAR buf[1024];
+		StringCchVPrintfA(buf, _countof(buf), pszFormat, arglist);
+		va_end(arglist);
+		OutputDebugStringA(buf);
+		DebugEndMsg();
+	}
 }
 
 void DebugContinueMsg(const CHAR* pszFormat, ...)
@@ -238,13 +258,13 @@ std::string HexDigits(const void* const buf, size_t len)
 	const auto* buffer = static_cast<const byte*>(buf);
 	char formattedTextIndex = 0;
 
-	int length = min(max(len, 0), 16); // in c++17 this would be std::clamp((int)len, 0, 16);
+	size_t length = min(len, 16); // in c++17 this would be std::clamp((int)len, 0, 16);
 
 	formattedText[formattedTextIndex++] = ' ';
 	formattedText[formattedTextIndex++] = ':';
 	formattedText[formattedTextIndex++] = ' ';
 
-	for (int i = 0; i < length; i++) // step through each hexade
+	for (size_t i = 0; i < length; i++) // step through each hexade
 	{
 		formattedText[formattedTextIndex++] = rgbDigits[buffer[i] >> 4];
 		formattedText[formattedTextIndex++] = rgbDigits[buffer[i] & 0x0f];
@@ -260,14 +280,14 @@ std::string HexDigits(const void* const buf, size_t len)
 		// Representation as ASCII characters
 		formattedText[formattedTextIndex++] = ' ';
 		formattedText[formattedTextIndex++] = '\"';
-		for (int i = 0; i < length; i++)
+		for (size_t i = 0; i < length; i++)
 		{
 			formattedText[formattedTextIndex++] = (buffer[i] < 32 || buffer[i] > 126) ? '.' : buffer[i];
 		}
 		formattedText[formattedTextIndex++] = '\"';
 	}	
 	formattedText[formattedTextIndex++] = 0;
-	std::string  res(formattedText);
+	std::string res(formattedText);
 	return res;
 }
 
@@ -363,6 +383,7 @@ bool IsUserAdmin()
 
 #define STRINGIZE(n) Stringize(n)
 
+// Utility function to get the version of the application
 const char* const GetVersionText()
 {
 	return STRINGIZE(VERSION_MAJOR) "." STRINGIZE(VERSION_MINOR) "." STRINGIZE(VERSION_PATCH) "\0";

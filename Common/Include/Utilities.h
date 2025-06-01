@@ -8,6 +8,16 @@
 	__FILE__ "(" $Line ") : Reminder: "
 // usage #pragma message(Reminder "your message here")
 
+// Handy structure to store version information
+struct VersionInfo
+{
+    VersionInfo() : Major(0), Minor(0), BuildNum(0) {}
+    unsigned int Major;
+    unsigned int Minor;
+    unsigned int BuildNum;
+};
+bool GetWindowsVersion(VersionInfo& info);
+bool IsWindows11OrGreater();
 std::wstring string_format(const WCHAR* pszFormat, ...);
 std::wstring WinErrorMsg(int nErrorCode);
 void PrintHexDump(const void *const buf, size_t length);
