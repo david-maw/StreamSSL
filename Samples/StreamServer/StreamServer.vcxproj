@@ -310,6 +310,9 @@
     <ProjectReference Include="..\..\StreamSSL\StreamSSL.vcxproj">
       <Project>{8526bed2-cb4e-4058-afeb-357367f3c773}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\StreamClient\StreamClient.vcxproj">
+      <Project>{144ccc0e-0ce9-42d2-887b-4210deaa2bc6}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
