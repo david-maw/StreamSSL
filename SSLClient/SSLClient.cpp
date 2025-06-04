@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "SecBufferDescriptor.h"
 
 typedef struct _UNICODE_STRING {
 	USHORT Length;
@@ -213,42 +214,31 @@ int CSSLClient::Recv(LPVOID lpBuf, const size_t Len, const size_t MinLen)
 // Because SSL is message oriented these calls send (or receive) a whole message
 int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 {
-	int i;
-	SecBufferDesc   Message;
-	SecBuffer       Buffers[4];
-	SECURITY_STATUS scRet;
+    SECURITY_STATUS scRet;
 
-	//
-	// Initialize security buffer structs, basically, these point to places to put encrypted data,
-	// for SSL there's a header, some encrypted data, then a trailer. All three get put in the same buffer
-	// (ReadBuffer) and then decrypted. So one SecBuffer points to the header, one to the data, and one to the trailer.
-	//
-
-	Message.ulVersion = SECBUFFER_VERSION;
-	Message.cBuffers = 4;
-	Message.pBuffers = Buffers;
-
-	Buffers[0].BufferType = SECBUFFER_EMPTY;
-	Buffers[1].BufferType = SECBUFFER_EMPTY;
-	Buffers[2].BufferType = SECBUFFER_EMPTY;
-	Buffers[3].BufferType = SECBUFFER_EMPTY;
+    // Create message buffer descriptor with 4 buffers
+    SecBufferDescriptor message(4);
 
 	DebugMsg(" "); // Make it clear in the diagnostic trace that we're dealing with a new message
 	if (readBufferBytes == 0)
-		scRet = SEC_E_INCOMPLETE_MESSAGE;
-	else
+        scRet = SEC_E_INCOMPLETE_MESSAGE;
+    else
 	{	// There is already data in the buffer, so process it first
 		DebugMsg("In RecvPartialEncrypted, using the saved %d bytes from server", readBufferBytes);
 		if (false) PrintHexDump(readBufferBytes, readPtr);
-		Buffers[0].pvBuffer = readPtr;
-		Buffers[0].cbBuffer = static_cast<unsigned long>(readBufferBytes);
-		Buffers[0].BufferType = SECBUFFER_DATA;
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
+        // Set up the first buffer with existing data
+        message.SetBuffer(0, SECBUFFER_DATA, readBufferBytes, readPtr);
+        
+        scRet = g_pSSPI->DecryptMessage(
+            m_hContext.getunsaferef(), 
+            message.get(),
+            0, 
+            nullptr);
 		if (scRet == SEC_E_INCOMPLETE_MESSAGE) // We have a partial message, so we need to read more data from the socket, this is normal
 			DebugMsg("In RecvPartialEncrypted, saved bytes were incomplete message, need to read more data");
 		else
 			DebugHresult("In RecvPartialEncrypted, DecryptMessage of saved bytes, scRet", scRet);
-	}
+    }
 
 	StartRecvTimer(); // The whole message must be received before timeout seconds elapse
 	while (scRet == SEC_E_INCOMPLETE_MESSAGE)
@@ -288,23 +278,18 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 		CSSLHelper::TracePacket((byte*)readPtr + readBufferBytes, err);
 		readBufferBytes += err;
 
-		Buffers[0].pvBuffer = readPtr;
-		Buffers[0].cbBuffer = static_cast<unsigned long>(readBufferBytes);
-		Buffers[0].BufferType = SECBUFFER_DATA;
+        message.Clear();
+        message.SetBuffer(0, SECBUFFER_DATA, readBufferBytes, readPtr);
 
-		Buffers[1].BufferType = SECBUFFER_EMPTY;
-		Buffers[2].BufferType = SECBUFFER_EMPTY;
-		Buffers[3].BufferType = SECBUFFER_EMPTY;
-
-		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), &Message, 0, nullptr);
+		scRet = g_pSSPI->DecryptMessage(m_hContext.getunsaferef(), message.get(), 0, nullptr);
 		if (scRet == SEC_E_INCOMPLETE_MESSAGE) // We have a partial message, so we need to read more data from the socket, this is normal
 			DebugMsg("In RecvPartialEncrypted loop, DecryptMessage says incomplete message, need to read more data");
 		else
-			DebugHresult("Will exit RecvPartialEncrypted loop, DecryptMessage returned scRet", scRet);
+			DebugHresult("Will exit RecvPartialEncrypted loop, DecryptMessage", scRet);
 	}
 
 	if (scRet == SEC_E_OK)
-		DebugMsg("Decrypted message from server.");
+		DebugMsg("In RecvPartialEncrypted, successfully decrypted message from server.");
 	else if (scRet == SEC_I_CONTEXT_EXPIRED)
 	{
 		DebugMsg("Server signaled end of session");
@@ -314,25 +299,21 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 	}
 	else if (scRet == SEC_I_RENEGOTIATE)
 	{
-		DebugMsg("In RecvPartialEncrypted, server sent renegotiate request, will enter SSPINegotiateLoop");
+		DebugMsg("In RecvPartialEncrypted, SEC_I_RENEGOTIATE case, will enter SSPINegotiateLoop");
 
-		PSecBuffer pDataBuffer(nullptr);
-
-		for (i = 1; i < 4; i++)
-		{
-			if (Buffers[i].BufferType == SECBUFFER_EXTRA)
-			{
-				pDataBuffer = &Buffers[i];
-				break;
-			}
-		}
+		PSecBuffer pDataBuffer = message.GetBufferByType(SECBUFFER_EXTRA);
 
 		if (!pDataBuffer)
 		{
-			DebugMsg("No renegotiate data returned");
+			DebugMsg("In RecvPartialEncrypted, no renegotiate data returned");
 			m_LastError = WSASYSCALLFAILURE;
 			return SOCKET_ERROR;
 		}
+		else
+			{
+			DebugMsg("In RecvPartialEncrypted renegotiate data returned, %d bytes", pDataBuffer->cbBuffer);
+            CSSLHelper::TracePacket((byte*)pDataBuffer->pvBuffer, pDataBuffer->cbBuffer);
+			}
 		scRet = ActualSSPINegotiateLoop(ServerName.c_str(), pDataBuffer);
 		if (FAILED(scRet))
 		{
@@ -341,8 +322,8 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 			return SOCKET_ERROR;
 		}
 		pDataBuffer->BufferType = SECBUFFER_EMPTY; // We have consumed it
-        DebugMsg("Renegotiation completed, calling recursively to receive user data from server");
-        return RecvPartialEncrypted(lpBuf, Len); // Call recursively to receive user data from the server
+		DebugMsg("In RecvPartialEncrypted, renegotiation completed, calling recursively to receive user data from server");
+		return RecvPartialEncrypted(lpBuf, Len); // Call recursively to receive user data from the server
 	}
 	else if (scRet == SEC_E_DECRYPT_FAILURE)
 	{
@@ -353,32 +334,22 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 	}
 	else
 	{
-		DebugHresult("Couldn't decrypt data from server,", scRet);
+		DebugHresult("In RecvPartialEncrypted, couldn't decrypt data from server,", scRet);
 		m_LastError = scRet;
 		return SOCKET_ERROR;
 	}
 
 	// Locate the data buffer because the decrypted data is placed there. It's almost certainly
 	// the second buffer (index 1) and we start there, but search all but the first just in case...
-	PSecBuffer pDataBuffer(nullptr);
-
-	for (i = 1; i < 4; i++)
-	{
-		if (Buffers[i].BufferType == SECBUFFER_DATA)
-		{
-			pDataBuffer = &Buffers[i];
-			break;
-		}
-	}
+	PSecBuffer pDataBuffer = message.GetBufferByType(SECBUFFER_DATA);
 
 	if (!pDataBuffer)
 	{
-		DebugMsg("No data returned");
+		DebugMsg("In RecvPartialEncrypted, no decrypted data returned");
 		m_LastError = WSASYSCALLFAILURE;
 		return SOCKET_ERROR;
 	}
-	DebugMsg(" ");
-	DebugMsg("Decrypted message has %d bytes, read requested %d", pDataBuffer->cbBuffer, Len);
+	DebugMsg("In RecvPartialEncrypted, decrypted message has %d bytes, read requested %d", pDataBuffer->cbBuffer, Len);
 	if (false) PrintHexDump(pDataBuffer->cbBuffer, pDataBuffer->pvBuffer);
 
 	// Move the data to the output stream
@@ -403,16 +374,7 @@ int CSSLClient::RecvPartialEncrypted(LPVOID lpBuf, const size_t Len)
 	// See if there was any extra data read beyond what was needed for the message we are handling
 	// TCP can sometime merge multiple messages into a single one, if there is, it will almost 
 	// certainly be in the fourth buffer (index 3), but search all but the first, just in case.
-	PSecBuffer pExtraDataBuffer(nullptr);
-
-	for (i = 1; i < 4; i++)
-	{
-		if (Buffers[i].BufferType == SECBUFFER_EXTRA)
-		{
-			pExtraDataBuffer = &Buffers[i];
-			break;
-		}
-	}
+	PSecBuffer pExtraDataBuffer = message.GetBufferByType(SECBUFFER_EXTRA);
 
 	if (pExtraDataBuffer)
 	{	// More data was read than is needed, this happens sometimes with TCP
@@ -447,48 +409,23 @@ int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	int err;
-
-	SecBufferDesc   Message;
-	SecBuffer       Buffers[4];
-	SECURITY_STATUS scRet;
-
-	//
-	// Initialize security buffer structs
-	//
-
-	Message.ulVersion = SECBUFFER_VERSION;
-	Message.cBuffers = 4;
-	Message.pBuffers = Buffers;
-
-	Buffers[0].BufferType = SECBUFFER_EMPTY;
-	Buffers[1].BufferType = SECBUFFER_EMPTY;
-	Buffers[2].BufferType = SECBUFFER_EMPTY;
-	Buffers[3].BufferType = SECBUFFER_EMPTY;
-
 	// Put the message in the right place in the buffer
-	memcpy_s(writeBuffer + Sizes.cbHeader, sizeof(writeBuffer) - Sizes.cbHeader - Sizes.cbTrailer, lpBuf, Len);
+	memcpy_s(writeBuffer + Sizes.cbHeader,
+		sizeof(writeBuffer) - Sizes.cbHeader - Sizes.cbTrailer,
+		lpBuf,
+		Len);
 
-	//
+	// Create message buffer descriptor with 4 buffers
+	SecBufferDescriptor message(4);
+
 	// Line up the buffers so that the header, trailer and content will be
-	// all positioned in the right place to be sent across the TCP connection as one message.
-	//
+	// all positioned in the right place to be sent across the TCP connection as one message
+	message.SetBuffer(0, SECBUFFER_STREAM_HEADER, Sizes.cbHeader, writeBuffer);
+	message.SetBuffer(1, SECBUFFER_DATA, static_cast<unsigned long>(Len), writeBuffer + Sizes.cbHeader);
+	message.SetBuffer(2, SECBUFFER_STREAM_TRAILER, Sizes.cbTrailer, writeBuffer + Sizes.cbHeader + Len);
+	message.SetBuffer(3, SECBUFFER_EMPTY, 0, nullptr);
 
-	Buffers[0].pvBuffer = writeBuffer;
-	Buffers[0].cbBuffer = Sizes.cbHeader;
-	Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
-
-	Buffers[1].pvBuffer = writeBuffer + Sizes.cbHeader;
-	Buffers[1].cbBuffer = static_cast<unsigned long>(Len);
-	Buffers[1].BufferType = SECBUFFER_DATA;
-
-	Buffers[2].pvBuffer = writeBuffer + Sizes.cbHeader + Len;
-	Buffers[2].cbBuffer = Sizes.cbTrailer;
-	Buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
-
-	Buffers[3].BufferType = SECBUFFER_EMPTY;
-
-	scRet = g_pSSPI->EncryptMessage(m_hContext.getunsaferef(), 0, &Message, 0);
+	SECURITY_STATUS scRet = g_pSSPI->EncryptMessage(m_hContext.getunsaferef(), 0, message.get(), 0);
 
 	DebugMsg("In Send, plaintext message has %d bytes", Len);
 	if (false) PrintHexDump(Len, lpBuf);
@@ -500,144 +437,141 @@ int CSSLClient::Send(LPCVOID lpBuf, const size_t Len)
 		return SOCKET_ERROR;
 	}
 
-	DebugMsg("CSSLClient::Send %d encrypted bytes to server", Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	// Get total encrypted size by adding up the sizes of all buffers
+	size_t totalSize = 0;
+	for (ULONG i = 0; i < 3; i++) // Only first 3 buffers contain data
+	{
+		totalSize += message.GetBuffer(i)->cbBuffer;
+	}
 
-	err = m_SocketStream->Send(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+	DebugMsg("CSSLClient::Send %d encrypted bytes to server", totalSize);
+
+	int err = m_SocketStream->Send(writeBuffer, totalSize);
 	m_LastError = 0;
+
 	if (err == SOCKET_ERROR)
 	{
 		DebugHresult("CSSLClient::Send failed: %ld", HRESULT_FROM_WIN32(m_SocketStream->GetLastError()));
 		return SOCKET_ERROR;
 	}
 	else
-		CSSLHelper::TracePacket(writeBuffer, static_cast<size_t>(Buffers[0].cbBuffer) + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+		CSSLHelper::TracePacket(writeBuffer, totalSize);
 	return static_cast<int>(Len);
 }
-
 // Negotiate a connection with the server, sending and receiving messages until the
 // negotiation succeeds or fails. The actual negotiation is done in a loop, so this function
 // just sets up various state before calling the function that implements the negotiation loop 
 // and then returns the result of invoking the negotiation loop.
 SECURITY_STATUS CSSLClient::SSPINegotiate(LPCWCHAR ServerName)
 {
-	int cbData;
-	TimeStamp            tsExpiry;
-	SECURITY_STATUS      scRet;
-	SecBufferDesc        OutBuffer;
-	SecBuffer            OutBuffers[1];
-	DWORD                dwSSPIFlags = 0;
-	DWORD                dwSSPIOutFlags = 0;
+    int cbData;
+    TimeStamp tsExpiry;
+    SECURITY_STATUS scRet;
+    DWORD dwSSPIFlags = 0;
+    DWORD dwSSPIOutFlags = 0;
 
-	dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
-		ISC_REQ_REPLAY_DETECT |
-		ISC_REQ_CONFIDENTIALITY |
-		ISC_REQ_EXTENDED_ERROR |
-		ISC_REQ_ALLOCATE_MEMORY |
-		ISC_REQ_MANUAL_CRED_VALIDATION | // We'll check the certificate ourselves
-		ISC_REQ_STREAM;
+    dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
+        ISC_REQ_REPLAY_DETECT |
+        ISC_REQ_CONFIDENTIALITY |
+        ISC_REQ_EXTENDED_ERROR |
+        ISC_REQ_ALLOCATE_MEMORY |
+        ISC_REQ_MANUAL_CRED_VALIDATION | // We'll check the certificate ourselves
+        ISC_REQ_STREAM;
 
-	//
-	//  Initiate a ClientHello message and generate a token.
-	//
+    //
+    //  Initiate a ClientHello message and generate a token.
+    //
 
-	OutBuffers[0].pvBuffer = nullptr;
-	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
-	OutBuffers[0].cbBuffer = 0;
+    // Create output buffer descriptor with 1 buffer
+    SecBufferDescriptor outBufferDesc(1);
+    outBufferDesc.SetBuffer(0, SECBUFFER_TOKEN, 0, nullptr);
 
-	OutBuffer.cBuffers = 1;
-	OutBuffer.pBuffers = OutBuffers;
-	OutBuffer.ulVersion = SECBUFFER_VERSION;
+    DebugMsg("Enter SSPINegotiate, initial negotiation");
+    scRet = g_pSSPI->InitializeSecurityContext(
+        m_ClientCreds.getunsaferef(),          // phCredential - this parameter is not const correct so we just have to trust it
+        nullptr,                               // phContext
+        const_cast<SEC_WCHAR*>(ServerName),    // pszTargetName
+        dwSSPIFlags,                           // fContextReq
+        0,                                     // Reserved1
+        0,                                     // TargetDataRep (not used with Schannel)
+        nullptr,                               // pInput
+        0,                                     // Reserved2
+        m_hContext.set(),                      // phNewContext
+        outBufferDesc.get(),                   // pOutput
+        &dwSSPIOutFlags,                       // pfContextAttr
+        &tsExpiry);                            // ptsExpiry
 
-	DebugMsg("Enter SSPINegotiate, initial negotiation");
-	scRet = g_pSSPI->InitializeSecurityContext(
-		m_ClientCreds.getunsaferef(),          // phCredential - this parameter is not const correct so we just have to trust it
-		nullptr,                               // phContext
-		const_cast<SEC_WCHAR*>(ServerName),    // pszTargetName
-		dwSSPIFlags,                           // fContextReq
-		0,                                     // Reserved1
-		0,                                     // TargetDataRep (not used with Schannel)
-		nullptr,                               // pInput
-		0,                                     // Reserved2
-		m_hContext.set(),                      // phNewContext
-		&OutBuffer,                            // pOutput
-		&dwSSPIOutFlags,                       // pfContextAttr
-		&tsExpiry);                            // ptsExpiry
+    if (scRet != SEC_I_CONTINUE_NEEDED)
+    {
+        DebugHresult("**** Error returned by InitializeSecurityContext initial call", scRet);
+        return scRet;
+    }
+    else
+        DebugHresult("InitializeSecurityContext initial call", scRet);
 
-	if (scRet != SEC_I_CONTINUE_NEEDED)
-	{
-		DebugHresult("**** Error returned by InitializeSecurityContext initial call", scRet);
-		return scRet;
-	}
-	else
-		DebugHresult("InitializeSecurityContext initial call", scRet);
+    // Send response to server if there is one.
+    SecBuffer* pOutBuffer = outBufferDesc.GetBuffer(0);
+    if (pOutBuffer->cbBuffer != 0 && pOutBuffer->pvBuffer != nullptr)
+    {
+        DebugMsg("Sending %d bytes of handshake data", pOutBuffer->cbBuffer);
+        cbData = m_SocketStream->Send(pOutBuffer->pvBuffer, pOutBuffer->cbBuffer);
+        if ((cbData == SOCKET_ERROR) || (cbData >= 0 && static_cast<unsigned long>(cbData) != pOutBuffer->cbBuffer))
+        {
+            DebugMsg("**** Error %d sending data to server (1)", WSAGetLastError());
+            g_pSSPI->FreeContextBuffer(pOutBuffer->pvBuffer); // Need to free SSPI-allocated buffer
+            if (cbData == SOCKET_ERROR)
+                scRet = CRYPT_E_FILE_ERROR;
+            else
+                scRet = NTE_INTERNAL_ERROR;
+        }
+        else
+        {
+            DebugMsg(""); // Blank line to delimit new debug message
+            DebugMsg("%d bytes of handshake data sent", cbData);
+            CSSLHelper::TracePacket(pOutBuffer->pvBuffer, pOutBuffer->cbBuffer);
+            // Free output buffer allocated by SSPI
+            g_pSSPI->FreeContextBuffer(pOutBuffer->pvBuffer);
+            pOutBuffer->pvBuffer = nullptr;
+        }
+    }
 
+    scRet = ActualSSPINegotiateLoop(ServerName);
 
-	// Send response to server if there is one.
-	if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
-	{
-		DebugMsg("Sending %d bytes of handshake data", OutBuffers[0].cbBuffer);
-		cbData = m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
-		if ((cbData == SOCKET_ERROR) || (cbData >= 0 && static_cast<unsigned long>(cbData) != OutBuffers[0].cbBuffer))
-		{
-			DebugMsg("**** Error %d sending data to server (1)", WSAGetLastError());
-			g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-			if (cbData == SOCKET_ERROR)
-				scRet = CRYPT_E_FILE_ERROR;
-			else
-				scRet = NTE_INTERNAL_ERROR;
-		}
-		else
-		{
-			DebugMsg(""); // Blank line to delimit new debug message
-			DebugMsg("%d bytes of handshake data sent", cbData);
-			CSSLHelper::TracePacket(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
-			// Free output buffer.
-			g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-			OutBuffers[0].pvBuffer = nullptr;
-		}
-	}
+    // Delete the security context in the case of a fatal error.
+    if (FAILED(scRet))
+        m_hContext.Close();
+    else
+    {
+        m_encrypting = true;
 
-	scRet = ActualSSPINegotiateLoop(ServerName);
+        if (debug)
+        {
+            //Get information about the connection, particularly if it's TLS 1.3 because if so we are not done.
+            SecPkgContext_ConnectionInfo ConnectionInfo{};
+            const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
 
-	// Delete the security context in the case of a fatal error.
-	if (FAILED(scRet))
-		m_hContext.Close();
-	else
-	{
-		m_encrypting = true;
+            if (qcaRet != SEC_E_OK)
+            {
+                DebugHresult("Couldn't get connection info", scRet);
+                return E_FAIL;
+            }
 
-		if (debug)
-		{
-			//Get information about the connection, particularly if it's TLS 1.3 because if so we are not done.
-			SecPkgContext_ConnectionInfo ConnectionInfo{};
-			const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
+            if ((ConnectionInfo.dwProtocol & SP_PROT_TLS1_3_CLIENT) == SP_PROT_TLS1_3_CLIENT)
+                DebugMsg("Exiting SSPINegotiate, established a TLS 1.3 Connection, KeyUpdate and NewSessionTicket are permitted and will return SEC_I_RENEGOTIATE from DecryptMessage");
+        }
+    }
 
-			if (qcaRet != SEC_E_OK)
-			{
-				DebugHresult("Couldn't get connection info", scRet);
-				return E_FAIL;
-			}
-
-			if ((ConnectionInfo.dwProtocol & SP_PROT_TLS1_3_CLIENT) == SP_PROT_TLS1_3_CLIENT)
-				DebugMsg("Exiting SSPINegotiate, established a TLS 1.3 Connection, KeyUpdate and NewSessionTicket are permitted and will return SEC_I_RENEGOTIATE from DecryptMessage");
-		}
-	}
-
-	DebugHresult("Exit SSPINegotiate", scRet);
-	return scRet;
+    DebugHresult("Exit SSPINegotiate", scRet);
+    return scRet;
 }
 
 SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuffer* pInitialBuffer)
 {
-	int cbData; // Result of the most recent red or write, which may be a partial packet
-	TimeStamp            tsExpiry;
-	SECURITY_STATUS      scRet = SEC_I_CONTINUE_NEEDED;
-	SecBufferDesc        InBuffer, * pInBuffer = nullptr;
-	SecBufferDesc        OutBuffer;
-	SecBuffer            InBuffers[2];
-	SecBuffer            OutBuffers[1];
-	DWORD                dwSSPIFlags = 0;
-	DWORD                dwSSPIOutFlags = 0;
+	int cbData; // Result of the most recent read or write, which may be a partial packet
+	TimeStamp tsExpiry;
+	SECURITY_STATUS scRet = SEC_I_CONTINUE_NEEDED;
+	DWORD dwSSPIFlags = 0;
+	DWORD dwSSPIOutFlags = 0;
 
 	dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
 		ISC_REQ_REPLAY_DETECT |
@@ -648,11 +582,11 @@ SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuff
 		ISC_REQ_STREAM;
 
 	// Now start loop to negotiate SSL 
-	BOOL            fDoRead = pInitialBuffer == 0;
+	BOOL fDoRead = pInitialBuffer == 0;
 
-	// 
-	// Loop until the handshake is finished or an error occurs.
-	//
+	// Create buffer descriptors for input and output
+	SecBufferDescriptor inBufferDesc(2);  // 2 buffers: one for data, one for extra
+	SecBufferDescriptor outBufferDesc(1); // 1 buffer for output token
 
 	DebugMsg("In ActualSSPINegotiateLoop, fDoRead=%d", (int)fDoRead);
 
@@ -755,70 +689,42 @@ SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuff
 		// of this. Leftover data (if any) will be placed in buffer 1 and
 		// given a buffer type of SECBUFFER_EXTRA.
 		//
-
-		
+	
 		if (pInitialBuffer == 0)
 		{
-			InBuffers[0].pvBuffer = readBuffer;
-			InBuffers[0].cbBuffer = readBufferBytes;
+			inBufferDesc.SetBuffer(0, SECBUFFER_TOKEN, readBufferBytes, readBuffer);
 		}
 		else
 		{
-			InBuffers[0].pvBuffer = pInitialBuffer->pvBuffer;
-			InBuffers[0].cbBuffer = pInitialBuffer->cbBuffer;
+			inBufferDesc.SetBuffer(0, SECBUFFER_TOKEN, pInitialBuffer->cbBuffer, pInitialBuffer->pvBuffer);
 		}
-		InBuffers[0].BufferType = SECBUFFER_TOKEN;
+		inBufferDesc.SetBuffer(1, SECBUFFER_EMPTY, 0, nullptr);
 
-		InBuffers[1].pvBuffer = nullptr;
-		InBuffers[1].cbBuffer = 0;
-		InBuffers[1].BufferType = SECBUFFER_EMPTY;
-
-		InBuffer.cBuffers = 2;
-		InBuffer.pBuffers = InBuffers;
-		InBuffer.ulVersion = SECBUFFER_VERSION;
-
-		//
-		// Set up the output buffers. These are initialized to NULL
-		// so as to make it less likely we'll attempt to free random
-		// garbage later.
-		//
-
-		OutBuffers[0].pvBuffer = nullptr;
-		OutBuffers[0].BufferType = SECBUFFER_TOKEN;
-		OutBuffers[0].cbBuffer = 0;
-
-		OutBuffer.cBuffers = 1;
-		OutBuffer.pBuffers = OutBuffers;
-		OutBuffer.ulVersion = SECBUFFER_VERSION;
-
-		//
-		// Call InitializeSecurityContext.
-		//
+		// Set up the output buffer
+		outBufferDesc.SetBuffer(0, SECBUFFER_TOKEN, 0, nullptr);
 
 		scRet = g_pSSPI->InitializeSecurityContext(
-			m_ClientCreds.getunsaferef(),    // phCredential - this parameter is not const correct so we just have to trust it
-			m_hContext.getunsaferef(),       // phContext
-			nullptr,                         // pszTargetName
-			dwSSPIFlags,                     // fContextReq
-			0,                               // Reserved1
-			SECURITY_NATIVE_DREP,            // TargetDataRep (not used with Schannel)
-			&InBuffer,                       // pInput
-			0,                               // Reserved2
-			nullptr,                         // phNewContext
-			&OutBuffer,                      // pOutput
-			&dwSSPIOutFlags,                 // pfContextAttr
-			&tsExpiry);                      // ptsExpiry
+			m_ClientCreds.getunsaferef(),
+			m_hContext.getunsaferef(),
+			nullptr,
+			dwSSPIFlags,
+			0,
+			SECURITY_NATIVE_DREP,
+			inBufferDesc.get(),
+			0,
+			nullptr,
+			outBufferDesc.get(),
+			&dwSSPIOutFlags,
+			&tsExpiry);
 
 		if (scRet == SEC_I_CONTINUE_NEEDED)
 			DebugMsg("InitializeSecurityContext in loop returned SEC_I_CONTINUE_NEEDED so we must get more data and call it again");
 		else
 			DebugHresult("InitializeSecurityContext in loop", scRet);
 
-
 		//
-		// If InitializeSecurityContext was successful (or if the error was 
-		// one of the special extended ones), send the contents of the output
-		// buffer to the server.
+		// If InitializeSecurityContext was successful (or if the error was one of 
+		// the special extended ones), send the contents of the output buffer to the server.
 		//
 
 		if (scRet == SEC_E_OK ||
@@ -852,12 +758,14 @@ SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuff
 				if (ServerCertNameMatches) DebugContinueMsg(", name matches"); else DebugContinueMsg(", name does not match");
 				DebugEndMsg();
 				if (!IsServerCertAcceptable)
-					return SEC_E_UNKNOWN_CREDENTIALS;
+				return SEC_E_UNKNOWN_CREDENTIALS;
 			}
 
-			if (OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != nullptr)
+			// Get output buffer
+			SecBuffer* pOutBuffer = outBufferDesc.GetBuffer(0);
+			if (pOutBuffer->cbBuffer != 0 && pOutBuffer->pvBuffer != nullptr)
 			{
-				cbData = this->m_SocketStream->Send(OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer);
+				cbData = this->m_SocketStream->Send(pOutBuffer->pvBuffer, pOutBuffer->cbBuffer);
 				if (cbData == SOCKET_ERROR || cbData == 0)
 				{
 					DWORD err = m_SocketStream->GetLastError();
@@ -865,18 +773,18 @@ SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuff
 						DebugMsg("**** Server closed the connection unexpectedly");
 					else
 						DebugMsg("**** Error %d sending data to server (2)", err);
-					g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
+					g_pSSPI->FreeContextBuffer(pOutBuffer->pvBuffer);
 					m_hContext.Close();
 					return NTE_INTERNAL_ERROR;
 				}
 
 				DebugMsg(""); // Blank line to delimit new message
 				DebugMsg("%d bytes of handshake data sent", cbData);
-				CSSLHelper::TracePacket(OutBuffers[0].pvBuffer, cbData);
+				CSSLHelper::TracePacket(pOutBuffer->pvBuffer, cbData);
 
-				// Free output buffer.
-				g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
-				OutBuffers[0].pvBuffer = nullptr;
+				// Free output buffer allocated by SSPI
+				g_pSSPI->FreeContextBuffer(pOutBuffer->pvBuffer);
+				pOutBuffer->pvBuffer = nullptr;
 			}
 		}
 
@@ -905,14 +813,14 @@ SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuff
 
 			DebugMsg("InitializeSecurityContext in loop returned SEC_E_OK, the handshake was successful");
 
-			if (InBuffers[1].BufferType == SECBUFFER_EXTRA)
+			SecBuffer* pExtraBuffer = inBufferDesc.GetBufferByType(SECBUFFER_EXTRA);
+			if (pExtraBuffer)
 			{
 				// Move the message to the beginning of the read buffer
-				MoveMemory(readBuffer, 
-					readBuffer + (readBufferBytes - InBuffers[1].cbBuffer),
-					InBuffers[1].cbBuffer);
-				readBufferBytes = InBuffers[1].cbBuffer;
-
+				MoveMemory(readBuffer,
+					readBuffer + (readBufferBytes - pExtraBuffer->cbBuffer),
+					pExtraBuffer->cbBuffer);
+				readBufferBytes = pExtraBuffer->cbBuffer;
 				DebugMsg("%d bytes of additional data were bundled with handshake data", readBufferBytes);
 				CSSLHelper::TracePacket(readBuffer, readBufferBytes);
 			}
@@ -986,20 +894,20 @@ SECURITY_STATUS CSSLClient::ActualSSPINegotiateLoop(LPCWCHAR ServerName, SecBuff
 		// Copy any leftover data from the "extra" buffer, and go around
 		// again.
 		//
-
-		if (InBuffers[1].BufferType == SECBUFFER_EXTRA)
+		SecBuffer* pExtraBuffer = inBufferDesc.GetBufferByType(SECBUFFER_EXTRA);
+		if (pExtraBuffer)
 		{
-			auto x = InBuffers[1].pvBuffer;
-				MoveMemory(readBuffer,
-					readBuffer + (readBufferBytes - InBuffers[1].cbBuffer),
-					InBuffers[1].cbBuffer);
-			readBufferBytes = InBuffers[1].cbBuffer;
+			MoveMemory(readBuffer,
+				readBuffer + (readBufferBytes - pExtraBuffer->cbBuffer),
+				pExtraBuffer->cbBuffer);
+			readBufferBytes = pExtraBuffer->cbBuffer;
 		}
 		else
 		{
 			readBufferBytes = 0;
 		}
 	}
+
 	DebugHresult("Exit ActualSSPINegotiateLoop", scRet);
 	return scRet;
 }
@@ -1017,29 +925,15 @@ HRESULT CSSLClient::Disconnect(bool closeUnderlyingSocket)
 
 HRESULT CSSLClient::DisconnectSSL()
 {
-	DWORD           dwType = SCHANNEL_SHUTDOWN;
-	PBYTE           pbMessage;
-	DWORD           cbMessage;
+	DWORD dwType = SCHANNEL_SHUTDOWN;
+	TimeStamp tsExpiry;
+	DWORD Status;
 
-	SecBufferDesc   OutBuffer;
-	SecBuffer       OutBuffers[1];
-	DWORD           dwSSPIFlags;
-	TimeStamp       tsExpiry;
-	DWORD           Status;
+	// Create shutdown buffer for the ApplyControlToken call
+	SecBufferDescriptor shutdownDesc(1);
+	shutdownDesc.SetBuffer(0, SECBUFFER_TOKEN, sizeof(dwType), &dwType);
 
-	//
-	// Notify schannel that we are about to close the connection.
-	//
-
-	OutBuffers[0].pvBuffer = &dwType;
-	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
-	OutBuffers[0].cbBuffer = sizeof(dwType);
-
-	OutBuffer.cBuffers = 1;
-	OutBuffer.pBuffers = OutBuffers;
-	OutBuffer.ulVersion = SECBUFFER_VERSION;
-
-	Status = g_pSSPI->ApplyControlToken(m_hContext.getunsaferef(), &OutBuffer);
+	Status = g_pSSPI->ApplyControlToken(m_hContext.getunsaferef(), shutdownDesc.get());
 
 	if (FAILED(Status))
 	{
@@ -1047,80 +941,63 @@ HRESULT CSSLClient::DisconnectSSL()
 		return Status;
 	}
 
-	//
-	// Build an SSL close notify message.
-	//
-
-	dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
+	// Build an SSL close notify message
+	DWORD dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
 		ISC_REQ_REPLAY_DETECT |
 		ISC_REQ_CONFIDENTIALITY |
 		ISC_RET_EXTENDED_ERROR |
 		ISC_REQ_ALLOCATE_MEMORY |
 		ISC_REQ_STREAM;
 
-	OutBuffers[0].pvBuffer = nullptr;
-	OutBuffers[0].BufferType = SECBUFFER_TOKEN;
-	OutBuffers[0].cbBuffer = 0;
-
-	OutBuffer.cBuffers = 1;
-	OutBuffer.pBuffers = OutBuffers;
-	OutBuffer.ulVersion = SECBUFFER_VERSION;
+	// Create close notify buffer for InitializeSecurityContext
+	SecBufferDescriptor closeDesc(1);
+	closeDesc.SetBuffer(0, SECBUFFER_TOKEN, 0, nullptr);
 
 	Status = g_pSSPI->InitializeSecurityContext(
-		m_ClientCreds.getunsaferef(),	// Which certificate to use, already established
-		m_hContext.getunsaferef(),		// The context handle
+		m_ClientCreds.getunsaferef(),
+		m_hContext.getunsaferef(),
 		nullptr,
 		dwSSPIFlags,
 		0,
 		SECURITY_NATIVE_DREP,
-		&OutBuffer,
+		nullptr,
 		0,
 		nullptr,
-		&OutBuffer,
+		closeDesc.get(),
 		&dwSSPIFlags,
 		&tsExpiry);
 
 	DebugHresult("InitializeSecurityContext initial call", Status);
 
-	// We expect SEC_E_OK here, though in theory it could return SEC_I_CONTEXTEXPIRED or even
-	// SEC_I_CONTINUE_NEEDED to indicate that additional shutdown messages are needed. However
-	// we know SSL shuts down with a single message so it is ok just to expect SEC_E_OK.
-
 	if (FAILED(Status))
 		return Status;
 
-	pbMessage = (PBYTE)OutBuffers[0].pvBuffer;
-	cbMessage = OutBuffers[0].cbBuffer;
-
-
-	//
-	// Send the close notify message to the server.
-	//
-
-	if (pbMessage != nullptr && cbMessage != 0)
+	// Send the close notify message to the server if we got one
+	SecBuffer* pCloseBuffer = closeDesc.GetBuffer(0);
+	if (pCloseBuffer->pvBuffer != nullptr && pCloseBuffer->cbBuffer != 0)
 	{
-		const DWORD cbData = m_SocketStream->Send(pbMessage, cbMessage);
+		const DWORD cbData = m_SocketStream->Send(pCloseBuffer->pvBuffer, pCloseBuffer->cbBuffer);
 		if (cbData == SOCKET_ERROR || cbData == 0)
 		{
 			Status = WSAGetLastError();
 			DebugMsg("**** Error %d sending close notify", Status);
+			g_pSSPI->FreeContextBuffer(pCloseBuffer->pvBuffer);
 			return Status;
 		}
 
 		DebugMsg("Sending Close Notify. %d bytes of data sent", cbData);
 		if (true)
 		{
-			PrintFullHexDump(cbData, pbMessage);
+			PrintFullHexDump(cbData, (PBYTE)pCloseBuffer->pvBuffer);
 			DebugMsg("\n");
 		}
 
-		// Free output buffer.
-		g_pSSPI->FreeContextBuffer(pbMessage);
+		// Free output buffer allocated by SSPI
+		g_pSSPI->FreeContextBuffer(pCloseBuffer->pvBuffer);
 	}
 
 	return Status;
 }
-
 bool CSSLClient::getServerCertNameMatches() const
 {
 	return ServerCertNameMatches;

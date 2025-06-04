@@ -93,6 +93,9 @@
     <ClInclude Include="..\Common\Include\SSLHelper.h">
       <Filter>Header Files\Common Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\Include\SecBufferDescriptor.h">
+      <Filter>Header Files\Common Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -132,6 +135,9 @@
       <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\Common\SSLHelper.cpp">
+      <Filter>Source Files\Common Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\SecBufferDescriptor.cpp">
       <Filter>Source Files\Common Sources</Filter>
     </ClCompile>
   </ItemGroup>

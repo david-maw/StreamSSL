@@ -177,6 +177,7 @@
     <ClInclude Include="..\Common\Include\EventWrapper.h" />
     <ClInclude Include="..\Common\Include\Handle.h" />
     <ClInclude Include="..\Common\Include\ISocketStream.h" />
+    <ClInclude Include="..\Common\Include\SecBufferDescriptor.h" />
     <ClInclude Include="..\Common\Include\SecurityHandle.h" />
     <ClInclude Include="..\Common\Include\SSLHelper.h" />
     <ClInclude Include="..\Common\Include\Utilities.h" />
@@ -195,6 +196,7 @@
     <ClCompile Include="..\Common\CertHelper.cpp" />
     <ClCompile Include="..\Common\CertRAII.cpp" />
     <ClCompile Include="..\Common\Common.cpp" />
+    <ClCompile Include="..\Common\SecBufferDescriptor.cpp" />
     <ClCompile Include="..\Common\SSLHelper.cpp" />
     <ClCompile Include="..\Common\Utilities.cpp" />
     <ClCompile Include="..\SSLClient\ActiveSock.cpp" />

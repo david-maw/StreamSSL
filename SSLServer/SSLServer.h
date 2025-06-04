@@ -2,6 +2,7 @@
 #include "PassiveSock.h"
 #include "SecurityHandle.h"
 #include "Common.h"
+#include "SecBufferDescriptor.h"
 
 #include <functional>
 
@@ -43,7 +44,7 @@ private:
 	std::unique_ptr<CPassiveSock> m_SocketStream;
 	int m_LastError{ 0 };
 	static HRESULT InitializeClass();
-	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDesc& Message);
+	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDescriptor& Message);
 	int RecvEncrypted(void* const lpBuf, const size_t Len);
 	bool SSPINegotiateLoop();
 	static const int MaxMsgSize = 16000; // Arbitrary but less than 16384 limit, including MaxExtraSize
@@ -54,5 +55,5 @@ private:
 	void* readPtr{};
 	SecurityContextHandle m_hContext{};
 	SecPkgContext_StreamSizes Sizes{};
-	bool m_encrypting = false; // Is channel currently encypting
+	bool m_encrypting = false; // Is channel currently encrypting
 };
