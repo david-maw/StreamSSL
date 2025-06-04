@@ -14,4 +14,5 @@ public:
 	virtual int GetSendTimeoutSeconds() const = 0;
 	virtual void StartRecvTimer() = 0;
 	virtual void StartSendTimer() = 0;
+	virtual int GetTlsVersion() const = 0;
 };

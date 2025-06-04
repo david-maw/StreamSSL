@@ -544,21 +544,20 @@ SECURITY_STATUS CSSLClient::SSPINegotiate(LPCWCHAR ServerName)
     {
         m_encrypting = true;
 
-        if (debug)
+        //Get information about the connection, particularly it's TLS level.
+        SecPkgContext_ConnectionInfo ConnectionInfo{};
+        const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
+
+        if (qcaRet != SEC_E_OK)
         {
-            //Get information about the connection, particularly if it's TLS 1.3 because if so we are not done.
-            SecPkgContext_ConnectionInfo ConnectionInfo{};
-            const SECURITY_STATUS qcaRet = g_pSSPI->QueryContextAttributes(m_hContext.getunsaferef(), SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo);
-
-            if (qcaRet != SEC_E_OK)
-            {
-                DebugHresult("Couldn't get connection info", scRet);
-                return E_FAIL;
-            }
-
-            if ((ConnectionInfo.dwProtocol & SP_PROT_TLS1_3_CLIENT) == SP_PROT_TLS1_3_CLIENT)
-                DebugMsg("Exiting SSPINegotiate, established a TLS 1.3 Connection, KeyUpdate and NewSessionTicket are permitted and will return SEC_I_RENEGOTIATE from DecryptMessage");
+            DebugHresult("Couldn't get connection info", scRet);
+            return E_FAIL;
         }
+
+        TlsVersion =  CSSLHelper::getTlsVersionFromProtocol(ConnectionInfo.dwProtocol);
+
+        if (ConnectionInfo.dwProtocol & SP_PROT_TLS1_3PLUS)
+            DebugMsg("Exiting SSPINegotiate, established a TLS 1.3+ Connection, KeyUpdate and NewSessionTicket are permitted and will return SEC_I_RENEGOTIATE from DecryptMessage");
     }
 
     DebugHresult("Exit SSPINegotiate", scRet);

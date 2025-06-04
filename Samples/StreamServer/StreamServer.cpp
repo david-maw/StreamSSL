@@ -129,7 +129,9 @@ int _tmain(int argc, TCHAR* argv[])
 		int len = 0;
 		
 		ShowDelay();
-		cout << "A connection has been made, worker started, awaiting a message from the client" << endl;
+		int tlsVersion = StreamSock->GetTlsVersion();
+		cout << "A connection has been made using TLS " << tlsVersion / 10 << "." << tlsVersion % 10
+			<< ", worker started, awaiting a message from the client" << endl;
 		
 		try
 		{

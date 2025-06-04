@@ -18,6 +18,8 @@ public:
 	// Max length of handshake data buffer
 	void TraceHandshake();
 	static size_t TracePacket(const void * const Ptr, const size_t MaxBufBytes);
+	// Convert a protocol mask to a two digit protocol version
+	static int getTlsVersionFromProtocol(DWORD protocol);
 	// Is this packet a complete client initialize packet
 	bool IsClientInitialize() const;
 	// Get SNI provided hostname

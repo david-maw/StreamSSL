@@ -40,7 +40,9 @@ int main()
 		HRESULT hr = pSSLClient->Initialize(HostName.c_str());
 		if (SUCCEEDED(hr))
 		{
+			int tlsVersion = pSSLClient->GetTlsVersion();
 			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
+                << ", TLS version = " << tlsVersion / 10 << "." << tlsVersion % 10
 				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
 			cout << "Sending greeting" << endl;
 			string msg("GET HTTP/1.1\n"); // Minimum needed to get a response from a web server

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include <string>
+#include <schannel.h>
 #include "SSLHelper.h"
 #include "Utilities.h"
 
@@ -33,6 +34,25 @@ std::string getTlsVersionText(int major, int minor)
 	return "";
 }
 
+/// <summary>
+/// Convert an Schannel protocol bit mask to a TLS version number, works for either client or server bit masks. Returns
+/// zero for SSL versions or for unknown protocols.
+/// /// </summary>
+/// <param name="protocol"></param>
+/// <returns></returns>
+int CSSLHelper::getTlsVersionFromProtocol(DWORD protocol)
+{
+	if (protocol & SP_PROT_TLS1_0)
+		return 10;
+	else if (protocol & SP_PROT_TLS1_1)
+		return 11;
+	else if (protocol & SP_PROT_TLS1_2)
+		return 12;
+	else if (protocol & SP_PROT_TLS1_3)
+		return 13;
+	else
+        return 0; // Unknown protocol
+}
 
 // Decode a buffer
 bool CSSLHelper::CanDecode()

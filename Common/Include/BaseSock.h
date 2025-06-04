@@ -26,6 +26,7 @@ public:
 	int GetSendTimeoutSeconds() const override;
 	void StartRecvTimer() override;
 	void StartSendTimer() override;
+	int GetTlsVersion() const override { return 0; };
 
 	virtual int RecvPartial(LPVOID lpBuf, const size_t Len);
 	virtual int SendPartial(LPCVOID lpBuf, const size_t Len);

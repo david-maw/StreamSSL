@@ -26,7 +26,8 @@ public:
 	int GetSendTimeoutSeconds() const override;
 	void StartRecvTimer() override;
 	void StartSendTimer() override;
-	
+	int GetTlsVersion() const override { return TlsVersion; }
+
 	ISocketStream* GetSocketStream();
 	// Set up state for this connection
 	HRESULT Initialize(const void * const lpBuf = nullptr, const size_t Len = 0);
@@ -43,6 +44,7 @@ private:
 	CredHandle hServerCreds{};
 	std::unique_ptr<CPassiveSock> m_SocketStream;
 	int m_LastError{ 0 };
+	int TlsVersion{ 0 }; // Two digit TLS version, e.g. 12 for TLS 1.2
 	static HRESULT InitializeClass();
 	SECURITY_STATUS DecryptAndHandleConcatenatedShutdownMessage(SecBufferDescriptor& Message);
 	int RecvEncrypted(void* const lpBuf, const size_t Len);

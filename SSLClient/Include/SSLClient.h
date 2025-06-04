@@ -22,6 +22,7 @@ public:
 	int GetSendTimeoutSeconds() const;
 	void StartRecvTimer();
 	void StartSendTimer();
+	int GetTlsVersion() const { return TlsVersion; }
 	std::wstring ServerName;
 	// Regular class interface
 	// Set up state for this connection
@@ -36,6 +37,7 @@ private:
 	CredentialHandle m_ClientCreds;
 	CActiveSock *m_SocketStream;
 	int m_LastError{ 0 };
+    int TlsVersion{ 0 }; // Two digit TLS version, e.g. 12 for TLS 1.2
 	bool m_encrypting = false;
 	static HRESULT InitializeClass();
 	SECURITY_STATUS SSPINegotiate(LPCWCHAR ServerName);

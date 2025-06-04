@@ -156,8 +156,10 @@ int wmain(int argc, WCHAR * argv[])
 		HRESULT hr = pSSLClient->Initialize(HostName.c_str());
 		if (SUCCEEDED(hr))
 		{
-			cout << "Connected, cert name matches=" << pSSLClient->getServerCertNameMatches()
-				<< ", cert is trusted=" << pSSLClient->getServerCertTrusted() << endl;
+			int tlsVersion = pSSLClient->GetTlsVersion();
+			cout << "Connected, cert name matches = " << pSSLClient->getServerCertNameMatches()
+				<< ", TLS version = " << tlsVersion / 10 << "." << tlsVersion % 10
+				<< ", cert is trusted = " << pSSLClient->getServerCertTrusted() << endl;
 			std::string sentMsg("Hello from client");
 			cout << "Sending greeting '" << sentMsg << "'" << endl;
 			if (pSSLClient->Send(sentMsg.c_str(), sentMsg.length()) != (int)sentMsg.length())
