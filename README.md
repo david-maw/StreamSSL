@@ -1,9 +1,9 @@
 [![MSBuild](https://github.com/david-maw/StreamSSL/actions/workflows/msbuild.yml/badge.svg)](https://github.com/david-maw/StreamSSL/actions/workflows/msbuild.yml)
 # StreamSSL
-This is the StreamSSL sample described in the CodeProject article at:
-http://www.codeproject.com/Articles/1000189/A-Working-TCP-Client-and-Server-With-SSL
 
-It is licensed under the CodeProject Open License at http://www.codeproject.com/info/cpol10.aspx
+This is a framework which allows you to implement a TLS client or multi-threaded server in C++ relatively easily. It includes a working example and allows for server and optional client authentication.
 
-A copy of the license is also available in the License.md file in the project at:
-https://github.com/david-maw/StreamSSL/blob/master/License.md.
+The whole project is fully described [here](Article/Article.md), it was originally a CodeProject article [here](
+http://www.codeproject.com/Articles/1000189/A-Working-TCP-Client-and-Server-With-SSL).
+
+It is licensed under the CodeProject Open License (see the [License.md](License.md) file in the project) also available [here](https://www.codeproject.com/info/cpol10.aspx).

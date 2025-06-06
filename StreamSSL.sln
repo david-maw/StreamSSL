@@ -23,6 +23,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleClientCs", "SimpleCli
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamClientCs", "StreamClientCs\StreamClientCs.csproj", "{0006B3AC-95E5-4FC7-92FF-AD7C9FF22DBC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Article", "Article", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		Article\Article.md = Article\Article.md
+		Article\mmc.jpg = Article\mmc.jpg
+		Article\servercert.jpg = Article\servercert.jpg
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug Ansi|Any CPU = Debug Ansi|Any CPU
@@ -154,6 +161,7 @@ Global
 		{A96158C0-9879-4D2C-BBE6-ED2B86A1E93E} = {1CB7EA77-6290-4FCE-A1F9-FA162C4562F8}
 		{70C51721-F7B8-43E1-8926-4BD0C6C61A61} = {1CB7EA77-6290-4FCE-A1F9-FA162C4562F8}
 		{0006B3AC-95E5-4FC7-92FF-AD7C9FF22DBC} = {1CB7EA77-6290-4FCE-A1F9-FA162C4562F8}
+		{02EA681E-C7D8-13C7-8484-4AC65E1B71E8} = {7A125773-1807-469D-A2AD-2145250CDB4F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E2735530-C231-462D-AFF1-BD154690364B}
